@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'accounts',
     'category',
+    'store',
     
 ]
 
@@ -53,6 +54,7 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = 'flipcart_project.urls'
+AUTH_USER_MODEL = 'accounts.Account'
 
 TEMPLATES = [
     {
@@ -123,6 +125,9 @@ STATICFILES_DIRS = [
     'flipcart_project/static',
 ]
 STATIC_ROOT = BASE_DIR / "staticfiles"
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / "media"
 
 
 # Default primary key field type
