@@ -27,7 +27,8 @@
 				</aside>
 				<main class="col-md-6 border-left">
 
-					<form action="{% url 'add_cart' single_product.id %}" method="POST">
+					{% comment %} <form action="{% url 'add_cart' single_product.id %}" method="POST"> {% endcomment %}
+					<form action="#" method="POST">  
 						{% csrf_token %}
 						<article class="content-body">
 
@@ -39,7 +40,8 @@
 									<i class="fa fa-star{% if single_product.averageReview < 2.5 %}-o{% elif single_product.averageReview >= 2.5 and single_product.averageReview < 3 %}-half-o {% endif %}" aria-hidden="true"></i>
 									<i class="fa fa-star{% if single_product.averageReview < 3.5 %}-o{% elif single_product.averageReview >= 3.5 and single_product.averageReview < 4 %}-half-o {% endif %}" aria-hidden="true"></i>
 									<i class="fa fa-star{% if single_product.averageReview < 4.5 %}-o{% elif single_product.averageReview >= 4.5 and single_product.averageReview < 5 %}-half-o {% endif %}" aria-hidden="true"></i>
-	<span>{{single_product.countReview}} reviews</span>
+	
+									<span>{{single_product.countReview}} reviews</span>
 									</span>
 							</div>
 
@@ -81,7 +83,9 @@
 							<button type="submit" class="btn  btn-primary"> <span class="text">Add to Cart</span> <i class="fa fa-shopping-cart"></i> </button>
 							{% endif %}
 						</article> <!-- product-info-aside .// -->
-					</form>
+					</form> 
+
+
 				</main> <!-- col.// -->
 			</div> <!-- row.// -->
 		</div> <!-- card.// -->
@@ -94,7 +98,8 @@
 
 
 
-				<form action="{% url 'submit_review' single_product.id %}" method="POST">
+				{% comment %} <form action="{% url 'submit_review' single_product.id %}" method="POST"> {% endcomment %}
+				<form action="" method="POST">
 					{% csrf_token %}
 					<h5>Write Your Review</h5>
 
@@ -141,7 +146,7 @@
 </div>
 
 					</div>
-{% include 'includes/alerts.html' %}
+{% comment %} {% include 'includes/alerts.html' %} {% endcomment %}
 				</form>
 <br>
 <header class="section-heading">
