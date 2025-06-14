@@ -126,7 +126,7 @@
 						Review:
 						<textarea name="review" rows="4" class="form-control"></textarea>
 						<br>
-						<!-- {% if user.is_authenticated %}
+						{% comment %} {% if user.is_authenticated %}
 							{% if orderproduct %}
 								<input type="submit" value="Submit Review" class="btn btn-primary">
 							{% else %}
@@ -134,12 +134,14 @@
 							{% endif %}
 						{% else %}
 						<p>You must be logged in to post a review. <span><a href="{% url 'login' %}">Login now</a></span></p>
-						{% endif %} -->
+						{% endif %}  {% endcomment %}
 
 						{% if user.is_authenticated %}
 								<input type="submit" value="Submit Review" class="btn btn-primary">
 						{% else %}
-						<p>You must be logged in to post a review. <span><a href="{% url 'login' %}">Login now</a></span></p>
+						{% comment %} <p>You must be logged in to post a review. <span><a href="{% url 'login' %}">Login now</a></span></p> {% endcomment %}
+						<p>You must be logged in to post a review. <span><a href="#">Login now</a></span></p>
+						
 						{% endif %}
 						<div class="alert alert-danger" role="alert" style="margin-top:10px;">
   2-Factor Review Submission is disabled for demo purpose.
