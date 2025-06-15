@@ -57,7 +57,8 @@
 							<div class="row">
 								<div class="item-option-select">
 									<h6>Choose Color</h6>
-									<select name="color" class="form-control" required>
+									{% comment %} <select name="color" class="form-control" required> {% endcomment %}
+									<select name="color" class="form-control" >
 										<option value="" disabled selected>Select</option>
 										{% for i in single_product.variation_set.colors %}
 										<option value="{{ i.variation_value | lower }}">{{ i.variation_value | capfirst }}</option>
@@ -68,7 +69,8 @@
 							<div class="row">
 								<div class="item-option-select">
 									<h6>Select Size</h6>
-									<select name="size" class="form-control" required>
+									{% comment %} <select name="size" class="form-control" required> {% endcomment %}
+									<select name="size" class="form-control" >
 										<option value="" disabled selected>Select</option>
 										{% for i in single_product.variation_set.sizes %}
 										<option value="{{ i.variation_value | lower }}">{{ i.variation_value | capfirst }}</option>
@@ -80,7 +82,9 @@
 							{% if single_product.stock <= 0 %}
 							<h5 class="text-danger">Out of Stock</h5>
 							{% else %}
-							<button type="submit" class="btn  btn-primary"> <span class="text">Add to Cart</span> <i class="fa fa-shopping-cart"></i> </button>
+							{% comment %} <button type="submit" class="btn  btn-primary"> <span class="text">Add to Cart</span> <i class="fa fa-shopping-cart"></i> </button> {% endcomment %}
+							<button type="submit"> <span class="text"><a href="{% url 'add_cart' single_product.id %}"  class="btn  btn-primary">Add to Cart </a></span> <i class="fa fa-shopping-cart"></i> </button>
+							
 							{% endif %}
 						</article> <!-- product-info-aside .// -->
 					</form> 
