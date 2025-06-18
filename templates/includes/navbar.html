@@ -52,20 +52,17 @@
           <div class="widget-header">
             <small class="title text-muted">Welcome guest!</small>
             <div>
-              {% comment %} <a href="{% url 'login' %}">Sign in</a> <span class="dark-transp"> | </span>
-              <a href="{% url 'register' %}"> Register</a> {% endcomment %}
-              <a href="#">Sign in</a> <span class="dark-transp"> | </span>
-              <a href="#"> Register</a>
+              <a href="{% url 'login' %}">Sign in</a> <span class="dark-transp"> | </span>
+              <a href="{% url 'register' %}"> Register</a>
             </div>
           </div>
           {% else %}
           <div class="widget-header">
             <small class="title text-muted">Welcome {{user.first_name}}!</small>
             <div>
-              {% comment %} <a href="{% url 'dashboard' %}">Dashboard</a> <span class="dark-transp"> | </span>
-              <a href="{% url 'logout' %}"> Logout</a> {% endcomment %}
-              <a href="#">Dashboard</a> <span class="dark-transp"> | </span>
-              <a href="#"> Logout</a>
+             <a href="{% url 'home' %}">Dashboard</a> <span class="dark-transp"> | </span>
+              <a href="{% url 'logout' %}"> Logout</a>
+              
             </div>
           </div>
           {% endif %}
