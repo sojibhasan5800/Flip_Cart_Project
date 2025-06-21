@@ -12,6 +12,11 @@ from sslcommerz_lib import SSLCOMMERZ
 import random
 import string
 import time
+from django.views.decorators.csrf import csrf_exempt
+from rest_framework.authtoken.models import Token
+from django.urls import reverse
+
+
 
 def generate_transaction_id():
     timestamp = int(time.time())  # current Unix time (e.g., 1724312820)
@@ -85,18 +90,33 @@ def generate_transaction_id():
 #     return JsonResponse(data)
 
 
-def payments(request,usd=0):
+def payments(request,id,tk=0):
     current_user = request.user
-    customer_details = Order.objects.filter(user = current_user)
+    print( request.user.email)
+    customer_details = Order.objects.get(user = current_user,id=id)
+    token, _ = Token.objects.get_or_create(user=current_user)
+    email = request.user.email
+    transction_id = generate_transaction_id()
+    print(current_user)
+
+
+
+    base_url = f"{request.scheme}://{request.get_host()}"
+    print(base_url)
+    success_path = reverse('payment_success')  # will be /accounts/payment/success/
+    success_url = f"{base_url}{success_path}?email={email}&status=success&transction_id={transction_id}&payment_method=Bkash&paid={tk}&user={current_user}"
+    fail_url    = f"{base_url}{success_path}?email={email}&status=fail"
+    cancel_url  = f"{base_url}{success_path}?email={email}&status=cancel"
+
     settings = { 'store_id': 'trans68369e6df24cb', 'store_pass': 'trans68369e6df24cb@ssl', 'issandbox': True }
     sslcz = SSLCOMMERZ(settings)
     post_body = {}
-    post_body['total_amount'] = usd
+    post_body['total_amount'] = tk
     post_body['currency'] = "BDT"
-    post_body['tran_id'] = generate_transaction_id()
-    post_body['success_url'] = "http://127.0.0.1:8000/accounts/"
-    post_body['fail_url'] = "http://127.0.0.1:8000/carts/"
-    post_body['cancel_url'] = "http://127.0.0.1:8000/carts/"
+    post_body['tran_id'] = transction_id
+    post_body['success_url'] = success_url
+    post_body['fail_url'] = fail_url
+    post_body['cancel_url'] = cancel_url
     post_body['emi_option'] = 0
     post_body['cus_name'] = request.user.full_name
     post_body['cus_email'] = request.user.email
@@ -113,8 +133,7 @@ def payments(request,usd=0):
 
 
     response = sslcz.createSession(post_body) # API response
-    print(response)
-    # Need to redirect user to response['GatewayPageURL']
+    
     return redirect(response['GatewayPageURL'])
 
 def place_order(request, total=0, quantity=0,):
@@ -172,6 +191,7 @@ def place_order(request, total=0, quantity=0,):
                 'tax': tax,
                 'grand_total': grand_total,
             }
+            
             return render(request, 'orders/payments.html', context)
     else:
         return redirect('checkout')

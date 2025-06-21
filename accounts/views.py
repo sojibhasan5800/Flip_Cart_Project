@@ -5,6 +5,9 @@ from .models import Account
 from django.contrib import messages, auth
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
+from orders.models import Payment
+
+
 
 # # Verification email
 from django.contrib.sites.shortcuts import get_current_site
@@ -17,6 +20,9 @@ from django.core.mail import EmailMessage
 from carts.views import _cart_id
 from carts.models import Cart, CartItem
 import requests
+from django.views.decorators.csrf import csrf_exempt
+from accounts.models import Account
+from rest_framework.authtoken.models import Token
 
 
 def register(request):
@@ -67,8 +73,11 @@ def login(request):
         password = request.POST['password']
 
         user = auth.authenticate(email=email, password=password)
+        
 
         if user is not None:
+            for user_token in Account.objects.all():
+                Token.objects.get_or_create(user=user_token)
             try:
                 cart = Cart.objects.get(cart_id=_cart_id(request))
                 is_cart_item_exists = CartItem.objects.filter(cart=cart).exists()
@@ -152,9 +161,54 @@ def activate(request, uidb64, token):
         messages.error(request, 'Invalid activation link')
         return redirect('register')
 
+@csrf_exempt
+def payment_success(request):
+    
+    if request.method != "POST":
+        return redirect('dashboard')
+    email = request.GET.get('email')
+    transction_id = request.GET.get('transction_id')
+    payment_method = request.GET.get('payment_method')
+    paid = request.GET.get('paid')
+    user = request.GET.get('user')
+    print(user)
+
+    current_user = Account.objects.get(email=email)
+    # Store transaction details inside Payment model
+    payment = Payment(
+        user = current_user,
+        payment_id = transction_id,
+        payment_method = payment_method,
+        amount_paid = paid,
+        status = 'Bkash'
+    )
+    payment.save()
+    
+ 
+    try:
+        user = Account.objects.get(email=email)
+    except Account.DoesNotExist:
+        return redirect('login')
+    status = request.GET.get('status')
+
+    # Django এর login() ফাংশন - user session এ ঢোকাবে
+    auth.login(request, user)
+    if status == 'success':
+        messages.success(request, "Payment successful! Thank you for your order.")
+        
+    elif status == 'fail':
+        messages.error(request, "Payment failed! Please try again.")
+    elif status == 'cancel':
+        messages.warning(request, "Payment cancelled! You have cancelled the payment.")
+        
+    else:
+        messages.info(request, "Unknown payment status.")
+
+    return redirect('dashboard')
 
 @login_required(login_url = 'login')
-def dashboard(request):
+def dashboard(request):   
+
     # orders = Order.objects.order_by('-created_at').filter(user_id=request.user.id, is_ordered=True)
     # orders_count = orders.count()
 
@@ -163,6 +217,7 @@ def dashboard(request):
     #     'orders_count': orders_count,
     #     'userprofile': userprofile,
     # }
+    # Continue as authenticated user
     return render(request, 'accounts/dashboard.html')
 
 
