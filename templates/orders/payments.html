@@ -95,7 +95,7 @@
 
 			</aside> <!-- col.// -->
 			<aside class="col-lg-4">
-				<form action="{% url 'payments' order.id grand_total %}" method="POST">
+				<form action="{% url 'payments' order.id order.order_number grand_total  %}" method="POST">
 					{% csrf_token %}
 				<div class="card">
 					<div class="card-body">

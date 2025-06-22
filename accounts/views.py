@@ -21,7 +21,6 @@ from carts.views import _cart_id
 from carts.models import Cart, CartItem
 import requests
 from django.views.decorators.csrf import csrf_exempt
-from accounts.models import Account
 from rest_framework.authtoken.models import Token
 
 
@@ -161,50 +160,7 @@ def activate(request, uidb64, token):
         messages.error(request, 'Invalid activation link')
         return redirect('register')
 
-@csrf_exempt
-def payment_success(request):
-    
-    if request.method != "POST":
-        return redirect('dashboard')
-    email = request.GET.get('email')
-    transction_id = request.GET.get('transction_id')
-    payment_method = request.GET.get('payment_method')
-    paid = request.GET.get('paid')
-    user = request.GET.get('user')
-    print(user)
 
-    current_user = Account.objects.get(email=email)
-    # Store transaction details inside Payment model
-    payment = Payment(
-        user = current_user,
-        payment_id = transction_id,
-        payment_method = payment_method,
-        amount_paid = paid,
-        status = 'Bkash'
-    )
-    payment.save()
-    
- 
-    try:
-        user = Account.objects.get(email=email)
-    except Account.DoesNotExist:
-        return redirect('login')
-    status = request.GET.get('status')
-
-    # Django এর login() ফাংশন - user session এ ঢোকাবে
-    auth.login(request, user)
-    if status == 'success':
-        messages.success(request, "Payment successful! Thank you for your order.")
-        
-    elif status == 'fail':
-        messages.error(request, "Payment failed! Please try again.")
-    elif status == 'cancel':
-        messages.warning(request, "Payment cancelled! You have cancelled the payment.")
-        
-    else:
-        messages.info(request, "Unknown payment status.")
-
-    return redirect('dashboard')
 
 @login_required(login_url = 'login')
 def dashboard(request):   

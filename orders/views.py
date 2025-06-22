@@ -15,6 +15,10 @@ import time
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework.authtoken.models import Token
 from django.urls import reverse
+from accounts.models import Account
+from django.contrib import messages,auth
+from urllib.parse import urlencode
+
 
 
 
@@ -89,22 +93,143 @@ def generate_transaction_id():
 #     }
 #     return JsonResponse(data)
 
+@csrf_exempt
+def payment_success(request):
+    
+    if request.method != "POST":
+        return redirect('dashboard')
+    email = request.GET.get('email')
+    transction_id = request.GET.get('transction_id')
+    payment_method = request.GET.get('payment_method')
+    paid = request.GET.get('paid')
+    status = request.GET.get('status')
+    order_number = request.GET.get('order_number')
 
-def payments(request,id,tk=0):
+    if not status == 'success':
+        status='Failed'      
+
+    current_user = Account.objects.get(email=email)
+    order = Order.objects.get(user=current_user, is_ordered=False,order_number=order_number)
+    # Store transaction details inside Payment model
+    payment = Payment(
+        user = current_user,
+        payment_id = transction_id,
+        payment_method = payment_method,
+        amount_paid = paid,
+        status = status
+    )
+    payment.save()
+    order.payment = payment
+    order.is_ordered=True
+    order.save()
+
+#     # Move the cart items to Order Product table
+    cart_items = CartItem.objects.filter(user=current_user)
+
+    for item in cart_items:
+        orderproduct = OrderProduct()
+        orderproduct.order_id = order.id
+        orderproduct.payment = payment
+        orderproduct.user_id = current_user.id
+        orderproduct.product_id = item.product_id
+        orderproduct.quantity = item.quantity
+        orderproduct.product_price = item.product.price
+        orderproduct.ordered = True
+        orderproduct.save()
+
+        cart_item = CartItem.objects.get(id=item.id)
+        product_variation = cart_item.variations.all()
+        orderproduct = OrderProduct.objects.get(id=orderproduct.id)
+        orderproduct.variations.set(product_variation)
+        orderproduct.save()
+   
+        # Reduce the quantity of the sold products
+        product = Product.objects.get(id=item.product_id)
+        product.stock -= item.quantity
+        product.save()
+
+    # Clear cart
+    CartItem.objects.filter(user=current_user).delete()
+
+    # Send order recieved email to customer
+    mail_subject = 'Thank you for your order!'
+    message = render_to_string('orders/order_recieved_email.html', {
+        'user': current_user,
+        'order': order,
+    })
+    to_email = current_user.email
+    send_email = EmailMessage(mail_subject, message, to=[to_email])
+    send_email.send()
+
+    # Send order number and transaction id back to sendData method via JsonResponse
+         # Prepare data
+    params = {
+        'order_number': order.order_number,
+        'transID': payment.payment_id
+    }
+    print(payment.payment_id)
+    
+    try:
+        user = Account.objects.get(email=email)
+    except Account.DoesNotExist:
+        return redirect('login')
+   
+
+    # Django এর login() ফাংশন - user session এ ঢোকাবে
+    auth.login(request, user)
+    if status == 'success':
+        messages.success(request, "Payment successful! Thank you for your order.")
+        
+    elif status == 'fail':
+        messages.error(request, "Payment failed! Please try again.")
+    elif status == 'cancel':
+        messages.warning(request, "Payment cancelled! You have cancelled the payment.")
+        
+    else:
+        messages.info(request, "Unknown payment status.")
+    
+
+    # Encode parameters into a query string
+    query_string = urlencode(params)
+
+    # Build full redirect URL
+    base_url = reverse('order_complete')  # must match your URL name
+    url = f"{base_url}?{query_string}"
+
+    # Redirect
+    return redirect(url)
+
+    
+
+
+def payments(request,id,order_number,tk=0):
     current_user = request.user
-    print( request.user.email)
-    customer_details = Order.objects.get(user = current_user,id=id)
-    token, _ = Token.objects.get_or_create(user=current_user)
+    customer_details = Order.objects.get(user=current_user,id=id)
     email = request.user.email
-    transction_id = generate_transaction_id()
-    print(current_user)
+    transction_id = generate_transaction_id(),
+    order_number =order_number
+    
+    query_params = {
+    'email': email,
+    'status': 'success',
+    'transction_id': transction_id,
+    'payment_method': 'Bkash',
+    'paid': tk,
+    'user_id': current_user.id,
+    'order_id':customer_details.id,
+    'order_number':order_number,
 
+    }
+
+    query_string = urlencode(query_params)
+
+  
 
 
     base_url = f"{request.scheme}://{request.get_host()}"
     print(base_url)
-    success_path = reverse('payment_success')  # will be /accounts/payment/success/
-    success_url = f"{base_url}{success_path}?email={email}&status=success&transction_id={transction_id}&payment_method=Bkash&paid={tk}&user={current_user}"
+    success_path = reverse('payment_success')  # will be /orders/payment/success/
+    success_url = f"{base_url}{success_path}?{query_string}"
     fail_url    = f"{base_url}{success_path}?email={email}&status=fail"
     cancel_url  = f"{base_url}{success_path}?email={email}&status=cancel"
 
@@ -197,28 +322,33 @@ def place_order(request, total=0, quantity=0,):
         return redirect('checkout')
 
 
-# def order_complete(request):
-#     order_number = request.GET.get('order_number')
-#     transID = request.GET.get('payment_id')
+def order_complete(request):
+    order_number = request.GET.get('order_number')
+    transID = request.GET.get('transID')
+    print(transID)
 
-#     try:
-#         order = Order.objects.get(order_number=order_number, is_ordered=True)
-#         ordered_products = OrderProduct.objects.filter(order_id=order.id)
+    try:
+        order = Order.objects.get(order_number=order_number, is_ordered=True)
+        ordered_products = OrderProduct.objects.filter(order_id=order.id)
+        print("rdre",order)
+        print(ordered_products)
 
-#         subtotal = 0
-#         for i in ordered_products:
-#             subtotal += i.product_price * i.quantity
+        subtotal = 0
+        for i in ordered_products:
+            subtotal += i.product_price * i.quantity
 
-#         payment = Payment.objects.get(payment_id=transID)
+        payment = Payment.objects.get(payment_id=transID)
+        print("paymetn: " ,payment)
 
-#         context = {
-#             'order': order,
-#             'ordered_products': ordered_products,
-#             'order_number': order.order_number,
-#             'transID': payment.payment_id,
-#             'payment': payment,
-#             'subtotal': subtotal,
-#         }
-#         return render(request, 'orders/order_complete.html', context)
-#     except (Payment.DoesNotExist, Order.DoesNotExist):
-#         return redirect('home')
+        context = {
+            'order': order,
+            'ordered_products': ordered_products,
+            'order_number': order.order_number,
+            'transID': payment.payment_id,
+            'payment': payment,
+            'subtotal': subtotal,
+        }
+        return render(request, 'orders/order_complete.html', context)
+    except (Payment.DoesNotExist, Order.DoesNotExist):
+        print("no")
+        return redirect('home')
