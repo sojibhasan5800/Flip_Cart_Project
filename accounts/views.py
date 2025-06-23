@@ -41,7 +41,7 @@ def register(request):
             # Create a user profile
             profile = UserProfile()
             profile.user_id = user.id
-            profile.profile_picture = 'default/default-user.png'
+            profile.profile_picture = 'userprofile/default.png'
             profile.save()
 
             # USER ACTIVATION
@@ -174,7 +174,7 @@ def dashboard(request):
         'userprofile': userprofile,
     }
     # Continue as authenticated user
-    return render(request, 'accounts/dashboard.html')
+    return render(request, 'accounts/dashboard.html',context)
 
 
 def forgotPassword(request):
@@ -270,30 +270,30 @@ def edit_profile(request):
     return render(request, 'accounts/edit_profile.html', context)
 
 
-# @login_required(login_url='login')
-# def change_password(request):
-#     if request.method == 'POST':
-#         current_password = request.POST['current_password']
-#         new_password = request.POST['new_password']
-#         confirm_password = request.POST['confirm_password']
+@login_required(login_url='login')
+def change_password(request):
+    if request.method == 'POST':
+        current_password = request.POST['current_password']
+        new_password = request.POST['new_password']
+        confirm_password = request.POST['confirm_password']
 
-#         user = Account.objects.get(username__exact=request.user.username)
+        user = Account.objects.get(username__exact=request.user.username)
 
-#         if new_password == confirm_password:
-#             success = user.check_password(current_password)
-#             if success:
-#                 user.set_password(new_password)
-#                 user.save()
-#                 # auth.logout(request)
-#                 messages.success(request, 'Password updated successfully.')
-#                 return redirect('change_password')
-#             else:
-#                 messages.error(request, 'Please enter valid current password')
-#                 return redirect('change_password')
-#         else:
-#             messages.error(request, 'Password does not match!')
-#             return redirect('change_password')
-#     return render(request, 'accounts/change_password.html')
+        if new_password == confirm_password:
+            success = user.check_password(current_password)
+            if success:
+                user.set_password(new_password)
+                user.save()
+                # auth.logout(request)
+                messages.success(request, 'Password updated successfully.')
+                return redirect('change_password')
+            else:
+                messages.error(request, 'Please enter valid current password')
+                return redirect('change_password')
+        else:
+            messages.error(request, 'Password does not match!')
+            return redirect('change_password')
+    return render(request, 'accounts/change_password.html')
 
 
 @login_required(login_url='login')

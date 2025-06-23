@@ -25,7 +25,7 @@ SECRET_KEY = 'django-insecure-ym8a4^z1je)5nww3s6jgf4=7md$1_nrda&-b^y+taa@!3u(otb
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework.authtoken',
+    'admin_thumbnails',
     'accounts',
     'category',
     'store',
@@ -153,3 +154,17 @@ EMAIL_HOST_PASSWORD = 'oewycxrcvulmlvjr'        # Gmail-এর App Password (Goo
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+# settings.py
+
+# SESSION_COOKIE_AGE = 7 দিন করে দিন
+SESSION_COOKIE_AGE = 60 * 60 * 24 * 7
+
+# DEBUG=False হলে SESSION_COOKIE_SECURE=True করুন (প্রোডাকশনে)
+# এখন development এ False ঠিক আছে
+SESSION_COOKIE_SECURE = False
+CSRF_COOKIE_SECURE = False
+
+# SESSION_SAVE_EVERY_REQUEST=True রাখা ভালো, যাতে সক্রিয় থাকে
+SESSION_SAVE_EVERY_REQUEST = True
+
+# SECRET_KEY অপরিবর্তিত থাকুন
