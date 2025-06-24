@@ -23,6 +23,48 @@ import requests
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework.authtoken.models import Token
 
+#------------------------------- API SET UP ----------------------------------
+# IMPORT ELEMENT=======>
+from rest_framework import viewsets
+from rest_framework.views import APIView
+from rest_framework.generics import CreateAPIView
+from .serializer import AccountSerializer,UserProfileSerializer
+from rest_framework.response import Response
+
+from . import models
+
+
+#============================
+class AccountViewset(APIView):
+    serializer_class = AccountSerializer
+    def post(self,request):
+        serializer = self.serializer_class(data = request.data)
+
+        if serializer.is_valid():
+            user = serializer.save()
+            # USER ACTIVATION
+            current_site = get_current_site(request)
+            mail_subject = 'Please activate your account'
+            message = render_to_string('accounts/account_verification_email.html', {
+                'user': user,
+                'domain': current_site,
+                'uid': urlsafe_base64_encode(force_bytes(user.pk)),
+                'token': default_token_generator.make_token(user),
+            })
+            to_email = user.email
+            send_email = EmailMessage(mail_subject, message, to=[to_email])
+            send_email.send()
+            return Response("Check your mail confirmation")
+        return Response(serializer.errors)
+def api_email_active():
+    pass
+
+class UserProfileViewset(viewsets.ModelViewSet):
+    queryset = models.UserProfile.objects.all()
+    serializer_class = UserProfileSerializer
+
+
+#------------------------------------------------------------------------------
 
 def register(request):
     if request.method == 'POST':
@@ -40,7 +82,7 @@ def register(request):
 
             # Create a user profile
             profile = UserProfile()
-            profile.user_id = user.id
+            profile.user = user
             profile.profile_picture = 'userprofile/default.png'
             profile.save()
 
@@ -167,8 +209,11 @@ def dashboard(request):
 
     orders = Order.objects.order_by('-created_at').filter(user_id=request.user.id, is_ordered=True)
     orders_count = orders.count()
-
-    userprofile = UserProfile.objects.get(user_id=request.user.id)
+    print(request.user.id)
+    try:
+        userprofile = UserProfile.objects.get(user_id=request.user.id)
+    except:   
+        userprofile, created = UserProfile.objects.get_or_create(user=request.user)
     context = {
         'orders_count': orders_count,
         'userprofile': userprofile,

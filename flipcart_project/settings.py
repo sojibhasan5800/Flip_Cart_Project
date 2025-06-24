@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'rest_framework',
     'rest_framework.authtoken',
     'admin_thumbnails',
     'accounts',
@@ -59,6 +60,7 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'flipcart_project.urls'
 AUTH_USER_MODEL = 'accounts.Account'
+CORS_ALLOW_ALL_ORIGINS = True
 
 TEMPLATES = [
     {
