@@ -54,6 +54,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -119,6 +120,18 @@ DATABASES = {
 }
 
 
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.postgresql',
+#         'NAME': 'postgres',
+#         'USER': 'postgres.nukldrotoynenouuubbv',
+#         'PASSWORD': 'mLb8DCYHWv8NRj4Q',
+#         'HOST': 'aws-0-ap-southeast-1.pooler.supabase.com',
+#         'PORT': '5432',
+#     }
+# }
+
+
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
 
@@ -174,9 +187,11 @@ EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'sojibhasan5800@gmail.com'         # আপনার Gmail
-EMAIL_HOST_PASSWORD = 'oewycxrcvulmlvjr'        # Gmail-এর App Password (Google Account → Security → App Passwords)
+EMAIL_HOST_USER = config('EMAIL_HOST_USER')         # আপনার Gmail
+EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD')       # Gmail-এর App Password (Google Account → Security → App Passwords)
 
+# EMAIL_HOST_USER = 'sojibhasan5800@gmail.com'       
+# EMAIL_HOST_PASSWORD = 'oewycxrcvulmlvjr'    
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
