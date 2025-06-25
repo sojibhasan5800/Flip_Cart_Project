@@ -1,6 +1,7 @@
 asgiref==3.8.1
 certifi==2025.6.15
 charset-normalizer==3.4.2
+decouple==0.0.7
 Django==5.2.3
 django-admin-thumbnails==0.2.9
 django-filter==25.1
