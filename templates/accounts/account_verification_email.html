@@ -3,9 +3,11 @@
 Hi {{user.first_name}},
 
 Please click on below link to confirm your registration.
-http://{{domain}}{% url 'activate' uidb64=uid token=token %}
-<p>{{domain}}</p>
-
+{% if api %}
+    http://{{domain}}{% url 'api_activate' uidb64=uid token=token %}
+{% else %}
+    http://{{domain}}{% url 'activate' uidb64=uid token=token %}
+{% endif %}
 If you think it's not you, please ignore this email.
 
 {% endautoescape %}

@@ -41,9 +41,28 @@ class AccountSerializer(serializers.ModelSerializer):
         
 
 
+class LoginSerializer(serializers.Serializer):
+    email = serializers.CharField(required = True)
+    password = serializers.CharField(required = True)
+
+
+class AccountSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Account
+        fields = ['id', 'email', 'first_name', 'last_name', 'phone_number','profile_picture']
+
+    def get_city(self, obj):
+        try:
+            return obj.userprofile.profile_picture  # Access related UserProfile
+        except UserProfile.DoesNotExist:
+            return None
 
 class UserProfileSerializer(serializers.ModelSerializer):
-    user = serializers.StringRelatedField(many=False)
+    user = serializers.ReadOnlyField(source='user.id')
     class Meta:
         model = UserProfile
-        fields = '__all__'
+        fields = ['id', 'user', 'address_line_1', 'address_line_2', 'profile_picture', 'city', 'state', 'country']
+
+        
+
+    

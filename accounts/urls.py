@@ -3,9 +3,9 @@ from . import views
 
 #------------------------------- API SET UP ----------------------------------
 # IMPORT ELEMENT=======>
-from rest_framework.routers import DefaultRouter
-router = DefaultRouter()
-router.register('userprofile',views.UserProfileViewset,basename='userprofile_api')
+# from rest_framework.routers import DefaultRouter
+# router = DefaultRouter()
+# router.register('userprofile',views.UserProfileViewset,basename='userprofile_api')
 
 #============================
 
@@ -35,8 +35,13 @@ urlpatterns = [
 
     #------------------ API URLS -------------------------------
 
-    path('api/',include((router.urls))),
+    # path('api/',include((router.urls))),
     path('registration_api/', views.AccountViewset.as_view(), name='registration_api'),
+    path('user_api_list/', views.UserApiList.as_view(), name='user_api_list'),
+    path('userprofile_api/', views.UserProfileDetailView.as_view(), name='userprofile_api'),
+    path('login_api/', views.LoginApiView.as_view(), name='login_api'),
+    path('logout_api/', views.LogoutApiView.as_view(), name='logout_api'),
+    path('api_activate/<uidb64>/<token>/', views.activate, name='api_activate'),
 
     #------------------------------------------------------------
 
