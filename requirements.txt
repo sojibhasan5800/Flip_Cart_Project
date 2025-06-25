@@ -1,6 +1,7 @@
 asgiref==3.8.1
 certifi==2025.6.15
 charset-normalizer==3.4.2
+decouple==0.0.7
 Django==5.2.3
 django-admin-thumbnails==0.2.9
 django-filter==25.1
@@ -8,9 +9,11 @@ djangorestframework==3.16.0
 idna==3.10
 Markdown==3.8.2
 pillow==11.2.1
+psycopg2-binary==2.9.10
 requests==2.32.4
 six==1.17.0
 sqlparse==0.5.3
 sslcommerz-lib==1.0
 tzdata==2025.2
 urllib3==2.5.0
+whitenoise==6.9.0
