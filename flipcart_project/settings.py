@@ -28,7 +28,7 @@ SECRET_KEY = config('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = ["127.0.0.1", ".vercel.app"]
 
 
 # Application definition
@@ -94,7 +94,7 @@ REST_FRAMEWORK = {
 #     ]
 }
 
-WSGI_APPLICATION = 'flipcart_project.wsgi.application'
+WSGI_APPLICATION = 'flipcart_project.wsgi.app'
 
 
 # Database
@@ -197,6 +197,7 @@ EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD')       # Gmail-এর App Pas
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
 # settings.py
 
 # SESSION_COOKIE_AGE = 7 দিন করে দিন
