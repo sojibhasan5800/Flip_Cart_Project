@@ -229,7 +229,6 @@ def login(request):
                             item = CartItem.objects.get(id=item_id)
 
                             item.quantity += 1
-                            print("add")
                             item.user = user
                             item.save()
                         else:

@@ -105,11 +105,21 @@ def payment_success(request):
     status = request.GET.get('status')
     order_number = request.GET.get('order_number')
 
-    if not status == 'success':
-        status='Failed'      
-
+    if status == 'Failed' or status == 'cancel':
+        messages.warning(request, "Something Are Wrong Your Order Canceled !!!!")
+        return redirect('place_order')  
+    
     current_user = Account.objects.get(email=email)
     order = Order.objects.get(user=current_user, is_ordered=False,order_number=order_number)
+    cart_items = CartItem.objects.filter(user=current_user)
+
+    for items in cart_items:
+        product = Product.objects.get(id=item.product_id)
+        if product.stock < item.quantity :
+            messages.warning(request, f'This {product.name} Product Our Stock {product.stock} Quntity is Avaibile !')
+            return redirect('checkout')
+        
+              
     # Store transaction details inside Payment model
     payment = Payment(
         user = current_user,
@@ -222,9 +232,6 @@ def payments(request,id,order_number,tk=0):
     }
 
     query_string = urlencode(query_params)
-
-  
-
 
     base_url = f"{request.scheme}://{request.get_host()}"
     print(base_url)
