@@ -4,7 +4,7 @@ from category.models import Category
 from carts.models import CartItem
 from django.db.models import Q
 from accounts.models import UserProfile
-
+import requests
 
 from carts.views import _cart_id
 from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
@@ -106,3 +106,8 @@ def submit_review(request, product_id):
                 data.save()
                 messages.success(request, 'Thank you! Your review has been submitted.')
                 return redirect(url)
+            
+def load_product_object(request):
+    product_url = 'https://dummyjson.com/products'
+    response = requests.get(url=product_url)
+    
