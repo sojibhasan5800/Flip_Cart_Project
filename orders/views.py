@@ -105,7 +105,7 @@ def payment_success(request):
     status = request.GET.get('status')
     order_number = request.GET.get('order_number')
 
-    if status == 'Failed' or status == 'cancel':
+    if status == 'fail' or status == 'cancel':
         messages.warning(request, "Something Are Wrong Your Order Canceled !!!!")
         return redirect('place_order')  
     
@@ -114,8 +114,8 @@ def payment_success(request):
     cart_items = CartItem.objects.filter(user=current_user)
 
     for items in cart_items:
-        product = Product.objects.get(id=item.product_id)
-        if product.stock < item.quantity :
+        product = Product.objects.get(id=items.product_id)
+        if product.stock < items.quantity :
             messages.warning(request, f'This {product.name} Product Our Stock {product.stock} Quntity is Avaibile !')
             return redirect('checkout')
         

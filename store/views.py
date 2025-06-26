@@ -16,6 +16,7 @@ from django.http import HttpResponse
 from .forms import ReviewForm
 from django.contrib import messages
 from orders.models import OrderProduct
+from django.http import HttpResponse
 
 
 def store(request, category_slug=None):
@@ -115,7 +116,8 @@ def load_product_object(request):
     product_url = 'https://dummyjson.com/products'
     response = requests.get(url=product_url)
     api_data = response.json()
-    product_data = api_data.get('product',[])
+    product_data = api_data.get('products',[])
+    print("loaded producted !!!!!!!!!")
 
     for item in product_data:
         title = item.get('title')
@@ -173,5 +175,5 @@ def load_product_object(request):
                     ProductGallery.objects.create(product=product, image=img_file)
             except:
                 continue
-        print("All Api Product is Loaded!!!!!")
-        return redirect()
+    print("All Api Product is Loaded!!!!!")
+    return redirect('home')

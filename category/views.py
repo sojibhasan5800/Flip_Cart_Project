@@ -14,11 +14,11 @@ def load_category_object(request):
         name_field = cat.get('name', None)
         url_field = cat.get('url', None)
         Category.objects.get_or_create(
-
-            name = name_field,
+            category_name = name_field,
             slug = slug_field,
             url = url_field,
         )
+    print("loaded category!!!!!!!!!")
     return redirect('Product_load')
     
 
