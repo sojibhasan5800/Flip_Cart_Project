@@ -5,6 +5,10 @@ from carts.models import CartItem
 from django.db.models import Q
 from accounts.models import UserProfile
 import requests
+from django.utils.text import slugify
+from django.core.files.base import ContentFile
+from urllib.parse import urlparse
+import os
 
 from carts.views import _cart_id
 from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
@@ -110,4 +114,64 @@ def submit_review(request, product_id):
 def load_product_object(request):
     product_url = 'https://dummyjson.com/products'
     response = requests.get(url=product_url)
-    
+    api_data = response.json()
+    product_data = api_data.get('product',[])
+
+    for item in product_data:
+        title = item.get('title')
+        slug = slugify(title)
+        description = item.get('description')
+        price = int(float(item.get('price', 0)))
+        stock = item.get('stock', 0)
+        thumbnail_url = item.get('thumbnail')
+        image_urls = item.get('images', [])
+        category_name = item.get('category')
+
+        # check category: 
+
+        try:
+            category_obj = Category.objects.get(slug=slugify(category_name))
+        except Category.DoesNotExist:
+            continue
+
+        # skip same product:
+
+        if Product.objects.filter(product_name=title).exists():
+            continue
+
+         # Thumbail Download
+        image_file = None
+        image_name = None
+        if thumbnail_url:
+            img_response = requests.get(thumbnail_url)
+            if img_response.status_code == 200:
+                image_name = os.path.basename(urlparse(thumbnail_url).path)
+                image_file = ContentFile(img_response.content, name=image_name)
+
+        product = Product.objects.create(
+            product_name=title,
+            slug=slug,
+            description=description,
+            price=price,
+            stock=stock,
+            is_available=(stock > 0),
+            category=category_obj
+        )
+
+         # প্রোডাক্ট ইমেজ সেভ (thumbnail)
+        if image_file:
+            product.images.save(image_name, image_file)
+            product.save()
+
+        # ProductGallery Image সেভ করা
+        for img_url in image_urls:
+            try:
+                img_res = requests.get(img_url)
+                if img_res.status_code == 200:
+                    img_name = os.path.basename(urlparse(img_url).path)
+                    img_file = ContentFile(img_res.content, name=img_name)
+                    ProductGallery.objects.create(product=product, image=img_file)
+            except:
+                continue
+        print("All Api Product is Loaded!!!!!")
+        return redirect()

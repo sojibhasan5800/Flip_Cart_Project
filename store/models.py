@@ -18,6 +18,14 @@ class Product(models.Model):
     created_date    = models.DateTimeField(auto_now_add=True)
     modified_date   = models.DateTimeField(auto_now=True)
 
+    def save(self, *args, **kwargs):
+    # যদি stock 0 হয়, তাহলে is_available False করে দাও
+        if self.stock == 0:
+            self.is_available = False
+        else:
+            self.is_available = True
+        super(Product, self).save(*args, **kwargs)
+
     def get_url(self):
         return reverse('product_detail', args=[self.category.slug, self.slug])
 
