@@ -1,1 +1,6 @@
 flipcart_project/.env
+# Ignore SQLite database file
+db.sqlite3
+# Ignore python cache
+__pycache__/
+*.pyc

@@ -18,6 +18,68 @@ from django.contrib import messages
 from orders.models import OrderProduct
 from django.http import HttpResponse
 
+#--------------------- Api Import -------------------------------------
+from rest_framework import viewsets, permissions, filters,mixins,pagination
+from rest_framework.generics import ListAPIView,CreateAPIView
+from .serializers import ProductSerializer,ReviewRatingSerializer
+from rest_framework.permissions import IsAuthenticatedOrReadOnly,IsAuthenticated
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework.authtoken.models import Token
+from urllib.parse import urljoin
+from urllib.parse import urlparse
+from rest_framework.authentication import TokenAuthentication
+
+
+
+#--------------------- Api Create -------------------------------------
+class StandardResultsSetPagination(pagination.PageNumberPagination):
+    page_size = 5
+    page_size_query_param = 'page_size'
+    max_page_size = 1000
+
+class ProductViewSet(viewsets.ModelViewSet):
+    queryset = Product.objects.all().order_by('-created_date')
+    serializer_class = ProductSerializer
+    permission_classes = [IsAuthenticatedOrReadOnly]  # Only logged-in users can POST
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+
+    filterset_fields = ['category', 'price', 'stock', 'is_available']
+    search_fields = ['product_name', 'description']
+    ordering_fields = ['price', 'stock', 'created_date']
+    pagination_class = StandardResultsSetPagination
+
+
+class ReviewRatingListAPIView(ListAPIView):
+    queryset = ReviewRating.objects.filter(status=True).order_by('-created_at')
+    serializer_class = ReviewRatingSerializer
+    pagination_class = StandardResultsSetPagination
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        product_id = self.request.query_params.get('product')
+        if product_id:
+            queryset = queryset.filter(product_id=product_id)
+        return queryset
+
+class ReviewRatingCreateAPIView(CreateAPIView):
+    queryset = ReviewRating.objects.all()
+    serializer_class = ReviewRatingSerializer
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [TokenAuthentication]  # ✅ এটাই থাকা লাগবে  
+
+    def perform_create(self, serializer):
+        product_id = self.request.data.get("product")
+        product = Product.objects.get(id=product_id)
+        serializer.save(
+            user=self.request.user,
+            ip=self.request.META.get('REMOTE_ADDR'),
+            status=True,
+            product = product
+        )
+    
+
+# ------------------------------------------------------------------------
+
 
 def store(request, category_slug=None):
     categories = None
@@ -101,15 +163,45 @@ def submit_review(request, product_id):
         except ReviewRating.DoesNotExist:
             form = ReviewForm(request.POST)
             if form.is_valid():
-                data = ReviewRating()
-                data.subject = form.cleaned_data['subject']
-                data.rating = form.cleaned_data['rating']
-                data.review = form.cleaned_data['review']
-                data.ip = request.META.get('REMOTE_ADDR')
-                data.product_id = product_id
-                data.user_id = request.user.id
-                data.save()
-                messages.success(request, 'Thank you! Your review has been submitted.')
+                # data = ReviewRating()
+                # data.subject = form.cleaned_data['subject']
+                # data.rating = form.cleaned_data['rating']
+                # data.review = form.cleaned_data['review']
+                # data.ip = request.META.get('REMOTE_ADDR')
+                # data.product_id = product_id
+                # data.user_id = request.user.id
+                # data.save()
+            # APi Throug Saving Data :
+                
+                subject = form.cleaned_data['subject']
+                rating = form.cleaned_data['rating']
+                review = form.cleaned_data['review']
+                ip = request.META.get('REMOTE_ADDR')
+                user_id = request.user.id
+                token = Token.objects.get(user=request.user)
+                #----------------------------
+                parsed_url = urlparse(url)
+                base_url = f"{parsed_url.scheme}://{parsed_url.netloc}"  # http://127.0.0.1:8000
+                full_url = urljoin(base_url, "/store/review_list_api/create/")  # full API URL
+                review_url = full_url           
+                headers = {
+                    "Authorization": f"Token {token.key}",
+                    "Content-Type": "application/json"
+                }
+                data = {
+                    "product": product_id,
+                    "subject": subject,
+                    "review": review,
+                    "rating": rating,
+                }
+                response = requests.post(review_url, json=data, headers=headers)
+
+                if response.status_code == 201:
+                    messages.success(request, 'Thank you! Your review has been submitted.')
+                else:
+                    print("API Error Response:", response.status_code, response.text)
+                    messages.error(request, 'Failed to submit review. Please try again.')
+                
                 return redirect(url)
             
 def load_product_object(request):

@@ -177,7 +177,7 @@ def payment_success(request):
         'order_number': order.order_number,
         'transID': payment.payment_id
     }
-    print(payment.payment_id)
+    
     
     try:
         user = Account.objects.get(email=email)
