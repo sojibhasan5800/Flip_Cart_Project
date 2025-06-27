@@ -116,7 +116,7 @@ def payment_success(request):
     for items in cart_items:
         product = Product.objects.get(id=items.product_id)
         if product.stock < items.quantity :
-            messages.warning(request, f'This {product.name} Product Our Stock {product.stock} Quntity is Avaibile !')
+            messages.warning(request, f'This {product.product_name} Product Our Stock {product.stock} Quntity is Avaibile !')
             return redirect('checkout')
         
               
@@ -216,7 +216,7 @@ def payments(request,id,order_number,tk=0):
     current_user = request.user
     customer_details = Order.objects.get(user=current_user,id=id)
     email = request.user.email
-    transction_id = generate_transaction_id(),
+    transction_id = generate_transaction_id()
     order_number =order_number
     
     query_params = {
@@ -266,7 +266,12 @@ def payments(request,id,order_number,tk=0):
 
     response = sslcz.createSession(post_body) # API response
     
-    return redirect(response['GatewayPageURL'])
+    if response.get('status') == 'SUCCESS' and 'GatewayPageURL' in response:
+        return redirect(response['GatewayPageURL'])
+    else:
+        # print("SSLCOMMERZ ERROR:", response)  # for debugging
+        return render(request, 'store/checkout.html', {'error': response})
+
 
 def place_order(request, total=0, quantity=0,):
     current_user = request.user
@@ -278,12 +283,12 @@ def place_order(request, total=0, quantity=0,):
         return redirect('store')
 
     grand_total = 0
-    tax = 0
+    discount = 0
     for cart_item in cart_items:
         total += (cart_item.product.price * cart_item.quantity)
         quantity += cart_item.quantity
-    tax = (2 * total)/100
-    grand_total = total + tax
+    discount = (5 * total)/100
+    grand_total = total - discount
 
     if request.method == 'POST':
         form = OrderForm(request.POST)
@@ -302,7 +307,7 @@ def place_order(request, total=0, quantity=0,):
             data.city = form.cleaned_data['city']
             data.order_note = form.cleaned_data['order_note']
             data.order_total = grand_total
-            data.tax = tax
+            data.tax = discount
             data.ip = request.META.get('REMOTE_ADDR')
             data.save()
             # Generate order number
@@ -320,7 +325,7 @@ def place_order(request, total=0, quantity=0,):
                 'order': order,
                 'cart_items': cart_items,
                 'total': total,
-                'tax': tax,
+                'tax': discount,
                 'grand_total': grand_total,
             }
             

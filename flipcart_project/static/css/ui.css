@@ -354,6 +354,7 @@ article:after,
   background: linear-gradient(to bottom right, #3167eb, aqua);
   /* Standard syntax */
 }
+
 .overlay-gradient:hover:before {
   opacity: 0.9;
 }
