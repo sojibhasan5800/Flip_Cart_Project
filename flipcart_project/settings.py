@@ -224,3 +224,6 @@ CSRF_COOKIE_SECURE = False
 SESSION_SAVE_EVERY_REQUEST = True
 
 # SECRET_KEY অপরিবর্তিত থাকুন
+# ✅ Fix for Vercel redirect loop
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+SECURE_SSL_REDIRECT = False  # Set to True only when properly configured with HTTPS
