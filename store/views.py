@@ -17,6 +17,7 @@ from .forms import ReviewForm
 from django.contrib import messages
 from orders.models import OrderProduct
 from django.http import HttpResponse
+import cloudinary.uploader 
 
 #--------------------- Api Import -------------------------------------
 from rest_framework import viewsets, permissions, filters,mixins,pagination
@@ -233,14 +234,16 @@ def load_product_object(request):
         if Product.objects.filter(product_name=title).exists():
             continue
 
-         # Thumbail Download
+      
+        # Thumbail Download
         image_file = None
         image_name = None
         if thumbnail_url:
-            img_response = requests.get(thumbnail_url)
-            if img_response.status_code == 200:
-                image_name = os.path.basename(urlparse(thumbnail_url).path)
-                image_file = ContentFile(img_response.content, name=image_name)
+            try:
+                uploaded_thumb = cloudinary.uploader.upload(thumbnail_url)
+                image_url = uploaded_thumb.get('secure_url')  # Cloud URL
+            except:
+                continue
 
         product = Product.objects.create(
             product_name=title,
@@ -249,23 +252,22 @@ def load_product_object(request):
             price=price,
             stock=stock,
             is_available=(stock > 0),
-            category=category_obj
+            category=category_obj,
         )
 
-         # প্রোডাক্ট ইমেজ সেভ (thumbnail)
-        if image_file:
-            product.images.save(image_name, image_file)
+        # ✅ ৩. Save Image URL in CloudinaryField
+        if image_url:
+            product.images = image_url
             product.save()
 
-        # ProductGallery Image সেভ করা
+        # ✅ ৪. ProductGallery image uploads
         for img_url in image_urls:
             try:
-                img_res = requests.get(img_url)
-                if img_res.status_code == 200:
-                    img_name = os.path.basename(urlparse(img_url).path)
-                    img_file = ContentFile(img_res.content, name=img_name)
-                    ProductGallery.objects.create(product=product, image=img_file)
+                uploaded_img = cloudinary.uploader.upload(img_url)
+                gallery_img_url = uploaded_img.get('secure_url')
+                ProductGallery.objects.create(product=product, image=gallery_img_url)
             except:
-                continue
+                continue            
+
     print("All Api Product is Loaded!!!!!")
     return redirect('home')

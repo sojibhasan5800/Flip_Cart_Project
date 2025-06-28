@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'rest_framework.authtoken',
     'admin_thumbnails',
     'django_filters',
+    'cloudinary_storage',
     'accounts',
     'category',
     'store',
@@ -52,6 +53,13 @@ INSTALLED_APPS = [
     'orders'
     
 ]
+DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+
+CLOUDINARY_STORAGE = {
+    'CLOUD_NAME': 'dwemgnaux',
+    'API_KEY': '986429826285289',
+    'API_SECRET': '3-_GLoBXW5SvXyCNPrbv4-QGDgg',
+}
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
