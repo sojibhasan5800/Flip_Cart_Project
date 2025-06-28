@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 from pathlib import Path
 from decouple import config
+import cloudinary
 
 
 
@@ -55,11 +56,18 @@ INSTALLED_APPS = [
 ]
 DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
 
-CLOUDINARY_STORAGE = {
-    'CLOUD_NAME': 'dwemgnaux',
-    'API_KEY': '986429826285289',
-    'API_SECRET': '3-_GLoBXW5SvXyCNPrbv4-QGDgg',
-}
+# CLOUDINARY_STORAGE = {
+#     'CLOUD_NAME': 'dwemgnaux',
+#     'API_KEY': '986429826285289',
+#     'API_SECRET': '3-_GLoBXW5SvXyCNPrbv4-QGDgg',
+# }
+
+cloudinary.config(
+    cloud_name=config('CLOUDINARY_CLOUD_NAME'),
+    api_key=config('CLOUDINARY_API_KEY'),
+    api_secret=config('CLOUDINARY_API_SECRET'),
+)
+
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
