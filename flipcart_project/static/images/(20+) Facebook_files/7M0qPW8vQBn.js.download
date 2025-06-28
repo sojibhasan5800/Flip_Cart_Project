@@ -1,4 +1,0 @@
-;/*FB_PKG_DELIM*/
-
-__d("NullStateFiles",["cr:2972"],(function(a,b,c,d,e,f,g){"use strict";g["default"]=b("cr:2972")}),98);
-__d("CometUFICommentListNoCommentBanner.react",["fbt","FDSNullState.react","NullStateFiles","react","react-compiler-runtime"],(function(a,b,c,d,e,f,g,h){"use strict";var i,j=i||d("react");function a(){var a=d("react-compiler-runtime").c(1),b;a[0]===Symbol["for"]("react.memo_cache_sentinel")?(b=j.jsx(c("FDSNullState.react"),{body:h._(/*BTDS*/"Be the first to comment."),headline:h._(/*BTDS*/"No comments yet"),icon:c("NullStateFiles")}),a[0]=b):b=a[0];return b}g["default"]=a}),226);
