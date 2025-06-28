@@ -218,7 +218,7 @@ def load_product_object(request):
         description = item.get('description')
         price = int(float(item.get('price', 0)))
         stock = item.get('stock', 0)
-        thumbnail_url = item.get('thumbnail')
+        thumbnail_url = item.get('thumbnail',None)
         image_urls = item.get('images', [])
         category_name = item.get('category')
 
@@ -238,6 +238,7 @@ def load_product_object(request):
         # Thumbail Download
         image_file = None
         image_name = None
+        image_url = None
         if thumbnail_url:
             try:
                 uploaded_thumb = cloudinary.uploader.upload(thumbnail_url)
