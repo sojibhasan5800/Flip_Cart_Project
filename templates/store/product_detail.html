@@ -56,19 +56,16 @@
 							<div class="row">
 								<div class="item-option-select">
 									<h6>Choose Color</h6>
-									{% if single_product.variation %}
+									{% if colors %}
 										<select name="color" class="form-control" required>
-										<option value="" disabled selected>Select</option>
-										{% for i in single_product.variation_set.colors %}
-										<option value="{{ i.variation_value | lower }}">{{ i.variation_value | capfirst }}</option>
-										{% endfor %}
+											<option value="" disabled selected>Select Color</option>
+											{% for color in colors %}
+												<option value="{{ color.variation_value|lower }}">{{ color.variation_value|capfirst }}</option>
+											{% endfor %}
 										</select>
 									{% else %}
 										<select name="color" class="form-control">
-										<option value="" disabled selected>Select</option>
-										{% for i in single_product.variation_set.colors %}
-										<option value="{{ i.variation_value | lower }}">{{ i.variation_value | capfirst }}</option>
-										{% endfor %}
+										<option value="" disabled selected>Select</option>										
 										</select>
 									{% endif %}
 										
@@ -77,19 +74,16 @@
 							<div class="row">
 								<div class="item-option-select">
 									<h6>Select Size</h6>
-									{% if single_product.variation %}
+									{% if sizes %}
 										<select name="size" class="form-control" required>
-										<option value="" disabled selected>Select</option>
-										{% for i in single_product.variation_set.sizes %}
-										<option value="{{ i.variation_value | lower }}">{{ i.variation_value | capfirst }}</option>
-										{% endfor %}
-									</select>
+											<option value="" disabled selected>Select Size</option>
+											{% for size in sizes %}
+												<option value="{{ size.variation_value|lower }}">{{ size.variation_value|capfirst }}</option>
+											{% endfor %}
+										</select>
 									{% else %}
 										<select name="size" class="form-control" >
-										<option value="" disabled selected>Select</option>
-										{% for i in single_product.variation_set.sizes %}
-										<option value="{{ i.variation_value | lower }}">{{ i.variation_value | capfirst }}</option>
-									{% endfor %}
+										<option value="" disabled selected>Select</option>									
 									</select>
 									{% endif %}
 
