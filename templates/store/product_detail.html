@@ -147,14 +147,15 @@
 							{% if orderproduct %}
 								<input type="submit" value="Submit Review" class="btn btn-primary">
 							{% else %}
+							<div class="alert alert-danger" role="alert" style="margin-top:10px;">
 								<p>You must purchase this product to post a review.</p>
+								</div>
 							{% endif %}
 						{% else %}
 						<p>You must be logged in to post a review. <span><a href="{% url 'login' %}">Login now</a></span></p>
 						{% endif %}
-						<div class="alert alert-danger" role="alert" style="margin-top:10px;">
-  2-Factor Review Submission is disabled for demo purpose.
-</div>
+						
+
 
 					</div>
 {% include 'includes/alerts.html' %}
