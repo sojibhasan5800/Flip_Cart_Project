@@ -28,7 +28,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = config('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 # ALLOWED_HOSTS = ["127.0.0.1", ".vercel.app"]
 ALLOWED_HOSTS = ['flip-cart-project.onrender.com', 'localhost', '127.0.0.1']
@@ -209,11 +209,11 @@ EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-# EMAIL_HOST_USER = config('EMAIL_HOST_USER')         # আপনার Gmail
-# EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD')       # Gmail-এর App Password (Google Account → Security → App Passwords)
+EMAIL_HOST_USER = config('EMAIL_HOST_USER')         # আপনার Gmail
+EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD')       # Gmail-এর App Password (Google Account → Security → App Passwords)
 
-EMAIL_HOST_USER = 'sojibhasan5800@gmail.com'       
-EMAIL_HOST_PASSWORD = 'oewycxrcvulmlvjr'    
+# EMAIL_HOST_USER = 'sojibhasan5800@gmail.com'       
+# EMAIL_HOST_PASSWORD = 'oewycxrcvulmlvjr'    
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
@@ -233,7 +233,8 @@ CSRF_COOKIE_SECURE = False
 # SESSION_SAVE_EVERY_REQUEST=True রাখা ভালো, যাতে সক্রিয় থাকে
 SESSION_SAVE_EVERY_REQUEST = True
 
-# SECRET_KEY অপরিবর্তিত থাকুন
-# ✅ Fix for Vercel redirect loop
-# SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-# SECURE_SSL_REDIRECT = False  # Set to True only when properly configured with HTTPS
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+SECURE_SSL_REDIRECT = True
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
+
