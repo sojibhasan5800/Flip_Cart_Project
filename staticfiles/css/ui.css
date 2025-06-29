@@ -37,7 +37,6 @@ a:hover {
   padding: 2rem 2.3rem;
 }
 
-
 /* =================  DEFINED VARIABLES =================== */
 .icon-xs, .icon-sm, .icon-md, .icon-lg {
   display: inline-block;
@@ -355,6 +354,7 @@ article:after,
   background: linear-gradient(to bottom right, #3167eb, aqua);
   /* Standard syntax */
 }
+
 .overlay-gradient:hover:before {
   opacity: 0.9;
 }
