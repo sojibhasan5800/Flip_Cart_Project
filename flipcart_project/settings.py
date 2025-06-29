@@ -31,7 +31,8 @@ SECRET_KEY = config('SECRET_KEY')
 DEBUG = True
 
 # ALLOWED_HOSTS = ["127.0.0.1", ".vercel.app"]
-ALLOWED_HOSTS = ["*"]
+ALLOWED_HOSTS = ['flip-cart-project.onrender.com', 'localhost', '127.0.0.1']
+
 
 
 # Application definition
