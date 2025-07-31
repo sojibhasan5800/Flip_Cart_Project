@@ -82,6 +82,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 ROOT_URLCONF = 'flipcart_project.urls'
 AUTH_USER_MODEL = 'accounts.Account'
 CORS_ALLOW_ALL_ORIGINS = True
@@ -158,7 +159,7 @@ DATABASES = {
 # }
 
 
-#Railway:
+# Railway:
 # DATABASES = {
 #     'default': {
 #         'ENGINE': 'django.db.backends.postgresql',
