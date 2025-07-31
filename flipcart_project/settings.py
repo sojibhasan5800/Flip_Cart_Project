@@ -58,17 +58,17 @@ INSTALLED_APPS = [
 ]
 DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
 
-# CLOUDINARY_STORAGE = {
-#     'CLOUD_NAME': 'dwemgnaux',
-#     'API_KEY': '986429826285289',
-#     'API_SECRET': '3-_GLoBXW5SvXyCNPrbv4-QGDgg',
-# }
+CLOUDINARY_STORAGE = {
+    'CLOUD_NAME': 'dwemgnaux',
+    'API_KEY': '986429826285289',
+    'API_SECRET': '3-_GLoBXW5SvXyCNPrbv4-QGDgg',
+}
 
-cloudinary.config(
-    cloud_name=config('CLOUDINARY_CLOUD_NAME'),
-    api_key=config('CLOUDINARY_API_KEY'),
-    api_secret=config('CLOUDINARY_API_SECRET'),
-)
+# cloudinary.config(
+#     cloud_name=config('CLOUDINARY_CLOUD_NAME'),
+#     api_key=config('CLOUDINARY_API_KEY'),
+#     api_secret=config('CLOUDINARY_API_SECRET'),
+# )
 
 
 MIDDLEWARE = [
@@ -135,28 +135,28 @@ WSGI_APPLICATION = 'flipcart_project.wsgi.application'
 
 # else:
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': config('DB_NAME'),
-        'USER': config('DB_USER'),
-        'PASSWORD': config('DB_PASSWORD'),
-        'HOST': config('DB_HOST'),
-        'PORT': config('DB_PORT'),
-    }
-}
-
-#Supabase:
 # DATABASES = {
 #     'default': {
 #         'ENGINE': 'django.db.backends.postgresql',
-#         'NAME': 'postgres',
-#         'USER': 'postgres.nukldrotoynenouuubbv',
-#         'PASSWORD': 'mLb8DCYHWv8NRj4Q',
-#         'HOST': 'aws-0-ap-southeast-1.pooler.supabase.com',
-#         'PORT': '5432',
+#         'NAME': config('DB_NAME'),
+#         'USER': config('DB_USER'),
+#         'PASSWORD': config('DB_PASSWORD'),
+#         'HOST': config('DB_HOST'),
+#         'PORT': config('DB_PORT'),
 #     }
 # }
+
+#Supabase:
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'postgres',
+        'USER': 'postgres.nukldrotoynenouuubbv',
+        'PASSWORD': 'mLb8DCYHWv8NRj4Q',
+        'HOST': 'aws-0-ap-southeast-1.pooler.supabase.com',
+        'PORT': '5432',
+    }
+}
 
 
 # Railway:
@@ -228,11 +228,11 @@ EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = config('EMAIL_HOST_USER')         # আপনার Gmail
-EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD')       # Gmail-এর App Password (Google Account → Security → App Passwords)
+# EMAIL_HOST_USER = config('EMAIL_HOST_USER')         # আপনার Gmail
+# EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD')       # Gmail-এর App Password (Google Account → Security → App Passwords)
 
-# EMAIL_HOST_USER = 'sojibhasan5800@gmail.com'       
-# EMAIL_HOST_PASSWORD = 'oewycxrcvulmlvjr'    
+EMAIL_HOST_USER = 'sojibhasan5800@gmail.com'       
+EMAIL_HOST_PASSWORD = 'oewycxrcvulmlvjr'    
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
