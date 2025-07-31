@@ -147,29 +147,29 @@ WSGI_APPLICATION = 'flipcart_project.wsgi.application'
 # }
 
 #Supabase:
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'postgres',
-        'USER': 'postgres.nukldrotoynenouuubbv',
-        'PASSWORD': 'mLb8DCYHWv8NRj4Q',
-        'HOST': 'aws-0-ap-southeast-1.pooler.supabase.com',
-        'PORT': '5432',
-    }
-}
-
-
-# Railway:
 # DATABASES = {
 #     'default': {
 #         'ENGINE': 'django.db.backends.postgresql',
-#         'NAME': 'railway',
-#         'USER': 'postgres',
-#         'PASSWORD': 'TOSohRejKBFNXNaicccgmYlNUXtBtlOr',
-#         'HOST': 'caboose.proxy.rlwy.net',
-#         'PORT': '14250',
+#         'NAME': 'postgres',
+#         'USER': 'postgres.nukldrotoynenouuubbv',
+#         'PASSWORD': 'mLb8DCYHWv8NRj4Q',
+#         'HOST': 'aws-0-ap-southeast-1.pooler.supabase.com',
+#         'PORT': '5432',
 #     }
 # }
+
+
+# Railway:
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'railway',
+        'USER': 'postgres',
+        'PASSWORD': 'TOSohRejKBFNXNaicccgmYlNUXtBtlOr',
+        'HOST': 'caboose.proxy.rlwy.net',
+        'PORT': '14250',
+    }
+}
 
 
 
