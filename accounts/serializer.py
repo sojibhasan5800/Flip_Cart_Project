@@ -61,7 +61,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
     user = serializers.ReadOnlyField(source='user.id')
     class Meta:
         model = UserProfile
-        fields = ['id', 'user', 'address_line_1', 'address_line_2', 'profile_picture', 'city', 'state', 'country']
+        fields = ['id', 'user', 'address_line_1', 'address_line_2', 'city', 'state', 'country']
 
         
 
