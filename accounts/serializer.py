@@ -1,11 +1,20 @@
 from rest_framework import serializers
 from .models import Account,UserProfile
 
+class UserProfileSerializer(serializers.ModelSerializer):
+    user = serializers.ReadOnlyField(source='user.id')
+    class Meta:
+        model = UserProfile
+        fields = ['id', 'user', 'address_line_1', 'address_line_2', 'city', 'state', 'country']
+
+
 class AccountSerializer(serializers.ModelSerializer):
     confirm_password = serializers.CharField(write_only=True)
     class Meta:
         model = Account
-        fields = ['email', 'first_name', 'last_name','password', 'confirm_password','phone_number']
+        profile = UserProfileSerializer(required=False)
+        fields = ['email', 'first_name', 'last_name','password', 'confirm_password','phone_number', 'profile']
+
         extra_kwargs = {
                 'password': {'write_only': True},
                 'username': {'read_only': True},  # Username will be auto-generated
@@ -19,6 +28,7 @@ class AccountSerializer(serializers.ModelSerializer):
         return data
 
     def create(self, validated_data):
+        profile_data = validated_data.pop('profile', {})
         email = validated_data['email']
         first_name = validated_data['first_name']
         last_name = validated_data['last_name']
@@ -37,6 +47,7 @@ class AccountSerializer(serializers.ModelSerializer):
         account.set_password(password)
         account.is_active =False
         account.save()
+        UserProfile.objects.create(user=account, **profile_data)
         return account
         
 
