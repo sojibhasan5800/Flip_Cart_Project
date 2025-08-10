@@ -40,13 +40,13 @@ from . import models
 #============================
 class AccountViewset(APIView):
     serializer_class = AccountSerializer
+
     def post(self,request):
         serializer = self.serializer_class(data = request.data)
 
         if serializer.is_valid():
             user = serializer.save()
-
-            UserProfile.objects.create(user=user)
+            # UserProfile.objects.create(user=user)
             # USER ACTIVATION
             current_site = get_current_site(request)
             mail_subject = 'Please activate your account'
