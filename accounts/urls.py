@@ -41,7 +41,7 @@ urlpatterns = [
     path('userprofile_api/', views.UserProfileDetailView.as_view(), name='userprofile_api'),
     path('login_api/', views.LoginApiView.as_view(), name='login_api'),
     path('logout_api/', views.LogoutApiView.as_view(), name='logout_api'),
-    path('api_activate/<uidb64>/<token>/', views.activate, name='api_activate'),
+    path('api_activate/<uidb64>/<token>/', views.api_email_active, name='api_activate'),
 
     #------------------------------------------------------------
 

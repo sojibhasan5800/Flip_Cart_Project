@@ -37,7 +37,7 @@ from rest_framework.permissions import IsAuthenticated,IsAuthenticatedOrReadOnly
 from . import models
 
 
-#============================
+#============================ API =====================================>
 class AccountViewset(APIView):
     serializer_class = AccountSerializer
 
@@ -60,8 +60,11 @@ class AccountViewset(APIView):
             to_email = user.email
             send_email = EmailMessage(mail_subject, message, to=[to_email])
             send_email.send()
-            return Response("Check your mail confirmation")
-        return Response(serializer.errors)
+            return Response(
+                {"message": "Check your mail confirmation"},
+                status=status.HTTP_201_CREATED
+            )
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
 
 def api_email_active(request,uidb64,token):
@@ -90,7 +93,7 @@ class LoginApiView(APIView):
             user = authenticate(email=email, password=password)
             if user:
                 token, _ = Token.objects.get_or_create(user=user)
-                return Response({'token': token.key, 'user_id': user.id})
+                return Response({'token': token.key, 'user_id': user.id}, status=status.HTTP_200_OK)
             else:
                 return Response({'error': 'Invalid Credentials'}, status=status.HTTP_401_UNAUTHORIZED)
 
@@ -100,7 +103,7 @@ class LogoutApiView(APIView):
     def get(self,request):
         request.user.auth_token.delete()
         logout(request)
-        return Response({"message":"UserLogout Successfully"})
+        return Response({"message":"UserLogout Successfully"},status=status.HTTP_200_OK)
 
 # class UserForSpecificApi(filters.BaseFilterBackend):
 #     def filter_queryset(self, request, queryset, view):
