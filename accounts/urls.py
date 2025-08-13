@@ -43,7 +43,7 @@ urlpatterns = [
     path('logout_api/', views.LogoutApiView.as_view(), name='logout_api'),
     path('api_activate/<uidb64>/<token>/', views.api_email_active, name='api_activate'),
 
-    #------------------------------------------------------------
+    #--------------------------End APi----------------------------------
 
 
 ]
