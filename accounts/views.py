@@ -47,7 +47,7 @@ class AccountViewset(APIView):
         if serializer.is_valid():
             user = serializer.save()
             # UserProfile.objects.create(user=user)
-            # USER ACTIVATION
+            # USER ACTIVATIONs
             current_site = get_current_site(request)
             mail_subject = 'Please activate your account'
             message = render_to_string('accounts/account_verification_email.html', {
