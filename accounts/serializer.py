@@ -10,6 +10,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
 class AccountSerializer(serializers.ModelSerializer):
     confirm_password = serializers.CharField(write_only=True)
+    profile = UserProfileSerializer(required=False)
     class Meta:
         model = Account
         profile = UserProfileSerializer(required=False)
