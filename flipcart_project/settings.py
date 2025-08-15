@@ -50,6 +50,8 @@ INSTALLED_APPS = [
     'admin_thumbnails',
     'django_filters',
     'cloudinary_storage',
+    'django.contrib.staticfiles',  # required for serving swagger ui's css/js files
+    'drf_yasg',
     'accounts',
     'category',
     'store',
@@ -58,12 +60,13 @@ INSTALLED_APPS = [
     
 ]
 DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
-
-CLOUDINARY_STORAGE = {
-    'CLOUD_NAME': 'dwemgnaux',
-    'API_KEY': '986429826285289',
-    'API_SECRET': '3-_GLoBXW5SvXyCNPrbv4-QGDgg',
-}
+cloud = True
+if cloud:
+    CLOUDINARY_STORAGE = {
+        'CLOUD_NAME': 'dwemgnaux',
+        'API_KEY': '986429826285289',
+        'API_SECRET': '3-_GLoBXW5SvXyCNPrbv4-QGDgg',
+    }
 
 # cloudinary.config(
 #     cloud_name=config('CLOUDINARY_CLOUD_NAME'),
@@ -123,18 +126,18 @@ WSGI_APPLICATION = 'flipcart_project.wsgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
-# flag = True
+flag = False
 
-# if flag:
+if flag:
 
-#     DATABASES = {
-#         'default': {
-#             'ENGINE': 'django.db.backends.sqlite3',
-#             'NAME': BASE_DIR / 'db.sqlite3',
-#         }
-#     }
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
 
-# else:
+else:
 
 # DATABASES = {
 #     'default': {
@@ -161,16 +164,16 @@ WSGI_APPLICATION = 'flipcart_project.wsgi.application'
 
 
 # Railway:
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'railway',
-        'USER': 'postgres',
-        'PASSWORD': 'TOSohRejKBFNXNaicccgmYlNUXtBtlOr',
-        'HOST': 'caboose.proxy.rlwy.net',
-        'PORT': '14250',
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': 'railway',
+            'USER': 'postgres',
+            'PASSWORD': 'TOSohRejKBFNXNaicccgmYlNUXtBtlOr',
+            'HOST': 'caboose.proxy.rlwy.net',
+            'PORT': '14250',
+        }
     }
-}
 
 
 

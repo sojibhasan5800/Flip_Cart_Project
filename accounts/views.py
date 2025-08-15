@@ -84,6 +84,7 @@ def api_email_active(request,uidb64,token):
         return redirect('registration_api')
     
 class LoginApiView(APIView):
+    
     def post(self, request):
         serializer = LoginSerializer(data=request.data)
         if serializer.is_valid():
