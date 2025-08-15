@@ -50,7 +50,6 @@ INSTALLED_APPS = [
     'admin_thumbnails',
     'django_filters',
     'cloudinary_storage',
-    'django.contrib.staticfiles',  # required for serving swagger ui's css/js files
     'drf_yasg',
     'accounts',
     'category',
