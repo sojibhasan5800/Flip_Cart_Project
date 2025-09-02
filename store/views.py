@@ -20,15 +20,15 @@ from django.http import HttpResponse
 import cloudinary.uploader 
 
 #--------------------- Api Import -------------------------------------
-from rest_framework import viewsets, permissions, filters,mixins,pagination
-from rest_framework.generics import ListAPIView,CreateAPIView
-from .serializers import ProductSerializer,ReviewRatingSerializer
-from rest_framework.permissions import IsAuthenticatedOrReadOnly,IsAuthenticated
-from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework.authtoken.models import Token
-from urllib.parse import urljoin
-from urllib.parse import urlparse
-from rest_framework.authentication import TokenAuthentication
+# from rest_framework import viewsets, permissions, filters,mixins,pagination
+# from rest_framework.generics import ListAPIView,CreateAPIView
+# from .serializers import ProductSerializer,ReviewRatingSerializer
+# from rest_framework.permissions import IsAuthenticatedOrReadOnly,IsAuthenticated
+# from django_filters.rest_framework import DjangoFilterBackend
+# from rest_framework.authtoken.models import Token
+# from urllib.parse import urljoin
+# from urllib.parse import urlparse
+# from rest_framework.authentication import TokenAuthentication
 
 
 
