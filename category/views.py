@@ -8,9 +8,9 @@ from django.utils.text import slugify
 # Create your views here.
 #--------------------- Api Create -------------------------------------
 
-class CategoryViewSet(viewsets.ModelViewSet):
-    queryset = Category.objects.all()
-    serializer_class = CategorySerializer
+# class CategoryViewSet(viewsets.ModelViewSet):
+#     queryset = Category.objects.all()
+#     serializer_class = CategorySerializer
 
 # ------------------------------------------------------------------------
 

@@ -1,9 +1,9 @@
 
 from django.urls import path,include
 from . import views
-from rest_framework.routers import DefaultRouter
-router = DefaultRouter()
-router.register(r'', views.ProductViewSet,basename='product_api_list'),
+# from rest_framework.routers import DefaultRouter
+# router = DefaultRouter()
+# router.register(r'', views.ProductViewSet,basename='product_api_list'),
 
 
 urlpatterns = [
@@ -15,7 +15,7 @@ urlpatterns = [
    path('load_Product/',views.load_product_object,name='Product_load'),
 
    # ===================== Api Urls ===================================
-   path('product_api/',include(router.urls)),
-   path('review_list_api/',views.ReviewRatingListAPIView.as_view(),name='review_list_api'),
-   path('review_list_api/create/', views.ReviewRatingCreateAPIView.as_view(), name='review_list_api-create'),
+   # path('product_api/',include(router.urls)),
+   # path('review_list_api/',views.ReviewRatingListAPIView.as_view(),name='review_list_api'),
+   # path('review_list_api/create/', views.ReviewRatingCreateAPIView.as_view(), name='review_list_api-create'),
 ]

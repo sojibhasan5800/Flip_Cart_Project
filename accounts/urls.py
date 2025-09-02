@@ -36,12 +36,12 @@ urlpatterns = [
     #------------------ API URLS -------------------------------
 
     # path('api/',include((router.urls))),
-    path('registration_api/', views.AccountViewset.as_view(), name='registration_api'),
-    path('user_api_list/', views.UserApiList.as_view(), name='user_api_list'),
-    path('userprofile_api/', views.UserProfileDetailView.as_view(), name='userprofile_api'),
-    path('login_api/', views.LoginApiView.as_view(), name='login_api'),
-    path('logout_api/', views.LogoutApiView.as_view(), name='logout_api'),
-    path('api_activate/<uidb64>/<token>/', views.api_email_active, name='api_activate'),
+    # path('registration_api/', views.AccountViewset.as_view(), name='registration_api'),
+    # path('user_api_list/', views.UserApiList.as_view(), name='user_api_list'),
+    # path('userprofile_api/', views.UserProfileDetailView.as_view(), name='userprofile_api'),
+    # path('login_api/', views.LoginApiView.as_view(), name='login_api'),
+    # path('logout_api/', views.LogoutApiView.as_view(), name='logout_api'),
+    # path('api_activate/<uidb64>/<token>/', views.api_email_active, name='api_activate'),
 
     #--------------------------End APi----------------------------------
 

@@ -1,8 +1,8 @@
 from django.urls import path,include
 from . import views
-from rest_framework.routers import DefaultRouter
-router = DefaultRouter()
-router.register(r'', views.CategoryViewSet,basename='categories_api_list')
+# from rest_framework.routers import DefaultRouter
+# router = DefaultRouter()
+# router.register(r'', views.CategoryViewSet,basename='categories_api_list')
 
 
 urlpatterns = [
@@ -10,6 +10,6 @@ urlpatterns = [
 
 
     # ===================== Api Urls ===================================
-    path('categories_api/',include(router.urls)),
+    # path('categories_api/',include(router.urls)),
 
 ]
