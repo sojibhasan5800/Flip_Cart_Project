@@ -18,6 +18,9 @@ from django.contrib import messages
 from orders.models import OrderProduct
 from django.http import HttpResponse
 import cloudinary.uploader 
+from rest_framework.authtoken.models import Token
+from urllib.parse import urljoin
+from urllib.parse import urlparse
 
 #--------------------- Api Import -------------------------------------
 # from rest_framework import viewsets, permissions, filters,mixins,pagination
@@ -25,9 +28,6 @@ import cloudinary.uploader
 # from .serializers import ProductSerializer,ReviewRatingSerializer
 # from rest_framework.permissions import IsAuthenticatedOrReadOnly,IsAuthenticated
 # from django_filters.rest_framework import DjangoFilterBackend
-# from rest_framework.authtoken.models import Token
-# from urllib.parse import urljoin
-# from urllib.parse import urlparse
 # from rest_framework.authentication import TokenAuthentication
 
 
