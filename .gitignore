@@ -24,7 +24,7 @@ db.sqlite3
 Procfile
 media/
 staticfiles/
-static/
+# static/
 
 # If using WhiteNoise or collectstatic
 static_root/
