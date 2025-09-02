@@ -130,7 +130,7 @@ WSGI_APPLICATION = 'flipcart_project.wsgi.application'
 
 DATABASES = {
     'default': dj_database_url.config(
-        default= 'postgres://username:password@hostname:port/dbname'
+        default= 'postgresql://flip_data_user:hINuFmo29D1wMLpsFhEsTdTYQBSJiFbg@dpg-d2r8cqmr433s73fa64n0-a.oregon-postgres.render.com/flip_data'
     )
 }
 # flag = False
