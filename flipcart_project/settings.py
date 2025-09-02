@@ -31,7 +31,7 @@ SECRET_KEY = 'django-insecure-ym8a4^z1je)5nww3s6jgf4=7md$1_nrda&-b^y+taa@!3u(otb
 DEBUG = True
 
 ALLOWED_HOSTS = ['*']
-CSRF_TRUSTED_ORIGINS = ['*']
+CSRF_TRUSTED_ORIGINS = ['https://flip-cart-project-1.onrender.com']
 # ALLOWED_HOSTS = ['flip-cart-project.onrender.com', 'localhost', '127.0.0.1']
 
 

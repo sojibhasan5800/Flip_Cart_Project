@@ -38,113 +38,113 @@ from . import models
 
 
 #============================ API =====================================>
-class AccountViewset(APIView):
-    serializer_class = AccountSerializer
+# class AccountViewset(APIView):
+#     serializer_class = AccountSerializer
 
-    def post(self,request):
-        serializer = self.serializer_class(data = request.data)
+#     def post(self,request):
+#         serializer = self.serializer_class(data = request.data)
 
-        if serializer.is_valid():
-            user = serializer.save()
-            # UserProfile.objects.create(user=user)
-            # USER ACTIVATIONs
-            current_site = get_current_site(request)
-            mail_subject = 'Please activate your account'
-            message = render_to_string('accounts/account_verification_email.html', {
-                'user': user,
-                'domain': current_site,
-                'uid': urlsafe_base64_encode(force_bytes(user.pk)),
-                'token': default_token_generator.make_token(user),
-                'api' : True,
-            })
-            to_email = user.email
-            send_email = EmailMessage(mail_subject, message, to=[to_email])
-            send_email.send()
-            return Response(
-                {"message": "Check your mail confirmation"},
-                status=status.HTTP_201_CREATED
-            )
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+#         if serializer.is_valid():
+#             user = serializer.save()
+#             # UserProfile.objects.create(user=user)
+#             # USER ACTIVATIONs
+#             current_site = get_current_site(request)
+#             mail_subject = 'Please activate your account'
+#             message = render_to_string('accounts/account_verification_email.html', {
+#                 'user': user,
+#                 'domain': current_site,
+#                 'uid': urlsafe_base64_encode(force_bytes(user.pk)),
+#                 'token': default_token_generator.make_token(user),
+#                 'api' : True,
+#             })
+#             to_email = user.email
+#             send_email = EmailMessage(mail_subject, message, to=[to_email])
+#             send_email.send()
+#             return Response(
+#                 {"message": "Check your mail confirmation"},
+#                 status=status.HTTP_201_CREATED
+#             )
+#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
 
-def api_email_active(request,uidb64,token):
-    try:
-        uid = urlsafe_base64_decode(uidb64).decode()
-        user = Account._default_manager.get(pk=uid)
-    except(TypeError, ValueError, OverflowError, Account.DoesNotExist):
-        user = None
+# def api_email_active(request,uidb64,token):
+#     try:
+#         uid = urlsafe_base64_decode(uidb64).decode()
+#         user = Account._default_manager.get(pk=uid)
+#     except(TypeError, ValueError, OverflowError, Account.DoesNotExist):
+#         user = None
 
-    if user is not None and default_token_generator.check_token(user, token):
-        user.is_active = True
-        user.save()
-        messages.success(request, 'Congratulations! Your account is activated.')
-        return redirect('registration_api')
-    else:
-        messages.error(request, 'Invalid activation link')
-        return redirect('registration_api')
+#     if user is not None and default_token_generator.check_token(user, token):
+#         user.is_active = True
+#         user.save()
+#         messages.success(request, 'Congratulations! Your account is activated.')
+#         return redirect('registration_api')
+#     else:
+#         messages.error(request, 'Invalid activation link')
+#         return redirect('registration_api')
     
-class LoginApiView(APIView):
+# class LoginApiView(APIView):
     
-    def post(self, request):
-        serializer = LoginSerializer(data=request.data)
-        if serializer.is_valid():
-            email = serializer.validated_data['email']
-            password = serializer.validated_data['password']
+#     def post(self, request):
+#         serializer = LoginSerializer(data=request.data)
+#         if serializer.is_valid():
+#             email = serializer.validated_data['email']
+#             password = serializer.validated_data['password']
 
-            user = authenticate(email=email, password=password)
-            if user:
-                token, _ = Token.objects.get_or_create(user=user)
-                return Response({'token': token.key, 'user_id': user.id}, status=status.HTTP_200_OK)
-            else:
-                return Response({'error': 'Invalid Credentials'}, status=status.HTTP_401_UNAUTHORIZED)
+#             user = authenticate(email=email, password=password)
+#             if user:
+#                 token, _ = Token.objects.get_or_create(user=user)
+#                 return Response({'token': token.key, 'user_id': user.id}, status=status.HTTP_200_OK)
+#             else:
+#                 return Response({'error': 'Invalid Credentials'}, status=status.HTTP_401_UNAUTHORIZED)
 
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-class LogoutApiView(APIView):
-    def get(self,request):
-        request.user.auth_token.delete()
-        logout(request)
-        return Response({"message":"UserLogout Successfully"},status=status.HTTP_200_OK)
+# class LogoutApiView(APIView):
+#     def get(self,request):
+#         request.user.auth_token.delete()
+#         logout(request)
+#         return Response({"message":"UserLogout Successfully"},status=status.HTTP_200_OK)
 
-# class UserForSpecificApi(filters.BaseFilterBackend):
-#     def filter_queryset(self, request, queryset, view):
+# # class UserForSpecificApi(filters.BaseFilterBackend):
+# #     def filter_queryset(self, request, queryset, view):
 
-class UserSetPagination(pagination.PageNumberPagination):
-    page_size = 1000
-    page_size_query_param = 'page_size'
-    max_page_size = 2
+# class UserSetPagination(pagination.PageNumberPagination):
+#     page_size = 1000
+#     page_size_query_param = 'page_size'
+#     max_page_size = 2
         
 
-class UserApiList(ListAPIView):
-    queryset = Account.objects.all()
-    serializer_class = AccountSerializer
-    permission_classes = [IsAuthenticatedOrReadOnly]
-    pagination_class = UserSetPagination
+# class UserApiList(ListAPIView):
+#     queryset = Account.objects.all()
+#     serializer_class = AccountSerializer
+#     permission_classes = [IsAuthenticatedOrReadOnly]
+#     pagination_class = UserSetPagination
 
 
 
 
-class UserProfileDetailView(mixins.RetrieveModelMixin,
-                            mixins.UpdateModelMixin,
-                            generics.GenericAPIView):
-    serializer_class = UserProfileSerializer
-    permission_classes = [IsAuthenticated]
+# class UserProfileDetailView(mixins.RetrieveModelMixin,
+#                             mixins.UpdateModelMixin,
+#                             generics.GenericAPIView):
+#     serializer_class = UserProfileSerializer
+#     permission_classes = [IsAuthenticated]
 
-    def get_queryset(self):
-        # Users can only access their own profile
-        return UserProfile.objects.filter(user=self.request.user)
+#     def get_queryset(self):
+#         # Users can only access their own profile
+#         return UserProfile.objects.filter(user=self.request.user)
 
-    def get(self, request, *args, **kwargs):
-        # Retrieve the profile
-        return self.retrieve(request, *args, **kwargs)
+#     def get(self, request, *args, **kwargs):
+#         # Retrieve the profile
+#         return self.retrieve(request, *args, **kwargs)
 
-    def put(self, request, *args, **kwargs):
-        # Full update
-        return self.update(request, *args, **kwargs)
+#     def put(self, request, *args, **kwargs):
+#         # Full update
+#         return self.update(request, *args, **kwargs)
 
-    def patch(self, request, *args, **kwargs):
-        # Partial update
-        return self.partial_update(request, *args, **kwargs)
+#     def patch(self, request, *args, **kwargs):
+#         # Partial update
+#         return self.partial_update(request, *args, **kwargs)
 
 
 #------------------------------------------------------------------------------
@@ -166,7 +166,7 @@ def register(request):
             # Create a user profile
             profile = UserProfile()
             profile.user = user
-            profile.profile_picture = 'userprofile/default.png'
+            # profile.profile_picture = 'userprofile/default.png'
             profile.save()
 
             # USER ACTIVATION

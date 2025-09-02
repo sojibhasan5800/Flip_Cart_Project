@@ -34,101 +34,101 @@ from rest_framework.authentication import TokenAuthentication
 
 #--------------------- Api Create -------------------------------------
 # ================= Pagination =================
-class StandardResultsSetPagination(pagination.PageNumberPagination):
-    page_size = 5
-    page_size_query_param = 'page_size'
-    max_page_size = 1000
+# class StandardResultsSetPagination(pagination.PageNumberPagination):
+#     page_size = 5
+#     page_size_query_param = 'page_size'
+#     max_page_size = 1000
 
-# ================= Product API =================
-class ProductViewSet(viewsets.ModelViewSet):
-    queryset = Product.objects.all().order_by('-created_date')
-    serializer_class = ProductSerializer
-    permission_classes = [IsAuthenticatedOrReadOnly]
-    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['category', 'price', 'stock', 'is_available']
-    search_fields = ['product_name', 'description']
-    ordering_fields = ['price', 'stock', 'created_date']
-    pagination_class = StandardResultsSetPagination
+# # ================= Product API =================
+# class ProductViewSet(viewsets.ModelViewSet):
+#     queryset = Product.objects.all().order_by('-created_date')
+#     serializer_class = ProductSerializer
+#     permission_classes = [IsAuthenticatedOrReadOnly]
+#     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+#     filterset_fields = ['category', 'price', 'stock', 'is_available']
+#     search_fields = ['product_name', 'description']
+#     ordering_fields = ['price', 'stock', 'created_date']
+#     pagination_class = StandardResultsSetPagination
 
-    def list(self, request, *args, **kwargs):
-        queryset = self.filter_queryset(self.get_queryset())
-        page = self.paginate_queryset(queryset)
-        if page is not None:
-            serializer = self.get_serializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
-        serializer = self.get_serializer(queryset, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+#     def list(self, request, *args, **kwargs):
+#         queryset = self.filter_queryset(self.get_queryset())
+#         page = self.paginate_queryset(queryset)
+#         if page is not None:
+#             serializer = self.get_serializer(page, many=True)
+#             return self.get_paginated_response(serializer.data)
+#         serializer = self.get_serializer(queryset, many=True)
+#         return Response(serializer.data, status=status.HTTP_200_OK)
 
-    def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+#     def create(self, request, *args, **kwargs):
+#         serializer = self.get_serializer(data=request.data)
+#         if serializer.is_valid():
+#             serializer.save()
+#             return Response(serializer.data, status=status.HTTP_201_CREATED)
+#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    def retrieve(self, request, *args, **kwargs):
-        instance = self.get_object()
-        serializer = self.get_serializer(instance)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+#     def retrieve(self, request, *args, **kwargs):
+#         instance = self.get_object()
+#         serializer = self.get_serializer(instance)
+#         return Response(serializer.data, status=status.HTTP_200_OK)
 
-    def update(self, request, *args, **kwargs):
-        partial = kwargs.pop('partial', False)
-        instance = self.get_object()
-        serializer = self.get_serializer(instance, data=request.data, partial=partial)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+#     def update(self, request, *args, **kwargs):
+#         partial = kwargs.pop('partial', False)
+#         instance = self.get_object()
+#         serializer = self.get_serializer(instance, data=request.data, partial=partial)
+#         if serializer.is_valid():
+#             serializer.save()
+#             return Response(serializer.data, status=status.HTTP_200_OK)
+#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    def destroy(self, request, *args, **kwargs):
-        instance = self.get_object()
-        instance.delete()
-        return Response({"message": "Product deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
-
-
-# ================= Review List API =================
-class ReviewRatingListAPIView(ListAPIView):
-    queryset = ReviewRating.objects.filter(status=True).order_by('-created_at')
-    serializer_class = ReviewRatingSerializer
-    pagination_class = StandardResultsSetPagination
-
-    def get_queryset(self):
-        queryset = super().get_queryset()
-        product_id = self.request.query_params.get('product')
-        if product_id:
-            queryset = queryset.filter(product_id=product_id)
-        return queryset
-
-    def list(self, request, *args, **kwargs):
-        queryset = self.get_queryset()
-        page = self.paginate_queryset(queryset)
-        if page is not None:
-            serializer = self.get_serializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
-        serializer = self.get_serializer(queryset, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+#     def destroy(self, request, *args, **kwargs):
+#         instance = self.get_object()
+#         instance.delete()
+#         return Response({"message": "Product deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
 
 
-# ================= Review Create API =================
-class ReviewRatingCreateAPIView(CreateAPIView):
-    queryset = ReviewRating.objects.all()
-    serializer_class = ReviewRatingSerializer
-    permission_classes = [IsAuthenticated]
-    authentication_classes = [TokenAuthentication]   
+# # ================= Review List API =================
+# class ReviewRatingListAPIView(ListAPIView):
+#     queryset = ReviewRating.objects.filter(status=True).order_by('-created_at')
+#     serializer_class = ReviewRatingSerializer
+#     pagination_class = StandardResultsSetPagination
 
-    def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        if serializer.is_valid():
-            product_id = request.data.get("product")
-            product = get_object_or_404(Product, id=product_id)
-            serializer.save(
-                user=request.user,
-                ip=request.META.get('REMOTE_ADDR'),
-                status=True,
-                product=product
-            )
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+#     def get_queryset(self):
+#         queryset = super().get_queryset()
+#         product_id = self.request.query_params.get('product')
+#         if product_id:
+#             queryset = queryset.filter(product_id=product_id)
+#         return queryset
+
+#     def list(self, request, *args, **kwargs):
+#         queryset = self.get_queryset()
+#         page = self.paginate_queryset(queryset)
+#         if page is not None:
+#             serializer = self.get_serializer(page, many=True)
+#             return self.get_paginated_response(serializer.data)
+#         serializer = self.get_serializer(queryset, many=True)
+#         return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+# # ================= Review Create API =================
+# class ReviewRatingCreateAPIView(CreateAPIView):
+#     queryset = ReviewRating.objects.all()
+#     serializer_class = ReviewRatingSerializer
+#     permission_classes = [IsAuthenticated]
+#     authentication_classes = [TokenAuthentication]   
+
+#     def create(self, request, *args, **kwargs):
+#         serializer = self.get_serializer(data=request.data)
+#         if serializer.is_valid():
+#             product_id = request.data.get("product")
+#             product = get_object_or_404(Product, id=product_id)
+#             serializer.save(
+#                 user=request.user,
+#                 ip=request.META.get('REMOTE_ADDR'),
+#                 status=True,
+#                 product=product
+#             )
+#             return Response(serializer.data, status=status.HTTP_201_CREATED)
+#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 # ------------------------------------------------------------------------
 
 
