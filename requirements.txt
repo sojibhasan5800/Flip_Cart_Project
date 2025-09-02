@@ -20,4 +20,5 @@ tzdata==2025.2
 urllib3==2.5.0
 whitenoise==6.9.0
 gunicorn
-drf-yasg==1.21.10
+drf-yasg
+dj-database-url

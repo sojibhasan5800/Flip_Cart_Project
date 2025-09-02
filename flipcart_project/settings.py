@@ -13,7 +13,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 from pathlib import Path
 from decouple import config
 import cloudinary
-
+import dj_database_url
 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -31,7 +31,7 @@ SECRET_KEY = 'django-insecure-ym8a4^z1je)5nww3s6jgf4=7md$1_nrda&-b^y+taa@!3u(otb
 DEBUG = True
 
 ALLOWED_HOSTS = ['*']
-CSRF_TRUSTED_ORIGINS = ['https://web-production-571b.up.railway.app']
+CSRF_TRUSTED_ORIGINS = ['*']
 # ALLOWED_HOSTS = ['flip-cart-project.onrender.com', 'localhost', '127.0.0.1']
 
 
@@ -126,16 +126,23 @@ WSGI_APPLICATION = 'flipcart_project.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
+
+
+DATABASES = {
+    'default': dj_database_url.config(
+        default= 'postgres://username:password@hostname:port/dbname'
+    )
+}
 # flag = False
 
 # if flag:
 
-#     DATABASES = {
-#         'default': {
-#             'ENGINE': 'django.db.backends.sqlite3',
-#             'NAME': BASE_DIR / 'db.sqlite3',
-#         }
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.sqlite3',
+#         'NAME': BASE_DIR / 'db.sqlite3',
 #     }
+# }
 
 # else:
 
