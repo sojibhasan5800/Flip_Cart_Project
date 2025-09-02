@@ -1,6 +1,56 @@
-flipcart_project/.env
-# Ignore SQLite database file
-db.sqlite3
-# Ignore python cache
+# Python
 __pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environment
+venv/
+env/
+ENV/
+.venv/
+
+# Django stuff
+*.log
+*.pot
 *.pyc
+db.sqlite3
+Procfile
+media/
+staticfiles/
+static/
+
+# If using WhiteNoise or collectstatic
+static_root/
+collected_static/
+
+# Local settings
+settings_local.py
+.env
+*.env
+
+# IDEs & Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Testing
+.coverage
+htmlcov/
+.tox/
+.pytest_cache/
+
+# Migrations (optional – only if you want to ignore them, usually keep them)
+# */migrations/*.py
+# !*/migrations/__init__.py
