@@ -59,6 +59,7 @@ INSTALLED_APPS = [
     
 ]
 DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+
 cloud = True
 if cloud:
     CLOUDINARY_STORAGE = {
@@ -66,6 +67,15 @@ if cloud:
         'API_KEY': '986429826285289',
         'API_SECRET': '3-_GLoBXW5SvXyCNPrbv4-QGDgg',
     }
+
+    DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+
+    #  Cloudinary SDK config
+    cloudinary.config(
+        cloud_name=CLOUDINARY_STORAGE['CLOUD_NAME'],
+        api_key=CLOUDINARY_STORAGE['API_KEY'],
+        api_secret=CLOUDINARY_STORAGE['API_SECRET']
+    )
 
 # cloudinary.config(
 #     cloud_name=config('CLOUDINARY_CLOUD_NAME'),
