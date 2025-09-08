@@ -1,78 +1,91 @@
-<h1 align="center">🛒 Flip-Cart E-Commerce Website</h1>
-<h3 align="center">A Secure & Scalable E-Commerce Platform Built with Django</h3>
+# Flip-Cart E-Commerce Website
 
-<p align="center">
-  <img src="https://img.shields.io/badge/Python-3.10+-blue?logo=python" />
-  <img src="https://img.shields.io/badge/Django-4.x-green?logo=django" />
-  <img src="https://img.shields.io/badge/DRF-REST%20API-red?logo=django" />
-  <img src="https://img.shields.io/badge/PostgreSQL-Database-blue?logo=postgresql" />
-  <img src="https://img.shields.io/badge/Redis-Celery-orange?logo=redis" />
-</p>
-
-<hr/>
-
-## 🚀 Project Overview
-Flip-Cart is a **secure, scalable, and user-friendly e-commerce platform** that ensures a seamless shopping experience.  
-It focuses on **performance, data integrity, and security**, making it suitable for real-world deployment.
+A secure and scalable e-commerce platform built with Django. Flip-Cart provides a smooth shopping experience for users while ensuring data integrity, security, and high performance.
 
 ---
 
-## ✨ Key Features
-- 🔐 **User Registration & Authentication** → Email verification, secure login, password reset.  
-- 🛒 **Personalized Cart Management** → Add/update products with real-time stock checks.  
-- 💳 **Order & Payment Processing** → Smooth checkout with payment gateway integration.  
-- ⭐ **User Reviews** → Post & retrieve reviews via REST APIs.  
-- 🔗 **API Integration** → Fetch & update product data dynamically from third-party APIs.  
-- ⚙️ **Admin API Generator** → Auto-generate APIs for any model.  
-- ♻️ **Cart Persistence** → User cart saved across sessions.  
-- 📨 **Email Notifications** → Order confirmations, password reset, promotions.  
-- 🧾 **Voucher PDF Download** → Auto-generated discount vouchers.  
-- 🌀 **Asynchronous Tasks** → Redis + Celery for background jobs.  
-- 📑 **API Docs** → Swagger UI + Postman Collection for easy API testing.  
-- 🛡️ **Security** → Secure coding best practices to protect data & transactions.  
+## Project Overview
+
+Flip-Cart is a **user-friendly and robust e-commerce application** designed for real-world use.  
+It allows users to **browse products, add them to a cart, place orders, and make payments** securely.  
+The platform handles **inventory management, order processing, and notifications** efficiently, making it suitable for small to medium online businesses.  
+Admins can manage products, orders, and users easily, while developers can extend the system using REST APIs.  
+Overall, Flip-Cart demonstrates **best practices in secure coding, scalable architecture, and modern web development**.
 
 ---
 
-## 🛠️ Tech Stack
-<p>
-  <img src="https://img.shields.io/badge/Python-3.10-blue?logo=python" />
-  <img src="https://img.shields.io/badge/Django-4.x-green?logo=django" />
-  <img src="https://img.shields.io/badge/DRF-API-red?logo=django" />
-  <img src="https://img.shields.io/badge/PostgreSQL-blue?logo=postgresql" />
-  <img src="https://img.shields.io/badge/MySQL-blue?logo=mysql" />
-  <img src="https://img.shields.io/badge/Redis-orange?logo=redis" />
-  <img src="https://img.shields.io/badge/Celery-green?logo=celery" />
-  <img src="https://img.shields.io/badge/Bootstrap-5-purple?logo=bootstrap" />
-  <img src="https://img.shields.io/badge/Git-black?logo=git" />
-</p>
+## Key Features
+
+- **User Registration & Authentication**: Email verification, secure login, and password reset.  
+- **Personalized Cart Management**: Add or update products with real-time stock checks.  
+- **Order & Payment Processing**: Smooth checkout with integrated payment gateway.  
+- **User Reviews**: Post and view product reviews via REST APIs.  
+- **API Integration**: Fetch and update product data dynamically from third-party APIs.  
+- **Admin API Generator**: Auto-generate APIs for any model in the backend.  
+- **Cart Persistence**: User cart is saved across sessions.  
+- **Email Notifications**: Automatic emails for order confirmation, promotions, and password resets.  
+- **Voucher PDF Download**: Generate discount vouchers for orders.  
+- **Asynchronous Tasks**: Background jobs handled via Redis + Celery.  
+- **API Documentation**: Swagger UI and Postman Collection for testing and integration.  
+- **Security**: Follows best practices to protect user data and transactions.
+
+---
+
+## Tech Stack
+
+- **Backend**: Python 3.10+, Django 4.x, Django REST Framework, Celery, Redis  
+- **Database**: PostgreSQL or MySQL  
+- **Frontend**: Bootstrap 5 (responsive UI)  
+- **Tools**: Git for version control, Swagger/Postman for API testing  
 
 ---
 
 ## ⚡ API Documentation
 - 📖 Swagger API Docs → [View Swagger UI](https://your-swagger-link.com)  
 - 🔬 Postman Collection → [Download Postman JSON](https://your-postman-link.com)  
-
-*(Update links above when available)*
-
 ---
 
-## 🏗️ How to Run Locally
-1. **Clone the Repository**
-   ```bash
-   git clone https://github.com/your-username/flip-cart.git
-   cd flip-cart
-   python -m venv venv
-   source venv/bin/activate   # (Linux/Mac)
-   venv\Scripts\activate      # (Windows)
-   pip install -r requirements.txt
-   python manage.py makemigrations
-   python manage.py migrate
-   python manage.py createsuperuser
-   redis-server
-   celery -A flipcart worker --pool=solo -l info
-   python manage.py runserver
-   Visit → http://127.0.0.1:8000/
-   <p align="center"> <b>✨ Flip-Cart is a personal project demonstrating secure, scalable e-commerce features with focus on user experience & backend robustness ✨</b> </p> ```
+## How to Run Locally
+
+Follow these steps to set up the project on your local machine:
+
+```bash
+# Clone the repository
+git clone https://github.com/your-username/flip-cart.git
+cd flip-cart
+
+# Create a virtual environment
+python -m venv venv
+
+# Activate the virtual environment
+# Linux / Mac
+source venv/bin/activate
+# Windows
+venv\Scripts\activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Run database migrations
+python manage.py makemigrations
+python manage.py migrate
+
+# Create superuser (admin)
+python manage.py createsuperuser
+
+# Start Redis server
+redis-server
+
+# Start Celery worker for background tasks
+celery -A flipcart worker --pool=solo -l info
+
+# Run Django development server
+python manage.py runserver
+Visit → http://127.0.0.1:8000/
+
+  
+
+ Flip-Cart is a personal project demonstrating secure, scalable e-commerce features with focus on user experience & backend robustness ```
 
 
 
