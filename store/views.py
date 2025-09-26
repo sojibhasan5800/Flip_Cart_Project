@@ -22,6 +22,7 @@ import cloudinary.uploader
 from rest_framework.authtoken.models import Token
 from urllib.parse import urljoin
 from urllib.parse import urlparse
+from .recommendation_engine import get_similar_products
 
 #--------------------- Api Import -------------------------------------
 # from rest_framework import viewsets, permissions, filters,mixins,pagination
@@ -191,6 +192,8 @@ def product_detail(request, category_slug, product_slug):
     except Exception:
         sizes = None
 
+    similar_product_id = single_product.id
+    similar_product = get_similar_products(similar_product_id)
     
     context = {
         'single_product': single_product,
@@ -199,7 +202,8 @@ def product_detail(request, category_slug, product_slug):
         'reviews': reviews,
         'product_gallery': product_gallery,
         'colors':colors,
-        'sizes':sizes
+        'sizes':sizes,
+        'similar_product': similar_product
     }
     return render(request, 'store/product_detail.html', context)
 
