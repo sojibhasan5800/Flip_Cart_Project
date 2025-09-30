@@ -284,7 +284,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # settings.py
 
-# # SESSION_COOKIE_AGE = 7 দিন করে দিন
+# # SESSION_COOKIE_AGE = 7 
 # SESSION_COOKIE_AGE = 60 * 60 * 24 * 7
 
 # # DEBUG=False হলে SESSION_COOKIE_SECURE=True করুন (প্রোডাকশনে)
