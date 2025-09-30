@@ -83,6 +83,17 @@ if cloud:
 #     api_secret=config('CLOUDINARY_API_SECRET'),
 # )
 
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': { 'class': 'logging.StreamHandler' },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
+    },
+}
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -93,6 +104,12 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+
+    
+    #  Custom Middleware
+    'flipcart_project.middleware.user_activity.UserActivityMiddleware',
+    'flipcart_project.middleware.performance.PerformanceMiddleware',
+    'flipcart_project.middleware.security.SecurityMiddleware',
 ]
 
 
@@ -282,4 +299,6 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # SECURE_SSL_REDIRECT = True
 # SESSION_COOKIE_SECURE = True
 # CSRF_COOKIE_SECURE = True
+
+
 
