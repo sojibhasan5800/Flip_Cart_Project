@@ -18,6 +18,8 @@ from django.urls import reverse
 from accounts.models import Account
 from django.contrib import messages,auth
 from urllib.parse import urlencode
+import stripe
+from django.conf import settings
 
 
 
@@ -212,7 +214,7 @@ def payment_success(request):
     
 
 
-def payments(request,id,order_number,tk=0):
+def payments_ssl(request,id,order_number,tk=0):
     current_user = request.user
     customer_details = Order.objects.get(user=current_user,id=id)
     email = request.user.email
@@ -271,6 +273,12 @@ def payments(request,id,order_number,tk=0):
     else:
         # print("SSLCOMMERZ ERROR:", response)  # for debugging
         return render(request, 'store/checkout.html', {'error': response})
+    
+
+def payments_stripe(request,id,order_number,tk=0):
+    stripe.api_key = settings.STRIPE_SECRET_KEY
+    
+
 
 
 def place_order(request, total=0, quantity=0,):
@@ -332,6 +340,9 @@ def place_order(request, total=0, quantity=0,):
             return render(request, 'orders/payments.html', context)
     else:
         return redirect('checkout')
+    
+    
+
 
 
 def order_complete(request):

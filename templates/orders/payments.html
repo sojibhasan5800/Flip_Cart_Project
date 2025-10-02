@@ -95,8 +95,6 @@
 
 			</aside> <!-- col.// -->
 			<aside class="col-lg-4">
-				<form action="{% url 'payments' order.id order.order_number grand_total  %}" method="POST">
-					{% csrf_token %}
 				<div class="card">
 					<div class="card-body">
 						<dl class="dlist-align">
@@ -117,22 +115,36 @@
 						</p>
 
 
-						<div id="paypal-button-container" class="d-flex flex-column align-items-center justify-content-center mt-3">
-							<!-- PayPal Button Will Load -->
-							<button class="btn btn-danger" type="submit"> Make Payment SSL </button>
-						</div>
+					<form action="{% url 'payments_ssl' order.id order.order_number grand_total  %}" method="POST">
+					{% csrf_token %}
 
+							<div id="paypal-button-container" class="d-flex flex-column align-items-center justify-content-center mt-3">
+						<!-- PayPal Button Will Load -->
+						<button class="btn btn-danger" type="submit"> Make Payment SSL </button>
+					</div>
+
+					</form>
+
+					<form action="{% url 'payments_stripe' order.id order.order_number grand_total  %}" method="POST">
+					{% csrf_token %}
+
+					
 						<div id="paypal-button-container" class="d-flex flex-column align-items-center justify-content-center mt-3">
 							<!-- PayPal Button Will Load -->
 							<button class="btn btn-primary" type="submit"> Make Payment STRIPE</button>
 						</div>
+
+					</form>
+
+					
+
 
 					</div> <!-- card-body.// -->
 				</div> <!-- card.// -->
 				<div class="alert alert-danger" role="alert">
 				  <b>Please Note: </b>This is a demo website. Do not try to make real payments.
 				</div>
-			</form>
+		
 			</aside> <!-- col.// -->
 
 

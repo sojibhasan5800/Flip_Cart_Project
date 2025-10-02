@@ -23,3 +23,6 @@ gunicorn
 drf-yasg
 dj-database-url
 scikit-learn==1.7.2
+python-decouple
+stripe
+

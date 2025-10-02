@@ -6,6 +6,7 @@ Clean version for Localhost + Production
 from pathlib import Path
 import dj_database_url
 import cloudinary
+from decouple import config
 
 # BASE_DIR
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -204,3 +205,26 @@ EMAIL_HOST_PASSWORD = 'oewycxrcvulmlvjr'
 # Default Primary Key
 # -----------------------------
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
+
+# -----------------------------
+#  Stripe Keys Config
+# -----------------------------
+STRIPE_SECRET_KEY = config('STRIPE_SECRET_KEY')
+STRIPE_PUBLISHABLE_KEY = config('STRIPE_PUBLISHABLE_KEY')
+STRIPE_ENDPOINT_SECRET = config('STRIPE_ENDPOINT_SECRET')
+
+
+# -----------------------------
+#  Base_url Config
+# -----------------------------
+NGROK_URL = 'https://dino-staminal-kamila.ngrok-free.dev/'
+
+if NGROK_URL:
+    BASE_URL = NGROK_URL
+else:
+    if DEBUG:
+        BASE_URL = "http://127.0.0.1:8000/"
+    else:
+        BASE_URL= "https://flip-cart-project-1.onrender.com"
