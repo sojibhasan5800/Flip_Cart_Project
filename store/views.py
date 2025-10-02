@@ -275,46 +275,43 @@ def submit_review(request, product_id):
                 return redirect(url)
             
 def load_product_object(request):
+
     product_url = 'https://dummyjson.com/products'
-    response = requests.get(url=product_url)
+    response = requests.get(url=product_url, timeout=15)
     api_data = response.json()
-    product_data = api_data.get('products',[])
-    print("loaded producted !!!!!!!!!")
+    product_data = api_data.get('products', [])
+    print("Loaded product data from API ")
 
     for item in product_data:
-        title = item.get('title')
+        title = item.get('title', '')
         slug = slugify(title)
-        description = item.get('description')
+        description = item.get('description', '')
         price = int(float(item.get('price', 0)))
         stock = item.get('stock', 0)
-        thumbnail_url = item.get('thumbnail',None)
+        thumbnail_url = item.get('thumbnail', None)
         image_urls = item.get('images', [])
-        category_name = item.get('category')
+        category_name = item.get('category', 'Uncategorized')
 
-        # check category: 
+        # Ensure category is created or fetched
+        category_obj, _ = Category.objects.get_or_create(
+            slug=slugify(category_name),
+            defaults={'category_name': category_name}
+        )
 
-        try:
-            category_obj = Category.objects.get(slug=slugify(category_name))
-        except Category.DoesNotExist:
+        # Check existing product
+        if Product.objects.filter(slug=slug).exists() or Product.objects.filter(product_name=title).exists():
             continue
 
-        # skip same product:
-
-        if Product.objects.filter(product_name=title).exists():
-            continue
-
-      
-        # Thumbail Download
-        image_file = None
-        image_name = None
+        # Thumbnail upload (optional)
         image_url = None
         if thumbnail_url:
             try:
                 uploaded_thumb = cloudinary.uploader.upload(thumbnail_url)
-                image_url = uploaded_thumb.get('secure_url')  # Cloud URL
-            except:
-                continue
+                image_url = uploaded_thumb.get('secure_url')
+            except Exception as e:
+                print("Thumbnail upload failed:", e)
 
+        # ✅ Product create
         product = Product.objects.create(
             product_name=title,
             slug=slug,
@@ -325,19 +322,20 @@ def load_product_object(request):
             category=category_obj,
         )
 
-        #  Save Image URL in CloudinaryField
+        # Save product main image
         if image_url:
             product.images = image_url
             product.save()
 
-        #   ProductGallery image uploads
+        # Gallery images upload
         for img_url in image_urls:
             try:
                 uploaded_img = cloudinary.uploader.upload(img_url)
                 gallery_img_url = uploaded_img.get('secure_url')
                 ProductGallery.objects.create(product=product, image=gallery_img_url)
-            except:
-                continue            
+            except Exception as e:
+                print("Gallery upload failed:", e)
+                continue
 
-    print("All Api Product is Loaded!!!!!")
-    return redirect('home')
+    print(" All products successfully loaded from API!")
+    return redirect('home')  # only runs once

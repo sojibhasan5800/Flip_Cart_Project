@@ -128,20 +128,20 @@ MEDIA_ROOT = BASE_DIR / "media"
 # -----------------------------
 # Cloudinary (only for production)
 # -----------------------------
-if not DEBUG:
-    CLOUDINARY_STORAGE = {
-        'CLOUD_NAME': 'dwemgnaux',
-        'API_KEY': '986429826285289',
-        'API_SECRET': '3-_GLoBXW5SvXyCNPrbv4-QGDgg',
-    }
+# if not DEBUG:
+CLOUDINARY_STORAGE = {
+    'CLOUD_NAME': 'dwemgnaux',
+    'API_KEY': '986429826285289',
+    'API_SECRET': '3-_GLoBXW5SvXyCNPrbv4-QGDgg',
+}
 
-    DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
 
-    cloudinary.config(
-        cloud_name=CLOUDINARY_STORAGE['CLOUD_NAME'],
-        api_key=CLOUDINARY_STORAGE['API_KEY'],
-        api_secret=CLOUDINARY_STORAGE['API_SECRET']
-    )
+cloudinary.config(
+    cloud_name=CLOUDINARY_STORAGE['CLOUD_NAME'],
+    api_key=CLOUDINARY_STORAGE['API_KEY'],
+    api_secret=CLOUDINARY_STORAGE['API_SECRET']
+)
 
 # -----------------------------
 # REST Framework
