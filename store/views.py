@@ -220,59 +220,47 @@ def search(request):
     }
     return render(request, 'store/store.html', context)
 
+from django.contrib import messages
+from django.shortcuts import redirect, get_object_or_404
+from .forms import ReviewForm
+from .models import ReviewRating, Product
 
 def submit_review(request, product_id):
-    url = request.META.get('HTTP_REFERER')
+    # Get the referring URL to redirect back after submitting
+    url = request.META.get('HTTP_REFERER')  
+    product = get_object_or_404(Product, id=product_id)
+
     if request.method == 'POST':
         try:
-            reviews = ReviewRating.objects.get(user__id=request.user.id, product__id=product_id)
-            form = ReviewForm(request.POST, instance=reviews)
-            form.save()
-            messages.success(request, 'Thank you! Your review has been updated.')
-            return redirect(url)
+            # Check if the user has already submitted a review for this product
+            review = ReviewRating.objects.get(user=request.user, product=product)
+            form = ReviewForm(request.POST, instance=review)
+            if form.is_valid():
+                # Update existing review
+                form.save()
+                messages.success(request, 'Thank you! Your review has been updated.')
+            else:
+                messages.error(request, 'There was an error updating your review.')
         except ReviewRating.DoesNotExist:
+            # Create a new review if one does not exist
             form = ReviewForm(request.POST)
             if form.is_valid():
-                # data = ReviewRating()
-                # data.subject = form.cleaned_data['subject']
-                # data.rating = form.cleaned_data['rating']
-                # data.review = form.cleaned_data['review']
-                # data.ip = request.META.get('REMOTE_ADDR')
-                # data.product_id = product_id
-                # data.user_id = request.user.id
-                # data.save()
-            # APi Throug Saving Data :
-                
-                subject = form.cleaned_data['subject']
-                rating = form.cleaned_data['rating']
-                review = form.cleaned_data['review']
-                ip = request.META.get('REMOTE_ADDR')
-                user_id = request.user.id
-                token = Token.objects.get(user=request.user)
-                #----------------------------
-                parsed_url = urlparse(url)
-                base_url = f"{parsed_url.scheme}://{parsed_url.netloc}"  # http://127.0.0.1:8000
-                full_url = urljoin(base_url, "/store/review_list_api/create/")  # full API URL
-                review_url = full_url           
-                headers = {
-                    "Authorization": f"Token {token.key}",
-                    "Content-Type": "application/json"
-                }
-                data = {
-                    "product": product_id,
-                    "subject": subject,
-                    "review": review,
-                    "rating": rating,
-                }
-                response = requests.post(review_url, json=data, headers=headers)
+                new_review = ReviewRating()
+                new_review.subject = form.cleaned_data['subject']
+                new_review.rating = form.cleaned_data['rating']
+                new_review.review = form.cleaned_data['review']
+                new_review.ip = request.META.get('REMOTE_ADDR')
+                new_review.product = product
+                new_review.user = request.user
+                new_review.status = True  # Make the review active
+                new_review.save()
+                messages.success(request, 'Thank you! Your review has been submitted.')
+            else:
+                messages.error(request, 'There was an error submitting your review.')
 
-                if response.status_code == 201:
-                    messages.success(request, 'Thank you! Your review has been submitted.')
-                else:
-                    print("API Error Response:", response.status_code, response.text)
-                    messages.error(request, 'Failed to submit review. Please try again.')
-                
-                return redirect(url)
+    # Redirect back to the same page
+    return redirect(url)
+
             
 def load_product_object(request):
 
