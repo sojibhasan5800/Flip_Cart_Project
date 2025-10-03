@@ -277,8 +277,111 @@ def payments_ssl(request,id,order_number,tk=0):
 
 def payments_stripe(request,id,order_number,tk=0):
     stripe.api_key = settings.STRIPE_SECRET_KEY
+
+    current_user = request.user
+    order = Order.objects.get(user=current_user, id=id, order_number=order_number)
+    
+    line_items = []
+    cart_items = CartItem.objects.filter(user=current_user)
+
+    for item in cart_items:
+        line_items.append({
+            'price_data': {
+                'currency': 'usd',   # বাংলাদেশ হলে bdt দিতে হবে
+                'product_data': {
+                    'name': item.product.product_name,
+                },
+                'unit_amount': int(item.product.price * 100),  # Stripe এ টাকা সেন্টে
+            },
+            'quantity': item.quantity,
+        })
+
+
+    try:
+        # Checkout session তৈরি
+        session = stripe.checkout.Session.create(
+            payment_method_types=['card'],
+            line_items=line_items,
+            mode='payment',
+            customer_email=request.user.email,
+            success_url=request.build_absolute_uri(reverse('stripe_success')) + '?session_id={CHECKOUT_SESSION_ID}',
+            cancel_url=request.build_absolute_uri(reverse('stripe_cancel')),
+            metadata={'order_id': order.id, 'order_number': order.order_number},
+        )
+        return redirect(session.url, code=303)
+
+    except Exception as e:
+        return HttpResponse(f"Stripe Error: {str(e)}")
     
 
+
+
+@csrf_exempt
+def stripe_webhook(request):
+    payload = request.body
+    sig_header = request.META.get('HTTP_STRIPE_SIGNATURE')
+    event = None
+    endpoint_secret = settings.STRIPE_ENDPOINT_SECRET
+
+    try:
+        event = stripe.Webhook.construct_event(
+            payload, sig_header, endpoint_secret
+        )
+    except ValueError:
+        return HttpResponse(status=400)
+    except stripe.error.SignatureVerificationError:
+        return HttpResponse(status=400)
+
+    # ✅ Payment Success হলে Order Update
+    if event['type'] == 'checkout.session.completed':
+        session = event['data']['object']
+        order_id = session['metadata']['order_id']
+        order_number = session['metadata']['order_number']
+        customer_email = session.get('customer_email')
+
+        try:
+            order = Order.objects.get(id=order_id, order_number=order_number)
+            payment = Payment.objects.create(
+                user=order.user,
+                payment_id=session['payment_intent'],
+                payment_method='Stripe',
+                amount_paid=order.order_total,
+                status='Completed',
+            )
+            order.payment = payment
+            order.is_ordered = True
+            order.save()
+
+            # Cart থেকে OrderProduct এ কপি
+            cart_items = CartItem.objects.filter(user=order.user)
+            for item in cart_items:
+                OrderProduct.objects.create(
+                    order=order,
+                    payment=payment,
+                    user=order.user,
+                    product=item.product,
+                    quantity=item.quantity,
+                    product_price=item.product.price,
+                    ordered=True
+                )
+                # Stock কমাও
+                product = item.product
+                product.stock -= item.quantity
+                product.save()
+            cart_items.delete()
+        except Order.DoesNotExist:
+            return HttpResponse(status=404)
+
+    return HttpResponse(status=200)
+
+
+def stripe_success(request):
+    messages.success(request, "✅ Payment Successful! Your order is confirmed.")
+    return redirect('order_complete')
+
+def stripe_cancel(request):
+    messages.warning(request, "⚠️ Payment Cancelled!")
+    return redirect('checkout')
 
 
 def place_order(request, total=0, quantity=0,):

@@ -22,9 +22,7 @@ DEBUG = True
 ALLOWED_HOSTS = (
     ['*'] if DEBUG else ['flip-cart-project-1.onrender.com']
 )
-CSRF_TRUSTED_ORIGINS = (
-    [] if DEBUG else ['https://flip-cart-project-1.onrender.com']
-)
+
 
 # -----------------------------
 # Installed Apps
@@ -219,12 +217,15 @@ STRIPE_ENDPOINT_SECRET = config('STRIPE_ENDPOINT_SECRET')
 # -----------------------------
 #  Base_url Config
 # -----------------------------
-NGROK_URL = 'https://dino-staminal-kamila.ngrok-free.dev/'
+NGROK_URL = 'https://dino-staminal-kamila.ngrok-free.dev'
+CSRF_TRUSTED_ORIGINS = ['https://dino-staminal-kamila.ngrok-free.dev']
 
 if NGROK_URL:
     BASE_URL = NGROK_URL
+    
 else:
     if DEBUG:
         BASE_URL = "http://127.0.0.1:8000/"
     else:
         BASE_URL= "https://flip-cart-project-1.onrender.com"
+# CSRF_TRUSTED_ORIGINS.append(BASE_URL)
