@@ -1,35 +1,47 @@
 {% extends 'base.html' %}
 {% block content %}
 <h2>Seller Dashboard</h2>
-<table id="dashboard-table" class="table">
+<table id="dashboard-table">
     <thead>
         <tr>
             <th>Product</th>
+            <th>Total Sales</th>
             <th>Total Orders</th>
-            <th>Total Revenue</th>
+            <th>Average Rating</th>
         </tr>
     </thead>
-    <tbody></tbody>
+    <tbody>
+        {% for item in analytics %}
+        <tr data-product-id="{{ item.product_id }}">
+            <td>{{ item.product_name }}</td>
+            <td>{{ item.total_sales }}</td>
+            <td>{{ item.total_orders }}</td>
+            <td>{{ item.average_rating }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
 </table>
 
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
-function fetchAnalytics() {
-    $.get("{% url 'seller_dashboard_ajax' %}", function(data){
-        let tbody = '';
-        data.forEach(function(item){
-            tbody += `<tr>
-                        <td>${item.product__product_name}</td>
-                        <td>${item.total_orders}</td>
-                        <td>$${item.total_revenue}</td>
-                      </tr>`;
-        });
-        $('#dashboard-table tbody').html(tbody);
-    });
-}
-// Load immediately
-fetchAnalytics();
-// Refresh every 30 sec
-setInterval(fetchAnalytics, 30000);
+let ws_scheme = window.location.protocol === "https:" ? "wss" : "ws";
+let dashboardSocket = new WebSocket(ws_scheme + '://' + window.location.host + '/ws/dashboard/');
+
+dashboardSocket.onmessage = function(e) {
+    const data = JSON.parse(e.data);
+    const row = document.querySelector(`tr[data-product-id='${data.product_id}']`);
+    if(row){
+        row.children[1].innerText = data.total_sales || row.children[1].innerText;
+        row.children[2].innerText = data.total_orders || row.children[2].innerText;
+        row.children[3].innerText = data.rating || row.children[3].innerText;
+    } else {
+        const tbody = document.querySelector('#dashboard-table tbody');
+        tbody.innerHTML += `<tr data-product-id="${data.product_id}">
+            <td>${data.product_name}</td>
+            <td>${data.total_sales || 0}</td>
+            <td>${data.total_orders || 0}</td>
+            <td>${data.rating || 0}</td>
+        </tr>`;
+    }
+};
 </script>
 {% endblock %}
