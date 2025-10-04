@@ -10,7 +10,7 @@ def update_seller_analytics():
         seller = order.product.category.seller  # ধরছি Category-তে seller field আছে
         obj, created = SellerAnalytics.objects.get_or_create(seller=seller, product=order.product)
         total_orders = OrderProduct.objects.filter(product=order.product, order__is_ordered=True).count()
-        total_revenue = OrderProduct.objects.filter(product=order.product, order__is_ordered=True).aggregate(total=models.Sum('product_price'))['total'] or 0
+        total_revenue = OrderProduct.objects.filter(product=order.product, order__is_ordered=True).aggregate(total= models.Sum('product_price'))['total'] or 0
         obj.total_orders = total_orders
         obj.total_revenue = total_revenue
         obj.save()
