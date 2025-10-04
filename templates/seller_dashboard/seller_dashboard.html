@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Seller Dashboard</h2>
+<table id="dashboard-table" class="table">
+    <thead>
+        <tr>
+            <th>Product</th>
+            <th>Total Orders</th>
+            <th>Total Revenue</th>
+        </tr>
+    </thead>
+    <tbody></tbody>
+</table>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+function fetchAnalytics() {
+    $.get("{% url 'seller_dashboard_ajax' %}", function(data){
+        let tbody = '';
+        data.forEach(function(item){
+            tbody += `<tr>
+                        <td>${item.product__product_name}</td>
+                        <td>${item.total_orders}</td>
+                        <td>$${item.total_revenue}</td>
+                      </tr>`;
+        });
+        $('#dashboard-table tbody').html(tbody);
+    });
+}
+// Load immediately
+fetchAnalytics();
+// Refresh every 30 sec
+setInterval(fetchAnalytics, 30000);
+</script>
+{% endblock %}
