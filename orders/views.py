@@ -366,6 +366,16 @@ def stripe_webhook(request):
                     product = item.product
                     product.stock -= item.quantity
                     product.save()
+                    
+                    payload = {
+                        "event_type": "inventory.update",
+                        "product_id": product.id,
+                        "product_name": product.product_name,
+                        "stock": product.stock,
+                        "seller_id": product.category.account.id
+                    }
+                    send_order_to_queue(payload)
+
                 cart_items.delete()
 
             # RabbitMQ publish
