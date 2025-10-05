@@ -3,5 +3,5 @@ from . import views
 
 urlpatterns = [
     path('', views.dashboard, name='seller_dashboard'),
-    path('ajax/', views.dashboard_ajax, name='seller_dashboard_ajax'),
+    path('api/data/', views.dashboard_data_api, name='seller_analytics_data'),
 ]
