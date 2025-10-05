@@ -231,8 +231,9 @@ else:
         BASE_URL= "https://flip-cart-project-1.onrender.com"
 # CSRF_TRUSTED_ORIGINS.append(BASE_URL)
 
-
+# -----------------------------
 # Channels setup
+# -----------------------------
 ASGI_APPLICATION = 'flipcart_project.asgi.application'
 
 CHANNEL_LAYERS = {
@@ -244,6 +245,24 @@ CHANNEL_LAYERS = {
     },
 }
 
+
+# -----------------------------
 # Celery config
+# -----------------------------
 CELERY_BROKER_URL = 'redis://127.0.0.1:6379/0'
 CELERY_RESULT_BACKEND = 'redis://127.0.0.1:6379/0'
+
+
+# -----------------------------
+#  RabbitMQ Config
+# -----------------------------
+
+# Point: RabbitMQ Configuration (Direct Variables)
+RABBITMQ_HOST = 'localhost'
+RABBITMQ_PORT = 5672
+RABBITMQ_USER = 'guest'
+RABBITMQ_PASSWORD = 'guest'
+RABBITMQ_VHOST = '/'
+RABBITMQ_QUEUE = 'order_queue'
+RABBITMQ_EXCHANGE = 'orders_exchange'
+RABBITMQ_ROUTING_KEY = 'order.created'
