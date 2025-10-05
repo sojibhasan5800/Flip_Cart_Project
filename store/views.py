@@ -9,6 +9,7 @@ from django.utils.text import slugify
 from django.core.files.base import ContentFile
 from urllib.parse import urlparse
 import os
+from orders.utils import send_order_to_queue
 
 
 from carts.views import _cart_id
@@ -238,6 +239,15 @@ def submit_review(request, product_id):
             if form.is_valid():
                 # Update existing review
                 form.save()
+                payload = {
+                "event_type": "product.review",
+                "product_id": product.id,
+                "product_name": product.product_name,
+                "user_id": request.user.id,
+                "rating": new_review.rating,
+                "created_at": new_review.created_at.isoformat() if hasattr(new_review,'created_at') else None
+                }
+                send_order_to_queue(payload)
                 messages.success(request, 'Thank you! Your review has been updated.')
             else:
                 messages.error(request, 'There was an error updating your review.')
