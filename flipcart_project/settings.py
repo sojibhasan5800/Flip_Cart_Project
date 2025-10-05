@@ -28,6 +28,7 @@ ALLOWED_HOSTS = (
 # Installed Apps
 # -----------------------------
 INSTALLED_APPS = [
+    'daphne',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -42,6 +43,9 @@ INSTALLED_APPS = [
     'cloudinary_storage',
     'drf_yasg',
     'admin_thumbnails',
+    'channels',             
+    'django_celery_results',
+    'django_celery_beat', 
 
     # Local apps
     'accounts',
@@ -246,12 +250,27 @@ CHANNEL_LAYERS = {
     },
 }
 
+# Point: Django cache (Redis) — use for caching analytics
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": "redis://127.0.0.1:6379/1",
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+        }
+    }
+}
 
 # -----------------------------
 # Celery config
 # -----------------------------
+
 CELERY_BROKER_URL = 'redis://127.0.0.1:6379/0'
 CELERY_RESULT_BACKEND = 'redis://127.0.0.1:6379/0'
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = 'UTC'  # or your timezone
 
 
 # -----------------------------
@@ -267,3 +286,10 @@ RABBITMQ_VHOST = '/'
 RABBITMQ_QUEUE = 'order_queue'
 RABBITMQ_EXCHANGE = 'orders_exchange'
 RABBITMQ_ROUTING_KEY = 'order.created'
+
+# ----------------------------
+# Point: RabbitMQ Configuration (Seller Events Queue)
+# ----------------------------
+RABBITMQ_SELLER_QUEUE = 'seller_events'
+RABBITMQ_SELLER_EXCHANGE = 'seller_exchange'
+RABBITMQ_SELLER_ROUTING_KEY = 'seller.event'

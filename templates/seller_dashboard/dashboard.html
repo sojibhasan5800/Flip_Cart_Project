@@ -1,0 +1,89 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container">
+  <h2>Seller Dashboard</h2>
+
+  <div id="alerts"></div>
+
+  <div id="summary">
+    <p>Total Sales: <strong id="total_sales">0</strong></p>
+    <p>Total Orders: <strong id="total_orders">0</strong></p>
+    <p>Total Items Sold: <strong id="total_items_sold">0</strong></p>
+    <p>Last Updated: <span id="last_updated">-</span></p>
+  </div>
+
+  <h4>Top Products</h4>
+  <ul id="top_products"></ul>
+
+  <h4>Inventory Summary</h4>
+  <table id="inventory_table" class="table">
+    <thead><tr><th>Product</th><th>Stock</th></tr></thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<script>
+const wsProtocol = (location.protocol === "https:") ? "wss://" : "ws://";
+const wsUrl = wsProtocol + location.host + "/ws/seller/dashboard/";
+let socket;
+
+function connectWS() {
+  socket = new WebSocket(wsUrl);
+  socket.onopen = () => console.log('WS connected');
+  socket.onmessage = (e) => {
+    const payload = JSON.parse(e.data);
+    if (payload.type === 'analytics.update') {
+      renderAnalytics(payload.data);
+      showAlert('Live update received');
+    }
+  };
+  socket.onclose = () => {
+    console.log('WS disconnected, retry in 5s');
+    setTimeout(connectWS, 5000);
+  };
+}
+
+function showAlert(msg) {
+  const a = document.getElementById('alerts');
+  a.innerHTML = `<div class="alert alert-info">${msg}</div>`;
+  setTimeout(()=> a.innerHTML = '', 3000);
+}
+
+function renderAnalytics(data) {
+  document.getElementById('total_sales').innerText = data.total_sales ?? 0;
+  document.getElementById('total_orders').innerText = data.total_orders ?? 0;
+  document.getElementById('total_items_sold').innerText = data.total_items_sold ?? 0;
+  document.getElementById('last_updated').innerText = data.last_updated ?? '-';
+
+  const top = document.getElementById('top_products');
+  top.innerHTML = '';
+  for (const [name, qty] of Object.entries(data.top_products || {})) {
+    const li = document.createElement('li');
+    li.textContent = `${name} — ${qty}`;
+    top.appendChild(li);
+  }
+
+  const tbody = document.querySelector('#inventory_table tbody');
+  tbody.innerHTML = '';
+  for (const pid in (data.inventory_summary || {})) {
+    const p = data.inventory_summary[pid];
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${p.name}</td><td>${p.stock}</td>`;
+    tbody.appendChild(tr);
+  }
+}
+
+// AJAX fallback every 30s
+function fetchAjax() {
+  fetch("{% url 'seller_analytics_data' %}")
+    .then(r => r.json())
+    .then(data => renderAnalytics(data))
+    .catch(err => console.error(err));
+}
+
+// Start
+connectWS();
+fetchAjax();
+setInterval(fetchAjax, 30000);
+</script>
+{% endblock %}

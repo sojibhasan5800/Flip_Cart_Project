@@ -1,25 +1,32 @@
-# seller_dashboard/views.py
 from django.shortcuts import render
-from orders.models import OrderProduct
-from .models import SellerAnalytics
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
+from .models import SellerAnalytics
+from django.core.cache import cache
+from django.conf import settings
 
 @login_required
 def dashboard(request):
-    seller = request.user
-    analytics = SellerAnalytics.objects.filter(seller=seller)
+    return render(request, 'seller_dashboard/dashboard.html')
 
-    context = {
-        'analytics': analytics
-    }
-    return render(request, 'seller_dashboard/dashboard.html', context)
-
-# AJAX endpoint for live update
 @login_required
-def dashboard_ajax(request):
+def dashboard_data_api(request):
     seller = request.user
-    analytics = SellerAnalytics.objects.filter(seller=seller).values(
-        'product__product_name','total_orders','total_revenue'
-    )
-    return JsonResponse(list(analytics), safe=False)
+    cache_key = f"seller_analytics:{seller.id}"
+    data = cache.get(cache_key)
+    if not data:
+        # fallback to DB
+        analytics = SellerAnalytics.objects.filter(seller=seller).first()
+        if analytics:
+            data = {
+                'total_sales': analytics.total_sales,
+                'total_orders': analytics.total_orders,
+                'total_items_sold': analytics.total_items_sold,
+                'top_products': analytics.top_products,
+                'inventory_summary': analytics.inventory_summary,
+                'last_updated': analytics.last_updated.strftime("%Y-%m-%d %H:%M:%S"),
+            }
+            cache.set(cache_key, data, timeout=300)  # 5 min cache
+        else:
+            data = {}
+    return JsonResponse(data)
