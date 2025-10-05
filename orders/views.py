@@ -20,6 +20,8 @@ from django.contrib import messages,auth
 from urllib.parse import urlencode
 import stripe
 from django.conf import settings
+from django.db import transaction
+from .utils import send_order_to_queue
 
 
 
@@ -430,6 +432,23 @@ def place_order(request, total=0, quantity=0,):
             order_number = current_date + str(data.id)
             data.order_number = order_number
             data.save()
+
+            payload = {
+
+                "order_id": data.id,
+                "order_number": data.order_number,
+                "user_id": data.user.id,
+                "total": float(data.order_total),
+                "items": [
+                    {"product_id": item.product.id, "qty": item.quantity, "price": float(item.product.price)}
+                    for item in cart_items
+                ],
+                "created_at": data.created_at.isoformat(),
+                "idempotency_key": f"order:{data.order_number}",
+
+                }
+            
+            transaction.on_commit(lambda: send_order_to_queue(payload))
 
             order = Order.objects.get(user=current_user, is_ordered=False, order_number=order_number)
             context = {

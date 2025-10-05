@@ -30,3 +30,4 @@ channels-redis==4.2.0
 celery[redis]==5.5.3
 kafka-python==2.0.2
 redis==5.0.0
+pika
