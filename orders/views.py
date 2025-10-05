@@ -317,60 +317,70 @@ def payments_stripe(request,id,order_number,tk=0):
     
 
 
-
 @csrf_exempt
 def stripe_webhook(request):
     payload = request.body
     sig_header = request.META.get('HTTP_STRIPE_SIGNATURE')
-    event = None
     endpoint_secret = settings.STRIPE_ENDPOINT_SECRET
 
     try:
-        event = stripe.Webhook.construct_event(
-            payload, sig_header, endpoint_secret
-        )
+        event = stripe.Webhook.construct_event(payload, sig_header, endpoint_secret)
     except ValueError:
         return HttpResponse(status=400)
     except stripe.error.SignatureVerificationError:
         return HttpResponse(status=400)
 
-    # ✅ Payment Success হলে Order Update
     if event['type'] == 'checkout.session.completed':
         session = event['data']['object']
         order_id = session['metadata']['order_id']
         order_number = session['metadata']['order_number']
-        customer_email = session.get('customer_email')
 
         try:
             order = Order.objects.get(id=order_id, order_number=order_number)
-            payment = Payment.objects.create(
-                user=order.user,
-                payment_id=session['payment_intent'],
-                payment_method='Stripe',
-                amount_paid=order.order_total,
-                status='Completed',
-            )
-            order.payment = payment
-            order.is_ordered = True
-            order.save()
-
-            # Cart থেকে OrderProduct এ কপি
-            cart_items = CartItem.objects.filter(user=order.user)
-            for item in cart_items:
-                OrderProduct.objects.create(
-                    order=order,
-                    payment=payment,
+            with transaction.atomic():
+                payment = Payment.objects.create(
                     user=order.user,
-                    product=item.product,
-                    quantity=item.quantity,
-                    product_price=item.product.price,
-                    ordered=True
+                    payment_id=session['payment_intent'],
+                    payment_method='Stripe',
+                    amount_paid=order.order_total,
+                    status='Completed',
                 )
-                # Stock কমাও
-                product = item.product
-                product.stock -= item.quantity
-                product.save()
-            cart_items.delete()
+                order.payment = payment
+                order.is_ordered = True
+                order.save()
+
+                cart_items = CartItem.objects.filter(user=order.user)
+                for item in cart_items:
+                    orderproduct = OrderProduct.objects.create(
+                        order=order,
+                        payment=payment,
+                        user=order.user,
+                        product=item.product,
+                        quantity=item.quantity,
+                        product_price=item.product.price,
+                        ordered=True
+                    )
+                    orderproduct.variations.set(item.variations.all())
+                    orderproduct.save()
+
+                    product = item.product
+                    product.stock -= item.quantity
+                    product.save()
+                cart_items.delete()
+
+            # RabbitMQ publish
+            payload = {
+                "order_id": order.id,
+                "order_number": order.order_number,
+                "user_id": order.user.id,
+                "total": float(order.order_total),
+                "items": [{"product_id": item.product.id, "qty": item.quantity, "price": float(item.product.price)}
+                          for item in OrderProduct.objects.filter(order=order)],
+                "created_at": order.created_at.isoformat(),
+                "idempotency_key": f"order:{order.order_number}"
+            }
+            transaction.on_commit(lambda: send_order_to_queue(payload))
+
         except Order.DoesNotExist:
             return HttpResponse(status=404)
 
