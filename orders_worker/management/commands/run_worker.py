@@ -95,6 +95,29 @@ class Command(BaseCommand):
                             # non-fatal: log error
                             print("Email send failed:", e)
 
+                        # ---- Add this block before ch.basic_ack ----
+                        try:
+                            channel_exchange = settings.RABBITMQ_EXCHANGE
+                            event_channel = ch  # use same channel safely
+                            event_payload = {
+                                "event_type": "order.created",
+                                "order_id": order.id,
+                                "seller_ids": list(
+                                    set(OrderProduct.objects.filter(order=order)
+                                        .values_list("product__category__account_id", flat=True))
+                                ),
+                                "timestamp": time.time()
+                            }
+                            event_channel.basic_publish(
+                                exchange=channel_exchange,
+                                routing_key="order.created",
+                                body=json.dumps(event_payload),
+                                properties=pika.BasicProperties(delivery_mode=2)
+                            )
+                            print("[x] Published order.created event to exchange.")
+                        except Exception as e:
+                            print("Event publish failed:", e)
+
                         ch.basic_ack(delivery_tag=method.delivery_tag)
                     except Exception as e:
                         # log error, and reject/requeue or send to DLX based on policy
