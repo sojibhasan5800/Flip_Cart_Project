@@ -183,7 +183,7 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # -----------------------------
 LANGUAGE_CODE = 'en-us'
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Asia/Dhaka'
 USE_I18N = True
 USE_TZ = True
 
@@ -234,8 +234,8 @@ else:
         BASE_URL = "http://127.0.0.1:8000/"
     else:
         BASE_URL= "https://flip-cart-project-1.onrender.com"
-# CSRF_TRUSTED_ORIGINS.append(BASE_URL)
 
+# CSRF_TRUSTED_ORIGINS.append(BASE_URL)
 # -----------------------------
 # Channels setup
 # -----------------------------
@@ -266,11 +266,13 @@ CACHES = {
 # -----------------------------
 
 CELERY_BROKER_URL = 'redis://127.0.0.1:6379/0'
-CELERY_RESULT_BACKEND = 'redis://127.0.0.1:6379/0'
+CELERY_RESULT_BACKEND =  'django-db' #'redis://127.0.0.1:6379/0'
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
-CELERY_TIMEZONE = 'UTC'  # or your timezone
+CELERY_TIMEZONE = 'Asia/Dhaka'
+CELERY_ENABLE_UTC = False
+CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
 
 
 # -----------------------------

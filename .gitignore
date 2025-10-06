@@ -1,3 +1,15 @@
+# celery -A flipcart_project worker --loglevel=info --pool=solo
+# source venv/Scripts/activate
+# daphne -p 8001 flipcart_project.asgi:application
+# celery -A flipcart_project beat -l info -S django --pidfile=
+# celery -A flipcart_project worker --pool=solo -l info
+
+# python manage.py makemigrations
+
+# python manage.py migrate
+# ngrok http http://127.0.0.1:8000
+
+
 # Python
 __pycache__/
 *.py[cod]

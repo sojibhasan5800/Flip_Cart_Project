@@ -22,7 +22,9 @@ import stripe
 from django.conf import settings
 from django.db import transaction
 from .utils import send_order_to_queue
-
+from django.contrib.auth import get_user_model
+from stripe import SignatureVerificationError
+User = get_user_model()
 
 
 
@@ -33,69 +35,7 @@ def generate_transaction_id():
 
 
 
-# def payments(request):
-#     body = json.loads(request.body)
-#     order = Order.objects.get(user=request.user, is_ordered=False, order_number=body['orderID'])
 
-#     # Store transaction details inside Payment model
-#     payment = Payment(
-#         user = request.user,
-#         payment_id = body['transID'],
-#         payment_method = body['payment_method'],
-#         amount_paid = order.order_total,
-#         status = body['status'],
-#     )
-#     payment.save()
-
-#     order.payment = payment
-#     order.is_ordered = True
-#     order.save()
-
-#     # Move the cart items to Order Product table
-#     cart_items = CartItem.objects.filter(user=request.user)
-
-#     for item in cart_items:
-#         orderproduct = OrderProduct()
-#         orderproduct.order_id = order.id
-#         orderproduct.payment = payment
-#         orderproduct.user_id = request.user.id
-#         orderproduct.product_id = item.product_id
-#         orderproduct.quantity = item.quantity
-#         orderproduct.product_price = item.product.price
-#         orderproduct.ordered = True
-#         orderproduct.save()
-
-#         cart_item = CartItem.objects.get(id=item.id)
-#         product_variation = cart_item.variations.all()
-#         orderproduct = OrderProduct.objects.get(id=orderproduct.id)
-#         orderproduct.variations.set(product_variation)
-#         orderproduct.save()
-
-
-#         # Reduce the quantity of the sold products
-#         product = Product.objects.get(id=item.product_id)
-#         product.stock -= item.quantity
-#         product.save()
-
-#     # Clear cart
-#     CartItem.objects.filter(user=request.user).delete()
-
-#     # Send order recieved email to customer
-#     mail_subject = 'Thank you for your order!'
-#     message = render_to_string('orders/order_recieved_email.html', {
-#         'user': request.user,
-#         'order': order,
-#     })
-#     to_email = request.user.email
-#     send_email = EmailMessage(mail_subject, message, to=[to_email])
-#     send_email.send()
-
-#     # Send order number and transaction id back to sendData method via JsonResponse
-#     data = {
-#         'order_number': order.order_number,
-#         'transID': payment.payment_id,
-#     }
-#     return JsonResponse(data)
 
 @csrf_exempt
 def payment_success(request):
@@ -327,13 +267,15 @@ def stripe_webhook(request):
         event = stripe.Webhook.construct_event(payload, sig_header, endpoint_secret)
     except ValueError:
         return HttpResponse(status=400)
-    except stripe.error.SignatureVerificationError:
+    except SignatureVerificationError:
+        print("⚠️ Webhook signature verification failed.")
         return HttpResponse(status=400)
 
     if event['type'] == 'checkout.session.completed':
         session = event['data']['object']
         order_id = session['metadata']['order_id']
         order_number = session['metadata']['order_number']
+        print(100)
 
         try:
             order = Order.objects.get(id=order_id, order_number=order_number)
@@ -375,7 +317,7 @@ def stripe_webhook(request):
                         "seller_id": product.category.account.id
                     }
                     send_order_to_queue(payload)
-
+                print(110)
                 cart_items.delete()
 
             # RabbitMQ publish
@@ -384,13 +326,15 @@ def stripe_webhook(request):
                 "order_number": order.order_number,
                 "user_id": order.user.id,
                 "total": float(order.order_total),
-                "seller_ids": list({p.product.category.account.id for p in OrderProduct.objects.filter(order=order)}),
+                "seller_ids": list({user.id for user in User.objects.filter(email='admin@gmail.com')}),
+                # "seller_ids": list({p.product.category.account.id for p in OrderProduct.objects.filter(order=order)}),
                 "items": [{"product_id": item.product.id, "qty": item.quantity, "price": float(item.product.price)}
                           for item in OrderProduct.objects.filter(order=order)],
                 "created_at": order.created_at.isoformat(),
                 "idempotency_key": f"order:{order.order_number}"
             }
             transaction.on_commit(lambda: send_order_to_queue(payload))
+            print(120)
     
 
         except Order.DoesNotExist:

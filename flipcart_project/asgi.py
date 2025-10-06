@@ -1,19 +1,20 @@
 import os
-import django
-from channels.routing import get_default_application
-
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'flipcart_project.settings')
-django.setup()
-
+from django.core.asgi import get_asgi_application
 from channels.routing import ProtocolTypeRouter, URLRouter
 from channels.auth import AuthMiddlewareStack
-import seller_dashboard.routing  # Point
+import django
+
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'flipcart_project.settings')
+
+django.setup()  # Ensure Django apps are loaded before importing routing
+
+from seller_dashboard import routing  # import after setup()
 
 application = ProtocolTypeRouter({
-    "http": get_default_application(),
+    "http": get_asgi_application(),
     "websocket": AuthMiddlewareStack(
         URLRouter(
-            seller_dashboard.routing.websocket_urlpatterns
+            routing.websocket_urlpatterns
         )
     ),
 })
