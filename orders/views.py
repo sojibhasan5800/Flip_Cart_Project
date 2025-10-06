@@ -279,6 +279,7 @@ def stripe_webhook(request):
 
         try:
             order = Order.objects.get(id=order_id, order_number=order_number)
+            sales_man_id = User.objects.get(email='admin@gmail.com')
             with transaction.atomic():
                 payment = Payment.objects.create(
                     user=order.user,
@@ -314,9 +315,9 @@ def stripe_webhook(request):
                         "product_id": product.id,
                         "product_name": product.product_name,
                         "stock": product.stock,
-                        "seller_id": product.category.account.id
+                        "seller_id": sales_man_id
                     }
-                    send_order_to_queue(payload)
+                    transaction.on_commit(lambda: send_order_to_queue(payload))
                 print(110)
                 cart_items.delete()
 
