@@ -13,11 +13,13 @@ User = get_user_model()
 
 @shared_task
 def update_all_seller_analytics():
-    sellers = User.objects.filter(is_staff=False, is_superuser=False)
+    # sellers = User.objects.filter(is_staff=False, is_superadmin=False)
+    sellers = User.objects.filter(is_staff=True, is_admin=True)
     channel_layer = get_channel_layer()
     for seller in sellers:
         # Orders where seller's products were sold
-        order_products = OrderProduct.objects.filter(product__category__account=seller, ordered=True)
+        admin_user = User.objects.get(email='admin@gmail.com')
+        order_products = OrderProduct.objects.filter(product__category__account=admin_user, ordered=True)
         total_sales = sum([op.product_price * op.quantity for op in order_products])
         total_orders = order_products.values('order').distinct().count()
         total_items_sold = sum([op.quantity for op in order_products])

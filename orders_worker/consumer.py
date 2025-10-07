@@ -19,7 +19,7 @@ params = pika.ConnectionParameters(host=settings.RABBITMQ_HOST, port=settings.RA
 
 connection = pika.BlockingConnection(params)
 channel = connection.channel()
-channel.exchange_declare(exchange=settings.RABBITMQ_EXCHANGE, exchange_type='topic', durable=True)
+channel.exchange_declare(exchange=settings.RABBITMQ_EXCHANGE, exchange_type='direct', durable=True)
 
 result = channel.queue_declare('', exclusive=True)  # temporary queue
 queue_name = result.method.queue
@@ -83,6 +83,7 @@ def process_product_review(payload):
         pass
 
 def callback(ch, method, properties, body):
+    print(f"Received event: {payload}")
     try:
         payload = json.loads(body)
     except Exception:

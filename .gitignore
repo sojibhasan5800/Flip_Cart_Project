@@ -3,6 +3,7 @@
 # daphne -p 8001 flipcart_project.asgi:application
 # celery -A flipcart_project beat -l info -S django --pidfile=
 # celery -A flipcart_project worker --pool=solo -l info
+# python manage.py run_worker
 
 # python manage.py makemigrations
 

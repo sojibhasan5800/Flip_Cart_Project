@@ -32,3 +32,5 @@ pika
 celery 
 django-redis
 daphne
+django-celery-beat
+django-celery-results

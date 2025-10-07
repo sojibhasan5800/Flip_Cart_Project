@@ -1,6 +1,7 @@
 from django.db import models
 from django.urls import reverse
-
+from django.contrib.auth import get_user_model
+User = get_user_model()
 
 # Create your models here.
 
@@ -10,6 +11,11 @@ class Category(models.Model):
     url = models.URLField(max_length=250,blank=True)
     description = models.TextField(max_length=255, blank=True)
     cat_image = models.ImageField(upload_to='photos/categories', blank=True)
+
+    account = models.ForeignKey(
+        User, on_delete=models.CASCADE, default=3
+    )  # default admin user ID
+
 
     class Meta:
         verbose_name = 'category'

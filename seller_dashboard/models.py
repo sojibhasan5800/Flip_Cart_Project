@@ -14,7 +14,7 @@ class SellerAnalytics(models.Model):
     last_updated = models.DateTimeField(auto_now=True)
 
     class Meta:
-        unique_together = ('seller',)
+        unique_together = (('seller',),)
 
     def __str__(self):
         return f"{self.seller.email} Analytics"

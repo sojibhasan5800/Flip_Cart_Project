@@ -38,5 +38,6 @@ def send_order_to_queue(message: dict):
             message_id=str(uuid.uuid4()),  # unique id for tracing
         )
     )
+    print("cahnnel puclished")
     channel.close()
     conn.close()

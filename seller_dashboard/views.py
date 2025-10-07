@@ -4,6 +4,9 @@ from django.http import JsonResponse
 from .models import SellerAnalytics
 from django.core.cache import cache
 from django.conf import settings
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
 
 @login_required
 def dashboard(request):
@@ -16,7 +19,9 @@ def dashboard_data_api(request):
     data = cache.get(cache_key)
     if not data:
         # fallback to DB
-        analytics = SellerAnalytics.objects.filter(seller=seller).first()
+        # analytics = SellerAnalytics.objects.filter(seller=seller).first()
+        admin_user = User.objects.get(email='admin@gmail.com')
+        analytics = SellerAnalytics.objects.filter(seller=admin_user).first()
         if analytics:
             data = {
                 'total_sales': analytics.total_sales,

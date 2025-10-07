@@ -261,7 +261,9 @@ def payments_stripe(request,id,order_number,tk=0):
 def stripe_webhook(request):
     payload = request.body
     sig_header = request.META.get('HTTP_STRIPE_SIGNATURE')
+    print(sig_header)
     endpoint_secret = settings.STRIPE_ENDPOINT_SECRET
+    print(endpoint_secret)
 
     try:
         event = stripe.Webhook.construct_event(payload, sig_header, endpoint_secret)
@@ -310,14 +312,14 @@ def stripe_webhook(request):
                     product.stock -= item.quantity
                     product.save()
                     
-                    payload = {
-                        "event_type": "inventory.update",
-                        "product_id": product.id,
-                        "product_name": product.product_name,
-                        "stock": product.stock,
-                        "seller_id": sales_man_id
-                    }
-                    transaction.on_commit(lambda: send_order_to_queue(payload))
+                    # payload = {
+                    #     "event_type": "inventory.update",
+                    #     "product_id": product.id,
+                    #     "product_name": product.product_name,
+                    #     "stock": product.stock,
+                    #     "seller_id": sales_man_id
+                    # }
+                    # transaction.on_commit(lambda: send_order_to_queue(payload))
                 print(110)
                 cart_items.delete()
 
