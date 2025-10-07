@@ -283,34 +283,8 @@ def stripe_webhook(request):
             order = Order.objects.get(id=order_id, order_number=order_number)
             sales_man_id = User.objects.get(email='admin@gmail.com')
             with transaction.atomic():
-                payment = Payment.objects.create(
-                    user=order.user,
-                    payment_id=session['payment_intent'],
-                    payment_method='Stripe',
-                    amount_paid=order.order_total,
-                    status='Completed',
-                )
-                order.payment = payment
-                order.is_ordered = True
-                order.save()
 
-                cart_items = CartItem.objects.filter(user=order.user)
-                for item in cart_items:
-                    orderproduct = OrderProduct.objects.create(
-                        order=order,
-                        payment=payment,
-                        user=order.user,
-                        product=item.product,
-                        quantity=item.quantity,
-                        product_price=item.product.price,
-                        ordered=True
-                    )
-                    orderproduct.variations.set(item.variations.all())
-                    orderproduct.save()
-
-                    product = item.product
-                    product.stock -= item.quantity
-                    product.save()
+                
                     
                     # payload = {
                     #     "event_type": "inventory.update",
@@ -320,24 +294,23 @@ def stripe_webhook(request):
                     #     "seller_id": sales_man_id
                     # }
                     # transaction.on_commit(lambda: send_order_to_queue(payload))
-                print(110)
-                cart_items.delete()
+               
 
             # RabbitMQ publish
-            payload = {
-                "order_id": order.id,
-                "order_number": order.order_number,
-                "user_id": order.user.id,
-                "total": float(order.order_total),
-                "seller_ids": list({user.id for user in User.objects.filter(email='admin@gmail.com')}),
-                # "seller_ids": list({p.product.category.account.id for p in OrderProduct.objects.filter(order=order)}),
-                "items": [{"product_id": item.product.id, "qty": item.quantity, "price": float(item.product.price)}
-                          for item in OrderProduct.objects.filter(order=order)],
-                "created_at": order.created_at.isoformat(),
-                "idempotency_key": f"order:{order.order_number}"
-            }
-            transaction.on_commit(lambda: send_order_to_queue(payload))
-            print(120)
+                payload = {
+                    "order_id": order.id,
+                    "order_number": order.order_number,
+                    "user_id": order.user.id,
+                    "total": float(order.order_total),
+                    "seller_ids": list({user.id for user in User.objects.filter(email='admin@gmail.com')}),
+                    # "seller_ids": list({p.product.category.account.id for p in OrderProduct.objects.filter(order=order)}),
+                    "items": [{"product_id": item.product.id, "qty": item.quantity, "price": float(item.product.price)}
+                            for item in OrderProduct.objects.filter(order=order)],
+                    "created_at": order.created_at.isoformat(),
+                    "idempotency_key": f"order:{order.order_number}"
+                }
+                transaction.on_commit(lambda: send_order_to_queue(payload))
+            
     
 
         except Order.DoesNotExist:

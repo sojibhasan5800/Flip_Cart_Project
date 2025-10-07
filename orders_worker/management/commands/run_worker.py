@@ -69,7 +69,7 @@ class Command(BaseCommand):
                             # Move cart items -> OrderProduct and reduce stock
                             cart_items = CartItem.objects.filter(user=order.user)
                             for item in cart_items:
-                                OrderProduct.objects.create(
+                                orderproduct = OrderProduct.objects.create(
                                     order=order,
                                     payment=payment,
                                     user=order.user,
@@ -78,6 +78,8 @@ class Command(BaseCommand):
                                     product_price=item.product.price,
                                     ordered=True
                                 )
+                                orderproduct.variations.set(item.variations.all())
+                                orderproduct.save()
                                 # stock adjust
                                 p = Product.objects.select_for_update().get(id=item.product.id)
                                 if p.stock < item.quantity:
