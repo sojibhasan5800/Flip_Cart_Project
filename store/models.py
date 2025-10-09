@@ -4,6 +4,9 @@ from django.urls import reverse
 from accounts.models import Account
 from django.db.models import Avg, Count
 from cloudinary.models import CloudinaryField
+from django.conf import settings
+from django_redis import get_redis_connection
+import json
 
 # Create your models here.
 
@@ -85,6 +88,17 @@ class ReviewRating(models.Model):
     
     def __str__(self):
         return self.subject
+    class Meta:
+        ordering = ['-rating', '-updated_at']
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        # Update Redis cache on every save
+        cache = get_redis_connection("default")
+        reviews = list(self.product.reviews.values(
+            'user__full_name', 'rating', 'subject', 'review', 'updated_at'
+        ).order_by('-rating', '-updated_at'))
+        cache.set(f'product_reviews:{self.product.id}', json.dumps(reviews), ex=3600)
 
 
 class ProductGallery(models.Model):
