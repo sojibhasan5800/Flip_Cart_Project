@@ -1,9 +1,115 @@
-{% autoescape off %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Order Confirmation</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            width: 100%;
+            max-width: 700px;
+            margin: 30px auto;
+            background-color: #ffffff;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            background-color: #28a745;
+            color: white;
+            text-align: center;
+            padding: 20px 0;
+            font-size: 24px;
+        }
+        .body {
+            padding: 30px;
+            color: #333333;
+        }
+        .order-details {
+            margin: 20px 0;
+        }
+        .order-details th, .order-details td {
+            text-align: left;
+            padding: 8px 10px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        .order-details th {
+            background-color: #f8f8f8;
+        }
+        .footer {
+            padding: 20px;
+            text-align: center;
+            font-size: 14px;
+            color: #777777;
+            border-top: 1px solid #e0e0e0;
+        }
+        .status-success {
+            color: #28a745;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            ✅ Order Confirmed!
+        </div>
+        <div class="body">
+            <p>Hi {{ user.full_name }},</p>
+            <p>Thank you for shopping with us. Your order has been successfully placed and confirmed.</p>
 
-Hi {{user.first_name}},
+            <h3>Order Summary</h3>
+            <table class="order-details" width="100%">
+                <tr>
+                    <th>Order Number:</th>
+                    <td>{{ order.order_number }}</td>
+                </tr>
+                <tr>
+                    <th>Order Date:</th>
+                    <td>{{ order.created_at }}</td>
+                </tr>
+                <tr>
+                    <th>Status:</th>
+                    <td class="status-success">Success</td>
+                </tr>
+                <tr>
+                    <th>Transaction ID:</th>
+                    <td>{{ order.payment.payment_id }}</td>
+                </tr>
+                <tr>
+                    <th>Total Paid:</th>
+                    <td>৳{{ order.order_total }}</td>
+                </tr>
+            </table>
 
-YOUR ORDER HAS BEEN RECIEVED
+            <h3>Items Ordered</h3>
+            <table class="order-details" width="100%">
+                <tr>
+                    <th>Product</th>
+                    <th>Qty</th>
+                    <th>Price</th>
+                </tr>
+                {% for item in order.orderproduct_set.all %}
+                <tr>
+                    <td>{{ item.product.product_name }}</td>
+                    <td>{{ item.quantity }}</td>
+                    <td>৳{{ item.product_price }}</td>
+                </tr>
+                {% endfor %}
+            </table>
 
-Order Number: {{order.order_number}}
-
-{% endautoescape %}
+            <p>If you have any questions, feel free to reply to this email or contact our support team.</p>
+            <p>Thank you for choosing us!</p>
+        </div>
+        <div class="footer">
+            &copy; {{ order.created_at.year }} YourCompany. All rights reserved.
+        </div>
+    </div>
+</body>
+</html>

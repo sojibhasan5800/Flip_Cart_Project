@@ -33,9 +33,9 @@
 
     <div class="invoice-details" style="background: #f9f9f9; padding: 15px; border-radius: 6px; margin-bottom: 30px; font-size: 14px;">
         <strong>Order #{{ order_number }}</strong><br>
-        Transaction ID: {{ transID }}<br>
+        {% comment %} Transaction ID: {{ transID }}<br> {% endcomment %}
         Order Date: {{ order.created_at }}<br>
-        Status: {{ payment.status }}
+        Status: <span style="color: green; font-weight: bold;">success</span>
     </div>
 
     <div class="invoice-items">

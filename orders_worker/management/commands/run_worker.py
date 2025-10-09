@@ -90,9 +90,12 @@ class Command(BaseCommand):
 
                         # Send confirmation email (outside heavy lock ideally)
                         try:
-                            mail_subject = 'Your order is confirmed'
+                            mail_subject = 'Your Order is Confirmed ✅'
                             message = render_to_string('orders/order_recieved_email.html', {'user': order.user, 'order': order})
-                            EmailMessage(mail_subject, message, to=[order.user.email]).send()
+                            email = EmailMessage(mail_subject, message, to=[order.user.email])
+                            email.content_subtype = "html"  # Make sure it's HTML
+                            email.send(fail_silently=False)
+
                         except Exception as e:
                             # non-fatal: log error
                             print("Email send failed:", e)

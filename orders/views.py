@@ -261,9 +261,7 @@ def payments_stripe(request,id,order_number,tk=0):
 def stripe_webhook(request):
     payload = request.body
     sig_header = request.META.get('HTTP_STRIPE_SIGNATURE')
-    print(sig_header)
     endpoint_secret = settings.STRIPE_ENDPOINT_SECRET
-    print(endpoint_secret)
 
     try:
         event = stripe.Webhook.construct_event(payload, sig_header, endpoint_secret)
@@ -282,9 +280,7 @@ def stripe_webhook(request):
         try:
             order = Order.objects.get(id=order_id, order_number=order_number)
             sales_man_id = User.objects.get(email='admin@gmail.com')
-            with transaction.atomic():
-
-                
+            with transaction.atomic():              
                     
                     # payload = {
                     #     "event_type": "inventory.update",
@@ -320,8 +316,25 @@ def stripe_webhook(request):
 
 
 def stripe_success(request):
-    messages.success(request, "✅ Payment Successful! Your order is confirmed.")
-    return redirect('order_complete')
+    session_id = request.GET.get('session_id')
+    if not session_id:
+        messages.error(request, "Session ID missing!")
+        return redirect('checkout')
+
+    stripe.api_key = settings.STRIPE_SECRET_KEY
+    session = stripe.checkout.Session.retrieve(session_id)
+
+    order_id = session.metadata.get('order_id')
+    order_number = session.metadata.get('order_number')
+
+    try:
+        messages.success(request, "✅ Payment Successful! Your order is confirmed.")
+        return redirect(f"{reverse('order_complete')}?order_number={order_number}")
+
+    except Order.DoesNotExist:
+        messages.error(request, "Order not found or already completed.")
+        return redirect('checkout')
+
 
 def stripe_cancel(request):
     messages.warning(request, "⚠️ Payment Cancelled!")
@@ -395,31 +408,28 @@ def place_order(request, total=0, quantity=0,):
 
 def order_complete(request):
     order_number = request.GET.get('order_number')
-    transID = request.GET.get('transID')
-    print(transID)
+    # transID = request.GET.get('transID')
 
     try:
         order = Order.objects.get(order_number=order_number, is_ordered=True)
         ordered_products = OrderProduct.objects.filter(order_id=order.id)
-        print("rdre",order)
         print(ordered_products)
 
         subtotal = 0
         for i in ordered_products:
             subtotal += i.product_price * i.quantity
 
-        payment = Payment.objects.get(payment_id=transID)
-        print("paymetn: " ,payment)
+        # payment = Payment.objects.get(payment_id=transID)
+        # print("paymetn: " ,payment)
 
         context = {
             'order': order,
             'ordered_products': ordered_products,
             'order_number': order.order_number,
-            'transID': payment.payment_id,
-            'payment': payment,
+            # 'transID': payment.payment_id,
+            # 'payment': payment,
             'subtotal': subtotal,
         }
         return render(request, 'orders/order_complete.html', context)
     except (Payment.DoesNotExist, Order.DoesNotExist):
-        print("no")
         return redirect('home')
