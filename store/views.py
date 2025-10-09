@@ -24,6 +24,11 @@ from rest_framework.authtoken.models import Token
 from urllib.parse import urljoin
 from urllib.parse import urlparse
 from .recommendation_engine import get_similar_products
+from django_redis import get_redis_connection
+import json
+
+from django.db.models import F, Value, Func, CharField
+from django.db.models.functions import Concat
 
 #--------------------- Api Import -------------------------------------
 # from rest_framework import viewsets, permissions, filters,mixins,pagination
@@ -195,6 +200,27 @@ def product_detail(request, category_slug, product_slug):
 
     similar_product_id = single_product.id
     similar_product = get_similar_products(similar_product_id)
+
+    # Fetch reviews from Redis
+    cache = get_redis_connection("default")
+    cached_reviews = cache.get(f'product_reviews:{single_product.id}')
+    if cached_reviews:
+        reviews = json.loads(cached_reviews)
+    else:
+        reviews_qs  = single_product.reviewrating_set.all().annotate(
+            full_name=Concat(F('user__first_name'), Value(' '), F('user__last_name'), output_field=CharField())
+        ).values('full_name', 'rating', 'subject', 'review', 'updated_at').order_by('-rating', '-updated_at')
+        reviews = []
+        for r in reviews_qs:
+            reviews.append({
+                'full_name': r['full_name'],
+                'rating': r['rating'],
+                'subject': r['subject'],
+                'review': r['review'],
+                'updated_at': r['updated_at'].strftime('%Y-%m-%d %H:%M:%S')
+            })
+        cache.set(f'product_reviews:{single_product.id}', json.dumps(reviews), ex=3600)
+        
     
     context = {
         'single_product': single_product,
@@ -244,8 +270,8 @@ def submit_review(request, product_id):
                 "product_id": product.id,
                 "product_name": product.product_name,
                 "user_id": request.user.id,
-                "rating": new_review.rating,
-                "created_at": new_review.created_at.isoformat() if hasattr(new_review,'created_at') else None
+                "rating": review.rating, 
+                "created_at": review.created_at.isoformat() if hasattr(review,'created_at') else None
                 }
                 send_order_to_queue(payload)
                 messages.success(request, 'Thank you! Your review has been updated.')
