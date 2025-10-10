@@ -34,3 +34,7 @@ django-redis
 daphne
 django-celery-beat
 django-celery-results
+django-elasticsearch-dsl==9.0
+django-elasticsearch-dsl-drf==0.22.5
+# elasticsearch==8.13.0
+

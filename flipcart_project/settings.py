@@ -46,6 +46,8 @@ INSTALLED_APPS = [
     'channels',             
     'django_celery_results',
     'django_celery_beat', 
+    'django_elasticsearch_dsl',
+    'django_elasticsearch_dsl_drf',
 
     # Local apps
     'accounts',
@@ -296,3 +298,22 @@ RABBITMQ_ROUTING_KEY = 'order.created'
 RABBITMQ_SELLER_QUEUE = 'seller_events'
 RABBITMQ_SELLER_EXCHANGE = 'seller_exchange'
 RABBITMQ_SELLER_ROUTING_KEY = 'seller.event'
+
+
+# ----------------------------
+# Elasticsearch configuration
+# ----------------------------
+
+ELASTICSEARCH_HOST = {
+    'default': {
+        'hosts': 'http://elasticsearch:9200',
+        'verify_certs':False,
+    },
+}
+
+ELASTICSEARCH_DSL = {
+    'default': {
+        'hosts': 'http://elasticsearch:9200',
+        'verify_certs':False,
+    },
+}

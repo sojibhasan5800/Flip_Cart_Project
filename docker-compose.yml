@@ -1,0 +1,66 @@
+# version: "3.9"
+
+services:
+  django:
+    # build: .
+    image: flipcart_project
+    container_name: django_app
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    depends_on:
+      # - redis
+      - elasticsearch
+    environment:
+      # - DEBUG=1
+      - DJANGO_SETTINGS_MODULE=flipcart_project.settings
+      # - REDIS_URL=redis://redis:6379/0
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+
+  # redis:
+  #   image: redis:7
+  #   container_name: redis
+  #   ports:
+  #     - "6379:6379"
+
+  # celery:
+  #   build: .
+  #   container_name: celery_worker
+  #   command: celery -A flipcart_project worker --loglevel=info
+  #   depends_on:
+  #     - redis
+  #     - django
+  #   volumes:
+  #     - .:/app
+  #   environment:
+  #     - REDIS_URL=redis://redis:6379/0
+
+  # celery-beat:
+  #   build: .
+  #   container_name: celery_beat
+  #   command: celery -A flipcart_project beat --loglevel=info
+  #   depends_on:
+  #     - redis
+  #     - django
+  #   volumes:
+  #     - .:/app
+  #   environment:
+  #     - REDIS_URL=redis://redis:6379/0
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.10.2
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    ports:
+      - "9200:9200"
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+
+volumes:
+  es_data:
+    driver: local
