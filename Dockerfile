@@ -14,14 +14,13 @@ COPY . /app/
 # ---------- Install Dependencies ----------
 # RUN apt-get update && apt-get install -y gcc libpq-dev && rm -rf /var/lib/apt/lists/*
 RUN pip install --upgrade pip
-RUN pip install "elasticsearch==8.13.0"
 RUN pip install -r requirements.txt
 
 # ---------- Expose Port ----------
 EXPOSE 8000
 
 # ---------- Run Django (Localhost Mode) ----------
-CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+CMD ["sh", "-c", "python manage.py migrate && python manage.py runserver 0.0.0.0:8000", "python manage.py search_index --rebuild"]
 
 # ---------- NOTE ----------
 #  Deployment time, replace CMD with:

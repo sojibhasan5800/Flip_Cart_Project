@@ -10,6 +10,7 @@ from django.core.files.base import ContentFile
 from urllib.parse import urlparse
 import os
 from orders.utils import send_order_to_queue
+from rest_framework.response import Response
 
 
 from carts.views import _cart_id
@@ -29,6 +30,8 @@ import json
 
 from django.db.models import F, Value, Func, CharField
 from django.db.models.functions import Concat
+from .documents import ProductDocument
+from rest_framework.views import APIView
 
 #--------------------- Api Import -------------------------------------
 # from rest_framework import viewsets, permissions, filters,mixins,pagination
@@ -235,9 +238,55 @@ def product_detail(request, category_slug, product_slug):
     return render(request, 'store/product_detail.html', context)
 
 
+
+# store/views.py
+class ProductSearchView(APIView):
+    def get(self, request):
+        search = request.GET.get('search')
+        if not search:
+            return Response({
+                'status': False,
+                'message': 'Search query is required',
+                'data': []
+            })
+        print(100)
+
+        products = []
+
+        # price remove from multi_match fields
+        results = ProductDocument.search().query(
+            'multi_match',
+            query=search,
+            fields=['product_name', 'description'],  # <-- price removed
+            fuzziness="AUTO",
+            operator="OR",
+            type='best_fields'
+        ).extra(size=5)
+
+        results = results.execute()
+
+        for result in results:
+            products.append({
+                'id': result.id,
+                'product_name': result.product_name,
+                'description': getattr(result, 'description', ''),
+                'price': getattr(result, 'price', 0)
+            })
+        for x in products:
+            print(x)
+        return Response({
+            'status': True,
+            'message': 'Products fetched',
+            'data': products
+        })
+
+
 def search(request):
     if 'keyword' in request.GET:
-        keyword = request.GET['keyword']
+        keyword = request.GET['keyword']        
+
+        # for result in results
+        
         if keyword:
             products = Product.objects.order_by('-created_date').filter(Q(description__icontains=keyword) | Q(product_name__icontains=keyword))
             product_count = products.count()

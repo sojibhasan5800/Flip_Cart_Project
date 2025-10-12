@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     'django_elasticsearch_dsl',
     'django_elasticsearch_dsl_drf',
 
+
     # Local apps
     'accounts',
     'category',
@@ -225,8 +226,10 @@ STRIPE_ENDPOINT_SECRET = config('STRIPE_ENDPOINT_SECRET')
 # -----------------------------
 #  Base_url Config
 # -----------------------------
-NGROK_URL = 'https://dino-staminal-kamila.ngrok-free.dev'
-CSRF_TRUSTED_ORIGINS = ['https://dino-staminal-kamila.ngrok-free.dev']
+# NGROK_URL = 'https://dino-staminal-kamila.ngrok-free.dev'
+# CSRF_TRUSTED_ORIGINS = ['https://dino-staminal-kamila.ngrok-free.dev']
+NGROK_URL = None
+CSRF_TRUSTED_ORIGINS = []
 
 if NGROK_URL:
     BASE_URL = NGROK_URL
@@ -304,16 +307,32 @@ RABBITMQ_SELLER_ROUTING_KEY = 'seller.event'
 # Elasticsearch configuration
 # ----------------------------
 
-ELASTICSEARCH_HOST = {
-    'default': {
-        'hosts': 'http://elasticsearch:9200',
-        'verify_certs':False,
-    },
-}
 
-ELASTICSEARCH_DSL = {
-    'default': {
-        'hosts': 'http://elasticsearch:9200',
-        'verify_certs':False,
-    },
-}
+if DEBUG:
+    ELASTICSEARCH_HOST = {
+        'default': {
+            'hosts': 'http://127.0.0.1:9200',
+            'verify_certs': False,
+        },
+    }
+
+    ELASTICSEARCH_DSL = {
+        'default': {
+            'hosts': 'http://127.0.0.1:9200',
+            'verify_certs': False,
+        },
+    }
+else:
+    ELASTICSEARCH_HOST = {
+        'default': {
+            'hosts': 'http://elasticsearch:9200',
+            'verify_certs': False,
+        },
+    }
+
+    ELASTICSEARCH_DSL = {
+        'default': {
+            'hosts': 'http://elasticsearch:9200',
+            'verify_certs': False,
+        },
+    }
