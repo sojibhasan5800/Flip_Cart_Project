@@ -281,19 +281,10 @@ def stripe_webhook(request):
             order = Order.objects.get(id=order_id, order_number=order_number)
             sales_man_id = User.objects.get(email='admin@gmail.com')
             with transaction.atomic():              
-                    
-                    # payload = {
-                    #     "event_type": "inventory.update",
-                    #     "product_id": product.id,
-                    #     "product_name": product.product_name,
-                    #     "stock": product.stock,
-                    #     "seller_id": sales_man_id
-                    # }
-                    # transaction.on_commit(lambda: send_order_to_queue(payload))
                
-
             # RabbitMQ publish
                 payload = {
+                    "event_type":"order.created",
                     "order_id": order.id,
                     "order_number": order.order_number,
                     "user_id": order.user.id,

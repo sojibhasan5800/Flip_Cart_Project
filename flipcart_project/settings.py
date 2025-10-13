@@ -226,10 +226,10 @@ STRIPE_ENDPOINT_SECRET = config('STRIPE_ENDPOINT_SECRET')
 # -----------------------------
 #  Base_url Config
 # -----------------------------
-# NGROK_URL = 'https://dino-staminal-kamila.ngrok-free.dev'
-# CSRF_TRUSTED_ORIGINS = ['https://dino-staminal-kamila.ngrok-free.dev']
-NGROK_URL = None
-CSRF_TRUSTED_ORIGINS = []
+NGROK_URL = 'https://dino-staminal-kamila.ngrok-free.dev'
+CSRF_TRUSTED_ORIGINS = ['https://dino-staminal-kamila.ngrok-free.dev']
+# NGROK_URL = None
+# CSRF_TRUSTED_ORIGINS = ['*']
 
 if NGROK_URL:
     BASE_URL = NGROK_URL

@@ -10,6 +10,14 @@
 # python manage.py migrate
 # ngrok http http://127.0.0.1:8000
 
+
+# Rabbit start and enable
+# rabbitmq-plugins enable rabbitmq_management
+# windows backend service --> net start RabbitMQ
+# or terminal service not cros -> rabbitmq-server.bat
+# rabbitmq-server.bat
+
+
 # docker compose down
 # docker compose down -v
 

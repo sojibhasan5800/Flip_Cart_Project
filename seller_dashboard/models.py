@@ -6,13 +6,13 @@ User = get_user_model()
 
 class SellerAnalytics(models.Model):
     seller = models.ForeignKey(User, on_delete=models.CASCADE)
-    total_sales = models.FloatField(default=0)
+    # total_sales = models.FloatField(default=0)
+    total_sales = models.IntegerField(default=0)
     total_orders = models.IntegerField(default=0)
     total_items_sold = models.IntegerField(default=0)
-    top_products = models.JSONField(default=dict)  # {"product_name": qty}
-    inventory_summary = models.JSONField(default=dict)  # {"product_id": {"name":..., "stock":...}}
+    top_products = models.JSONField(null=True, blank=True)      
+    inventory_summary = models.JSONField(null=True, blank=True)     
     last_updated = models.DateTimeField(auto_now=True)
-
     class Meta:
         unique_together = (('seller',),)
 
