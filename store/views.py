@@ -239,7 +239,7 @@ def product_detail(request, category_slug, product_slug):
 
 
 
-# store/views.py
+
 class ProductSearchView(APIView):
     def get(self, request):
         search = request.GET.get('search')
@@ -249,7 +249,6 @@ class ProductSearchView(APIView):
                 'message': 'Search query is required',
                 'data': []
             })
-        print(100)
 
         products = []
 
@@ -261,7 +260,7 @@ class ProductSearchView(APIView):
             fuzziness="AUTO",
             operator="OR",
             type='best_fields'
-        ).extra(size=5)
+        ).extra(size=8)
 
         results = results.execute()
 
@@ -272,8 +271,6 @@ class ProductSearchView(APIView):
                 'description': getattr(result, 'description', ''),
                 'price': getattr(result, 'price', 0)
             })
-        for x in products:
-            print(x)
         return Response({
             'status': True,
             'message': 'Products fetched',

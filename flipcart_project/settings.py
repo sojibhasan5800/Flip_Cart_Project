@@ -307,8 +307,8 @@ RABBITMQ_SELLER_ROUTING_KEY = 'seller.event'
 # Elasticsearch configuration
 # ----------------------------
 
-
-if DEBUG:
+DEBUG_Elasticsearch = True
+if DEBUG_Elasticsearch:
     ELASTICSEARCH_HOST = {
         'default': {
             'hosts': 'http://127.0.0.1:9200',

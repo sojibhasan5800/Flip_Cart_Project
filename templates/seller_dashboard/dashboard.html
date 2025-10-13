@@ -1,27 +1,158 @@
 {% extends 'base.html' %}
 {% block content %}
+<style>
+/* General Body */
+body {
+  background: linear-gradient(to right, #f0f4f8, #d9e2ec);
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Dashboard Container */
+.dashboard-container {
+  display: flex;
+  gap: 2rem;
+  margin-top: 2rem;
+  flex-wrap: wrap;
+}
+
+/* Left Panel */
+.dashboard-left { flex: 2; }
+
+/* Right Panel */
+.dashboard-right {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Cards */
+.card-custom {
+  background: white;
+  border-radius: 15px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+  padding: 20px;
+  text-align: center;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.card-custom:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+}
+.card-custom h3 { font-size: 2rem; color: #1e3a8a; margin-bottom: 0.5rem; }
+.card-custom h6 { font-weight: 500; color: #6b7280; }
+
+/* Top Products List */
+#top_products li {
+  background: #fff;
+  margin-bottom: 8px;
+  padding: 10px 15px;
+  border-radius: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+#top_products li:hover { transform: scale(1.02); }
+
+/* Quantity Badge Color Variants */
+.badge-qty-1 { background-color: #2563eb !important; } /* blue */
+.badge-qty-2 { background-color: #16a34a !important; } /* green */
+.badge-qty-3 { background-color: #f59e0b !important; } /* orange */
+.badge-qty-4 { background-color: #ef4444 !important; } /* red */
+.badge-qty-5 { background-color: #8b5cf6 !important; } /* purple */
+.badge-qty-6 { background-color: #e11d48 !important; } /* pink */
+.badge-qty-7 { background-color: #14b8a6 !important; } /* teal */
+.badge-qty-8 { background-color: #f97316 !important; } /* deep orange */
+
+/* Inventory Table */
+#inventory_table {
+  background: #fff;
+  border-radius: 15px;
+  overflow: hidden;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+}
+#inventory_table thead {
+  background: linear-gradient(90deg, #2563eb, #3b82f6);
+  color: white;
+  font-weight: bold;
+}
+#inventory_table tbody tr:hover { background: rgba(37,99,235,0.1); }
+
+/* Offer Button */
+.offer-btn {
+  background: linear-gradient(90deg, #f43f5e, #f87171);
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  padding: 10px 20px;
+  border-radius: 50px;
+  color: white;
+  text-decoration: none;
+  transition: transform 0.2s ease;
+}
+.offer-btn:hover { transform: scale(1.05); }
+</style>
+
 <div class="container">
-  <h2>Seller Dashboard</h2>
+
+  <!-- Header -->
+  <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap">
+    <h2 class="fw-bold text-primary">Seller Dashboard</h2>
+    <a href="{% url 'home' %}" class="offer-btn">
+      <span>&#x1F525;</span> Limited Time Offer: Enjoy 5% OFF Everything <span>&#x1F525;</span>
+    </a>
+  </div>
 
   <div id="alerts"></div>
 
-  <div id="summary">
-    <p>Total Sales: <strong id="total_sales">0</strong></p>
-    <p>Total Orders: <strong id="total_orders">0</strong></p>
-    <p>Total Items Sold: <strong id="total_items_sold">0</strong></p>
-    <p>Last Updated: <span id="last_updated">-</span></p>
+  <!-- Dashboard -->
+  <div class="dashboard-container">
+
+    <!-- Left Panel -->
+    <div class="dashboard-left">
+
+      <!-- Summary Cards -->
+      <div class="row g-3 mb-4">
+        <div class="col-md-4"><div class="card-custom"><h6>Total Sales</h6><h3 id="total_sales">0</h3></div></div>
+        <div class="col-md-4"><div class="card-custom"><h6>Total Orders</h6><h3 id="total_orders">0</h3></div></div>
+        <div class="col-md-4"><div class="card-custom"><h6>Items Sold</h6><h3 id="total_items_sold">0</h3></div></div>
+      </div>
+
+      <div class="text-end mb-4"><small class="text-muted">Last Updated: <span id="last_updated">-</span></small></div>
+
+      <!-- Top Products -->
+      <div class="mb-4">
+        <h4 class="fw-bold">Top Products</h4>
+        <ul id="top_products"></ul>
+      </div>
+
+      <!-- Inventory Table -->
+      <div class="mb-5">
+        <h4 class="fw-bold mb-3">Inventory Summary</h4>
+        <div class="table-responsive">
+          <table id="inventory_table" class="table table-hover align-middle mb-0">
+            <thead><tr><th>Product</th><th>Stock</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Right Panel: Pie Chart + Line Chart -->
+    <div class="dashboard-right">
+      <canvas id="salesPieChart" width="300" height="300"></canvas>
+      <canvas id="salesLineChart" width="300" height="250"></canvas>
+    </div>
+
   </div>
-
-  <h4>Top Products</h4>
-  <ul id="top_products"></ul>
-
-  <h4>Inventory Summary</h4>
-  <table id="inventory_table" class="table">
-    <thead><tr><th>Product</th><th>Stock</th></tr></thead>
-    <tbody></tbody>
-  </table>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 const wsProtocol = (location.protocol === "https:") ? "wss://" : "ws://";
 const wsUrl = wsProtocol + location.host + "/ws/seller/dashboard/";
@@ -37,32 +168,50 @@ function connectWS() {
       showAlert('Live update received');
     }
   };
-  socket.onclose = () => {
-    console.log('WS disconnected, retry in 5s');
-    setTimeout(connectWS, 5000);
-  };
+  socket.onclose = () => setTimeout(connectWS, 5000);
 }
 
 function showAlert(msg) {
   const a = document.getElementById('alerts');
-  a.innerHTML = `<div class="alert alert-info">${msg}</div>`;
-  setTimeout(()=> a.innerHTML = '', 3000);
+  a.innerHTML = `<div class="alert alert-info alert-dismissible fade show" role="alert">
+                   ${msg}
+                   <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                 </div>`;
 }
 
+let salesPieChart, salesLineChart;
+
 function renderAnalytics(data) {
+  // Summary
   document.getElementById('total_sales').innerText = data.total_sales ?? 0;
   document.getElementById('total_orders').innerText = data.total_orders ?? 0;
-  document.getElementById('total_items_sold').innerText = data.total_items_sold ?? 0;
+  document.getElementById('total_items_sold').innerText = data.total_items_sold ?? '-';
   document.getElementById('last_updated').innerText = data.last_updated ?? '-';
 
+  // Top Products
   const top = document.getElementById('top_products');
   top.innerHTML = '';
+  const pieLabels = [];
+  const pieValues = [];
+  let colorIndex = 1;
   for (const [name, qty] of Object.entries(data.top_products || {})) {
     const li = document.createElement('li');
-    li.textContent = `${name} — ${qty}`;
+    li.textContent = name;
+
+    const badge = document.createElement('span');
+    badge.className = `badge rounded-pill badge-qty-${colorIndex}`;
+    badge.textContent = qty;
+    li.appendChild(badge);
     top.appendChild(li);
+
+    pieLabels.push(name);
+    pieValues.push(qty);
+
+    colorIndex++;
+    if(colorIndex>8) colorIndex=1; // Loop colors
   }
 
+  // Inventory Table
   const tbody = document.querySelector('#inventory_table tbody');
   tbody.innerHTML = '';
   for (const pid in (data.inventory_summary || {})) {
@@ -71,9 +220,39 @@ function renderAnalytics(data) {
     tr.innerHTML = `<td>${p.name}</td><td>${p.stock}</td>`;
     tbody.appendChild(tr);
   }
+
+  // Pie Chart
+  const pieCtx = document.getElementById('salesPieChart').getContext('2d');
+  if (!salesPieChart) {
+    salesPieChart = new Chart(pieCtx, {
+      type: 'doughnut',
+      data: { labels: pieLabels, datasets: [{ data: pieValues, backgroundColor: ['#2563eb','#16a34a','#f59e0b','#ef4444','#8b5cf6','#e11d48','#14b8a6','#f97316'], borderWidth:2 }] },
+      options: { responsive:true, plugins:{ legend:{ position:'bottom' } } }
+    });
+  } else {
+    salesPieChart.data.labels = pieLabels;
+    salesPieChart.data.datasets[0].data = pieValues;
+    salesPieChart.update();
+  }
+
+  // Line Chart
+  const lineCtx = document.getElementById('salesLineChart').getContext('2d');
+  const dates = (data.sales_trend || []).map(d => d.date);
+  const sales = (data.sales_trend || []).map(d => d.sales);
+  if (!salesLineChart) {
+    salesLineChart = new Chart(lineCtx, {
+      type: 'line',
+      data: { labels: dates, datasets: [{ label:'Sales', data:sales, borderColor:'#2563eb', backgroundColor:'rgba(37,99,235,0.2)', fill:true, tension:0.4 }] },
+      options: { responsive:true, plugins:{ legend:{ display:true } } }
+    });
+  } else {
+    salesLineChart.data.labels = dates;
+    salesLineChart.data.datasets[0].data = sales;
+    salesLineChart.update();
+  }
 }
 
-// AJAX fallback every 30s
+// AJAX fallback
 function fetchAjax() {
   fetch("{% url 'seller_analytics_data' %}")
     .then(r => r.json())
@@ -81,7 +260,6 @@ function fetchAjax() {
     .catch(err => console.error(err));
 }
 
-// Start
 connectWS();
 fetchAjax();
 setInterval(fetchAjax, 30000);
