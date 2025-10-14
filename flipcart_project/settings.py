@@ -349,6 +349,7 @@ from pathlib import Path
 import dj_database_url
 from decouple import config
 import os
+import cloudinary
 
 # -----------------------------
 # BASE_DIR
@@ -387,6 +388,7 @@ INSTALLED_APPS = [
 
     # Local Apps
     'accounts',
+    'category',
     'store',
     'carts',
     'orders',
@@ -478,12 +480,26 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
 # Cloudinary Storage
-DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+
 CLOUDINARY_STORAGE = {
-    'CLOUD_NAME': config('CLOUDINARY_CLOUD_NAME'),
-    'API_KEY': config('CLOUDINARY_API_KEY'),
-    'API_SECRET': config('CLOUDINARY_API_SECRET'),
+    'CLOUD_NAME': 'dwemgnaux',
+    'API_KEY': '986429826285289',
+    'API_SECRET': '3-_GLoBXW5SvXyCNPrbv4-QGDgg',
 }
+
+DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+
+cloudinary.config(
+    cloud_name=CLOUDINARY_STORAGE['CLOUD_NAME'],
+    api_key=CLOUDINARY_STORAGE['API_KEY'],
+    api_secret=CLOUDINARY_STORAGE['API_SECRET']
+)
+
+# CLOUDINARY_STORAGE = {
+#     'CLOUD_NAME': config('CLOUDINARY_CLOUD_NAME'),
+#     'API_KEY': config('CLOUDINARY_API_KEY'),
+#     'API_SECRET': config('CLOUDINARY_API_SECRET'),
+# }
 
 # -----------------------------
 # REST Framework
