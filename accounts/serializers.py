@@ -1,6 +1,6 @@
 # accounts/api/serializers.py
 from rest_framework import serializers
-from ..models import Account, UserProfile
+from .models import Account, UserProfile
 from django.contrib.auth import authenticate
 
 class RegistrationSerializer(serializers.ModelSerializer):
