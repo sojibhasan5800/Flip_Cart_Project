@@ -1,69 +1,95 @@
+# accounts/tests/test_accounts.py
 from django.test import TestCase
-from accounts.models import Account
-from django.contrib.auth import authenticate,get_user_model
 from django.urls import reverse
-User = get_user_model()
+from rest_framework.test import APIClient
+from .models import Account, UserProfile
+from rest_framework.authtoken.models import Token
 
-
-# Create your tests here.
-class AccountModelTest(TestCase):
-
+class AccountsAPITestCase(TestCase):
     def setUp(self):
-        self.account = Account.objects.create_user(
-            first_name="John",
-            last_name="Doe",
-            username="johndoe",
-            email="johndoe@example.com",
-            password="password123",
+        self.client = APIClient()
+        self.register_url = reverse('accounts_api:register')
+        self.login_url = reverse('accounts_api:login')
+        self.dashboard_url = reverse('accounts_api:dashboard')
+        # create a user
+        self.user = Account.objects.create_user(
+            first_name='Test', last_name='User', email='testuser@example.com',
+            username='testuser', password='strongpassword123'
         )
-    def test_account_creation(self):  
-        self.assertEqual(self.account.email, "johndoe@example.com")
-        self.assertEqual(self.account.username, "johndoe")
-        self.assertTrue(self.account.check_password("password123"))
+        # ensure user active for tests
+        self.user.is_active = True
+        self.user.save()
+        UserProfile.objects.get_or_create(user=self.user)
 
-    def test_full_name_method(self):     
-        self.assertEqual(self.account.full_name(), "John Doe")
+    def test_register_success(self):
+        data = {
+            "first_name":"Alice",
+            "last_name":"Bob",
+            "phone_number":"0123456789",
+            "email":"alice@example.com",
+            "password":"newpass123",
+            "confirm_password":"newpass123"
+        }
+        resp = self.client.post(self.register_url, data, format='json')
+        self.assertEqual(resp.status_code, 201)
+        self.assertTrue(Account.objects.filter(email="alice@example.com").exists())
 
-    def test_str_method(self):      
-        self.assertEqual(str(self.account), "johndoe@example.com")
+    def test_register_password_mismatch(self):
+        data = {
+            "first_name":"X",
+            "last_name":"Y",
+            "phone_number":"0",
+            "email":"mismatch@example.com",
+            "password":"a",
+            "confirm_password":"b"
+        }
+        resp = self.client.post(self.register_url, data, format='json')
+        self.assertEqual(resp.status_code, 400)
 
-    def test_has_perm_method(self):       
-        self.account.is_admin = True
-        self.assertTrue(self.account.has_perm("some_perm"))
+    def test_login_success_returns_token(self):
+        data = {"email": "testuser@example.com", "password": "strongpassword123"}
+        resp = self.client.post(self.login_url, data, format='json')
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("token", resp.data)
 
-    def test_has_module_perms_method(self):
-        self.assertTrue(self.account.has_module_perms("app_label"))
+    def test_login_invalid_credentials(self):
+        data = {"email": "testuser@example.com", "password": "wrong"}
+        resp = self.client.post(self.login_url, data, format='json')
+        self.assertEqual(resp.status_code, 400)
 
+    def test_dashboard_requires_auth(self):
+        resp = self.client.get(self.dashboard_url)
+        self.assertEqual(resp.status_code, 401)  # unauthorized
 
-class LoginViewTest(TestCase):
-    def setUp(self):
-        # Create a test user
-        self.password = 'testpassword123'
-        self.user = User.objects.create_user(
-            email='testuser@example.com',
-            username='testuser',
-            first_name='Test',
-            last_name='User',
-            password=self.password
-        )
+    def test_dashboard_with_token(self):
+        token, _ = Token.objects.get_or_create(user=self.user)
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + token.key)
+        resp = self.client.get(self.dashboard_url)
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn('orders_count', resp.data)
 
-    def test_login_success(self):
-        # response = self.client.post(reverse('login'), {
-        #     'email': 'testuser@example.com',
-        #     'password': self.password
-        # })
+    def test_change_password_wrong_current(self):
+        token, _ = Token.objects.get_or_create(user=self.user)
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + token.key)
+        url = reverse('accounts_api:change_password')
+        resp = self.client.post(url, {
+            'current_password': 'bad',
+            'new_password': 'newstrong123',
+            'confirm_password': 'newstrong123'
+        }, format='json')
+        self.assertEqual(resp.status_code, 400)
 
-        self.assertEqual(self.user.email, "testuser@example.com")  
-        self.assertEqual(self.password,"testpassword123")  
-
-    def test_login_fail(self):
-    #     response = self.client.post(reverse('login'), {
-    #         'email': 'testuser@example.com',
-    #         'password': 'wrongpassword'
-    #     })
-
-        self.assertNotEqual(self.user.email, "gapm@gmail.com")  
-        self.assertNotEqual(self.password, "2050.com")  
-
-        
-
+    def test_change_password_success(self):
+        token, _ = Token.objects.get_or_create(user=self.user)
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + token.key)
+        url = reverse('accounts_api:change_password')
+        resp = self.client.post(url, {
+            'current_password': 'strongpassword123',
+            'new_password': 'newstrong123',
+            'confirm_password': 'newstrong123'
+        }, format='json')
+        self.assertEqual(resp.status_code, 200)
+        # verify login with new password
+        self.client.credentials()  # remove auth
+        resp2 = self.client.post(self.login_url, {'email': 'testuser@example.com', 'password': 'newstrong123'}, format='json')
+        self.assertEqual(resp2.status_code, 200)
