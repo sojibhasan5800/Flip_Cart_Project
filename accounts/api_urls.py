@@ -1,6 +1,6 @@
 # accounts/api/urls.py
 from django.urls import path
-from .views import (
+from .api_views import (
     RegistrationAPIView, LoginAPIView, LogoutAPIView, DashboardAPIView,
     EditProfileAPIView, ChangePasswordAPIView, MyOrdersAPIView, OrderDetailAPIView,
     ActivateAPIView, ForgotPasswordAPIView, ResetPasswordAPIView
