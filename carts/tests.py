@@ -4,7 +4,7 @@ from rest_framework.test import APIClient
 from django.urls import reverse
 from store.models import Product
 from accounts.models import Account
-from ..models import Cart, CartItem
+from .models import Cart, CartItem
 
 class CartAPITestCase(TestCase):
     def setUp(self):
