@@ -29,7 +29,7 @@ from rest_framework import viewsets,filters,pagination,mixins,generics
 from rest_framework.generics import ListAPIView
 from rest_framework.views import APIView
 from rest_framework.generics import CreateAPIView
-from .serializer import AccountSerializer,UserProfileSerializer,LoginSerializer
+from .serializers import AccountSerializer,UserProfileSerializer,LoginSerializer
 from rest_framework.response import Response
 from django.contrib.auth import authenticate
 from rest_framework import status
