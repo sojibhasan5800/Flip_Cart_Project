@@ -56,7 +56,7 @@ urlpatterns = [
     path('api/carts/', include('carts.api_urls', namespace='carts_api')),
     path('api/store/', include('store.api_urls', namespace='store_api')),
     path('api/orders/', include('orders.api_urls', namespace='orders_api')),
-    path('api/seller/', include('seller_dashboard.api.urls', namespace='seller_dashboard_api')),
+    path('api/seller/', include('seller_dashboard.api_urls', namespace='seller_dashboard_api')),
 
 
 
