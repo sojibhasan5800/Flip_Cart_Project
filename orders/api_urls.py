@@ -1,6 +1,6 @@
 # orders/api/urls.py
 from django.urls import path
-from .views import OrderListCreateAPIView, OrderDetailAPIView, PaymentSuccessAPIView
+from .api_views import OrderListCreateAPIView, OrderDetailAPIView, PaymentSuccessAPIView
 
 app_name = "orders_api"
 

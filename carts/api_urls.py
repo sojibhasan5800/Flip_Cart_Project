@@ -1,6 +1,6 @@
 # carts/api/urls.py
 from django.urls import path
-from .views import CartItemListAPIView, CartItemDetailAPIView
+from .api_views import CartItemListAPIView, CartItemDetailAPIView
 
 app_name = "carts_api"
 
