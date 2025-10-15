@@ -55,6 +55,7 @@ class RegistrationAPIView(generics.CreateAPIView):
             'domain': current_site,
             'uid': urlsafe_base64_encode(force_bytes(user.pk)),
             'token': default_token_generator.make_token(user),
+            'api':True,
         })
         to_email = user.email
         try:
