@@ -52,6 +52,9 @@ urlpatterns = [
     # api path ------------
 
     path('api/accounts/', include('accounts.api_urls', namespace='accounts_api')),
+    path('api/category/', include('category.api_urls', namespace='category_api')),
+    path('api/carts/', include('carts.api_urls', namespace='carts_api')),
+    path('api/store/', include('store.api.urls', namespace='store_api')),
 
 
 
