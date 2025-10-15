@@ -80,7 +80,7 @@ class AccountSerializer(serializers.ModelSerializer):
     Serializer for Account read operations (dashboard / profile responses).
     Avoids returning password and sensitive fields.
     """
-    userprofile = UserProfileSerializer(source='userprofile', read_only=True)
+    userprofile = UserProfileSerializer( read_only=True)
 
     class Meta:
         model = Account
