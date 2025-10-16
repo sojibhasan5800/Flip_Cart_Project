@@ -5,6 +5,7 @@ from .api_views import (
     EditProfileAPIView, ChangePasswordAPIView, MyOrdersAPIView, OrderDetailAPIView,
     ActivateAPIView, ForgotPasswordAPIView, ResetPasswordAPIView
 )
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 app_name = "accounts_api"
 
@@ -20,4 +21,6 @@ urlpatterns = [
     path('activate/<uidb64>/<token>/', ActivateAPIView.as_view(), name='activate'),
     path('forgot-password/', ForgotPasswordAPIView.as_view(), name='forgot_password'),
     path('reset-password/', ResetPasswordAPIView.as_view(), name='reset_password'),
+    path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),      # login JWT
+    path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),     # refresh JWT
 ]

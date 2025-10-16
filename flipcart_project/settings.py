@@ -6,6 +6,7 @@ Clean version for Localhost + Production
 from pathlib import Path
 import dj_database_url
 import cloudinary
+from datetime import timedelta
 from decouple import config
 
 # BASE_DIR
@@ -39,6 +40,7 @@ INSTALLED_APPS = [
     # Third-party
     'rest_framework',
     'rest_framework.authtoken',
+    'rest_framework_simplejwt.token_blacklist',
     'django_filters',
     'cloudinary_storage',
     'drf_yasg',
@@ -159,8 +161,21 @@ REST_FRAMEWORK = {
         'django_filters.rest_framework.DjangoFilterBackend',
     ],
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework.authentication.TokenAuthentication',
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
     ],
+}
+
+
+# -----------------------------
+# Simple JWT Config
+# -----------------------------
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15),  # short-lived access token
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),     # longer-lived refresh token
+    'ROTATE_REFRESH_TOKENS': True,
+    'BLACKLIST_AFTER_ROTATION': True,
+    'AUTH_HEADER_TYPES': ('Bearer',),               # Authorization: Bearer <token>
+    'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
 }
 
 # -----------------------------

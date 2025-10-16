@@ -4,6 +4,12 @@ from django.urls import reverse
 from rest_framework.test import APIClient
 from .models import Account, UserProfile
 from rest_framework.authtoken.models import Token
+from rest_framework_simplejwt.tokens import RefreshToken
+
+def get_jwt_for_user(user):
+    refresh = RefreshToken.for_user(user)
+    return str(refresh.access_token)
+
 
 class AccountsAPITestCase(TestCase):
     def setUp(self):
@@ -69,8 +75,8 @@ class AccountsAPITestCase(TestCase):
         self.assertIn('orders_count', resp.data)
 
     def test_change_password_wrong_current(self):
-        token, _ = Token.objects.get_or_create(user=self.user)
-        self.client.credentials(HTTP_AUTHORIZATION='Token ' + token.key)
+        access_token = get_jwt_for_user(self.user)
+        self.client.credentials(HTTP_AUTHORIZATION='Bearer ' + access_token)
         url = reverse('accounts_api:change_password')
         resp = self.client.post(url, {
             'current_password': 'bad',
@@ -80,8 +86,8 @@ class AccountsAPITestCase(TestCase):
         self.assertEqual(resp.status_code, 400)
 
     def test_change_password_success(self):
-        token, _ = Token.objects.get_or_create(user=self.user)
-        self.client.credentials(HTTP_AUTHORIZATION='Token ' + token.key)
+        access_token = get_jwt_for_user(self.user)
+        self.client.credentials(HTTP_AUTHORIZATION='Bearer ' + access_token)
         url = reverse('accounts_api:change_password')
         resp = self.client.post(url, {
             'current_password': 'strongpassword123',

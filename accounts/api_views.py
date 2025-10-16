@@ -12,6 +12,8 @@ from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import EmailMessage
 from rest_framework.decorators import api_view, permission_classes
 from drf_yasg.utils import swagger_auto_schema
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, OutstandingToken
 from drf_yasg import openapi
 
 from .models import Account, UserProfile
@@ -88,9 +90,15 @@ class LoginAPIView(APIView):
         serializer = LoginSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.validated_data['user']
-        token, _ = Token.objects.get_or_create(user=user)
-        return Response({"token": token.key, "user": AccountSerializer(user).data}, status=status.HTTP_200_OK)
 
+        # Generate JWT tokens
+        refresh = RefreshToken.for_user(user)
+        return Response({
+            "refresh": str(refresh),
+            "access": str(refresh.access_token),
+            "user": AccountSerializer(user).data
+        }, status=status.HTTP_200_OK)
+   
 
 # ---------------------------
 # Logout API
@@ -107,10 +115,11 @@ class LogoutAPIView(APIView):
     @swagger_auto_schema(operation_summary="Logout user")
     def post(self, request):
         try:
-            token = Token.objects.get(user=request.user)
-            token.delete()
-        except Token.DoesNotExist:
-            # Already logged out / token missing
+        # blacklist all refresh tokens for user
+            tokens = OutstandingToken.objects.filter(user=request.user)
+            for token in tokens:
+                BlacklistedToken.objects.get_or_create(token=token)
+        except Exception:
             pass
         return Response({"detail": "Logged out."}, status=status.HTTP_200_OK)
 
