@@ -49,6 +49,16 @@ class RegistrationAPIView(generics.CreateAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
+
+        # response data with message + user info
+        response_data = {
+        "detail": "User created. Check email for activation link.",
+        "id": user.id,
+        "email": user.email,
+        "first_name": user.first_name,
+        "last_name": user.last_name
+        }
+        
         # Activation email (use same template as earlier)
         current_site = get_current_site(request)
         mail_subject = 'Please activate your account'
@@ -65,7 +75,7 @@ class RegistrationAPIView(generics.CreateAPIView):
         except Exception:
             # Non-fatal: still return created but log/notify in production
             pass
-        return Response({"detail": "User created. Check email for activation link."}, status=status.HTTP_201_CREATED)
+        return Response(response_data, status=status.HTTP_201_CREATED)
 
 
 # ---------------------------
