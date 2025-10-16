@@ -37,10 +37,14 @@ class RegistrationSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         # username derived from email local-part (same as original view)
         email = validated_data['email']
-        username = email.split('@')[0]
+        base_username = email.split('@')[0]
+        username = base_username
 
         if Account.objects.filter(email=email).exists():
             raise serializers.ValidationError({"email": "This email is already registered. Please login or use another email."})
+        while Account.objects.filter(username=username).exists():
+            username = f"{base_username}{counter}"
+            counter += 1
 
         user = Account.objects.create_user(
             first_name=validated_data['first_name'],
