@@ -2,6 +2,9 @@
 from rest_framework import serializers
 from .models import Account, UserProfile
 from django.contrib.auth import authenticate
+from django.core.validators import validate_email
+from django.core.exceptions import ValidationError
+
 
 class RegistrationSerializer(serializers.ModelSerializer):
     """
@@ -22,6 +25,11 @@ class RegistrationSerializer(serializers.ModelSerializer):
         }
 
     def validate(self, data):
+        try:
+            validate_email(data['email'])
+        except ValidationError:
+            raise serializers.ValidationError({"email": "Enter a valid email address."})
+        
         if data['password'] != data.pop('confirm_password'):
             raise serializers.ValidationError({"password": "Passwords do not match."})
         return data
