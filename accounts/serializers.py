@@ -42,6 +42,7 @@ class RegistrationSerializer(serializers.ModelSerializer):
 
         if Account.objects.filter(email=email).exists():
             raise serializers.ValidationError({"email": "This email is already registered. Please login or use another email."})
+        counter = 1
         while Account.objects.filter(username=username).exists():
             username = f"{base_username}{counter}"
             counter += 1
@@ -70,6 +71,7 @@ class LoginSerializer(serializers.Serializer):
 
     def validate(self, data):
         user = authenticate(email=data['email'], password=data['password'])
+        print(user)
         if not user:
             raise serializers.ValidationError("Invalid credentials.")
         if not user.is_active:

@@ -44,6 +44,11 @@ class LoadCategoryAPIView(APIView):
 # ---------------------------
 # Category CRUD APIs
 # ---------------------------
+from rest_framework import permissions, generics
+from drf_yasg.utils import swagger_auto_schema
+from .models import Category
+from .serializers import CategorySerializer
+
 class CategoryListAPIView(generics.ListCreateAPIView):
     """
     GET: List all categories
@@ -51,7 +56,15 @@ class CategoryListAPIView(generics.ListCreateAPIView):
     """
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
-    permission_classes = [permissions.IsAdminUser]
+
+    def get_permissions(self):
+        if self.request.method == "POST":
+            # Only admin users can POST
+            permission_classes = [permissions.IsAdminUser]
+        else:
+            # Any authenticated user can GET
+            permission_classes = [permissions.IsAuthenticated]
+        return [permission() for permission in permission_classes]
 
     @swagger_auto_schema(operation_summary="List all categories")
     def get(self, request, *args, **kwargs):
@@ -60,6 +73,7 @@ class CategoryListAPIView(generics.ListCreateAPIView):
     @swagger_auto_schema(operation_summary="Create new category")
     def post(self, request, *args, **kwargs):
         return super().post(request, *args, **kwargs)
+
 
 
 class CategoryDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
