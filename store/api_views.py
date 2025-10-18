@@ -32,6 +32,14 @@ class ProductDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
             return [permissions.IsAdminUser()]
         # Any authenticated user can view
         return [permissions.IsAuthenticated()]
+    
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        self.perform_destroy(instance)
+        return Response(
+            {"message": "Product deleted successfully"},
+            status=status.HTTP_200_OK
+        )
 
 # ------------------ Review APIs ------------------
 class ReviewRatingListAPIView(generics.ListAPIView):
