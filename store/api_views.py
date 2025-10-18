@@ -14,12 +14,24 @@ import json
 class ProductListCreateAPIView(generics.ListCreateAPIView):
     queryset = Product.objects.all().order_by('-created_date')
     serializer_class = ProductSerializer
-    permission_classes = [permissions.IsAdminUser]
+
+    def get_permissions(self):
+        if self.request.method == 'POST':
+            # Only admin can create
+            return [permissions.IsAdminUser()]
+        # Any authenticated user can list
+        return [permissions.IsAuthenticated()]
 
 class ProductDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
-    permission_classes = [permissions.IsAdminUser]
+
+    def get_permissions(self):
+        if self.request.method in ['PUT', 'PATCH', 'DELETE']:
+            # Only admin can update/delete
+            return [permissions.IsAdminUser()]
+        # Any authenticated user can view
+        return [permissions.IsAuthenticated()]
 
 # ------------------ Review APIs ------------------
 class ReviewRatingListAPIView(generics.ListAPIView):
