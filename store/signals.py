@@ -25,7 +25,7 @@ def delete_gallery_image_cloudinary(sender, instance, **kwargs):
 
 
 # ----------------------------
-# Elasticsearch Update Handler
+# Elasticsearch Update/Delete Handler
 # ----------------------------
 @receiver(post_save, sender=Product)
 def update_product_elasticsearch(sender, instance, **kwargs):
@@ -33,3 +33,10 @@ def update_product_elasticsearch(sender, instance, **kwargs):
         ProductDocument().update(instance)
     except Exception as e:
         logging.warning(f"Elasticsearch update skipped: {e}")
+
+@receiver(post_delete, sender=Product)
+def delete_product_elasticsearch(sender, instance, **kwargs):
+    try:
+        ProductDocument().update(instance, action="delete")
+    except Exception as e:
+        logging.warning(f"Elasticsearch delete skipped: {e}")
