@@ -322,33 +322,40 @@ RABBITMQ_SELLER_ROUTING_KEY = 'seller.event'
 # Elasticsearch configuration
 # ----------------------------
 
-DEBUG_Elasticsearch = True
-if DEBUG_Elasticsearch:
-    ELASTICSEARCH_HOST = {
-        'default': {
-            'hosts': 'http://127.0.0.1:9200',
-            'verify_certs': False,
-        },
-    }
+ELASTICSEARCH_OFFLINE = True 
+ELASTICSEARCH_DEPLOY = False
 
-    ELASTICSEARCH_DSL = {
-        'default': {
-            'hosts': 'http://127.0.0.1:9200',
-            'verify_certs': False,
-        },
-    }
+if ELASTICSEARCH_OFFLINE:
+    ELASTICSEARCH_DSL = {}
+    
 else:
-    ELASTICSEARCH_HOST = {
-        'default': {
-            'hosts': 'http://elasticsearch:9200',
-            'verify_certs': False,
-        },
-    }
+    if ELASTICSEARCH_DEPLOY:
 
-    ELASTICSEARCH_DSL = {
-        'default': {
-            'hosts': 'http://elasticsearch:9200',
-            'verify_certs': False,
-        },
-    }
+        ELASTICSEARCH_HOST = {
+            'default': {
+                'hosts': 'http://127.0.0.1:9200',
+                'verify_certs': False,
+            },
+        }
+
+        ELASTICSEARCH_DSL = {
+            'default': {
+                'hosts': 'http://127.0.0.1:9200',
+                'verify_certs': False,
+            },
+        }
+    else:
+        ELASTICSEARCH_HOST = {
+            'default': {
+                'hosts': 'http://elasticsearch:9200',
+                'verify_certs': False,
+            },
+        }
+
+        ELASTICSEARCH_DSL = {
+            'default': {
+                'hosts': 'http://elasticsearch:9200',
+                'verify_certs': False,
+            },
+        }
 
