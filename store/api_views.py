@@ -105,6 +105,8 @@ class VariationDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
             return [permissions.IsAdminUser()]
         return [permissions.IsAuthenticated()]
     
+    
+    
 # ------------------ Product Search API ------------------
 from .documents import ProductDocument
 from rest_framework import filters
