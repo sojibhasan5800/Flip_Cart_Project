@@ -89,13 +89,22 @@ class ProductGalleryDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
 class VariationListCreateAPIView(generics.ListCreateAPIView):
     queryset = Variation.objects.all()
     serializer_class = VariationSerializer
-    permission_classes = [permissions.IsAdminUser]
+
+    def get_permissions(self):
+        if self.request.method == 'POST':
+            return [permissions.IsAdminUser()]
+        return [permissions.IsAuthenticated()]
+    
 
 class VariationDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Variation.objects.all()
     serializer_class = VariationSerializer
-    permission_classes = [permissions.IsAdminUser]
 
+    def get_permissions(self):
+        if self.request.method in ['PUT', 'PATCH', 'DELETE']:
+            return [permissions.IsAdminUser()]
+        return [permissions.IsAuthenticated()]
+    
 # ------------------ Product Search API ------------------
 from .documents import ProductDocument
 from rest_framework import filters
