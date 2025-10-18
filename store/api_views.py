@@ -66,12 +66,24 @@ class ReviewRatingCreateAPIView(generics.CreateAPIView):
 class ProductGalleryListCreateAPIView(generics.ListCreateAPIView):
     queryset = ProductGallery.objects.all()
     serializer_class = ProductGallerySerializer
-    permission_classes = [permissions.IsAdminUser]
+
+    def get_permissions(self):
+        if self.request.method == 'POST':
+            # Only admin can create
+            return [permissions.IsAdminUser()]
+        # Any authenticated user can list
+        return [permissions.IsAuthenticated()]
 
 class ProductGalleryDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
     queryset = ProductGallery.objects.all()
     serializer_class = ProductGallerySerializer
-    permission_classes = [permissions.IsAdminUser]
+
+    def get_permissions(self):
+        if self.request.method in ['PUT', 'PATCH', 'DELETE']:
+            # Only admin can update or delete
+            return [permissions.IsAdminUser()]
+        # Any authenticated user can retrieve
+        return [permissions.IsAuthenticated()]
 
 # ------------------ Variation APIs ------------------
 class VariationListCreateAPIView(generics.ListCreateAPIView):
