@@ -1,7 +1,9 @@
-from django.db.models.signals import post_delete
+from django.db.models.signals import post_delete,post_save
 from django.dispatch import receiver
 from .models import Product, ProductGallery
 import cloudinary.uploader
+from .documents import ProductDocument
+import logging
 
 
 @receiver(post_delete, sender=Product)
@@ -20,3 +22,14 @@ def delete_gallery_image_cloudinary(sender, instance, **kwargs):
             cloudinary.uploader.destroy(instance.image.public_id)
         except:
             pass
+
+
+# ----------------------------
+# Elasticsearch Update Handler
+# ----------------------------
+@receiver(post_save, sender=Product)
+def update_product_elasticsearch(sender, instance, **kwargs):
+    try:
+        ProductDocument().update(instance)
+    except Exception as e:
+        logging.warning(f"Elasticsearch update skipped: {e}")
