@@ -21,8 +21,3 @@ class CartItemSerializer(serializers.ModelSerializer):
 
     def get_sub_total(self, obj):
         return obj.sub_total()
-    
-    def get_cart_id(self, obj):
-        if obj.cart:
-            return obj.cart.cart_id
-        return None
