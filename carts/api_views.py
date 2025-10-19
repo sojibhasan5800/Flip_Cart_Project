@@ -22,7 +22,7 @@ class CartItemListAPIView(APIView):
     GET: List all cart items for user/session
     POST: Add product to cart
     """
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     @swagger_auto_schema(operation_summary="List all cart items")
     def get(self, request):
@@ -60,7 +60,7 @@ class CartItemDetailAPIView(APIView):
     PUT: Update cart item quantity
     DELETE: Remove cart item
     """
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     @swagger_auto_schema(operation_summary="Update cart item quantity")
     def put(self, request, pk):

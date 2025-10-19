@@ -52,21 +52,19 @@ class TestCartItemAPI:
     endpoint = reverse("carts_api:cart_items")
 
     def test_get_cart_items_anonymous_user(self, api_client, product):
-        """Anonymous user can view cart items via session-based cart"""
+        """Anonymous users now cannot access cart items (403)"""
         cart = Cart.objects.create(cart_id="anon_123")
         CartItem.objects.create(product=product, cart=cart, quantity=2)
         response = api_client.get(self.endpoint)
-        assert response.status_code == status.HTTP_200_OK
-        assert len(response.data) >= 0  # Empty or list of items
+        assert response.status_code == status.HTTP_403_FORBIDDEN
 
-    def test_add_product_to_cart_anonymous(self, api_client, product):
-        """Anonymous user can add product to cart"""
+    def test_get_cart_items_anonymous_user_forbidden(self, api_client, product):
+        """Anonymous users now cannot add product to cart (403)"""
         payload = {"product_id": product.id, "quantity": 3}
         response = api_client.post(self.endpoint, payload, format="json")
-        assert response.status_code == status.HTTP_201_CREATED
-        assert response.data["product"]["product_name"] == "Test Product"
+        assert response.status_code == status.HTTP_403_FORBIDDEN
 
-    def test_add_product_to_cart_authenticated(self, api_client, user, product):
+    def test_add_product_to_cart_anonymous_forbidden(self, api_client, product):
         """Authenticated user can add a product to their cart"""
         api_client.force_authenticate(user=user)
         payload = {"product_id": product.id, "quantity": 1}
