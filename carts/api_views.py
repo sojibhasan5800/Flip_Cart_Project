@@ -18,18 +18,25 @@ def _cart_id(request):
     return cart_id
 
 
+def _user_cart_id(user):
+    """Generate unique cart_id for logged-in user"""
+    return f"user_{user.id}"
+
 class CartItemListAPIView(APIView):
     permission_classes = [permissions.AllowAny]
 
     @swagger_auto_schema(operation_summary="List all cart items")
     def get(self, request):
         if request.user.is_authenticated:
-            # Ensure user has a cart
-            cart, _ = Cart.objects.get_or_create(user=request.user)
+            # Logged-in user cart
+            cart_id = _user_cart_id(request.user)
+            cart, _ = Cart.objects.get_or_create(cart_id=cart_id)
             cart_items = CartItem.objects.filter(cart=cart, is_active=True)
         else:
+            # Guest user cart
             cart, _ = Cart.objects.get_or_create(cart_id=_cart_id(request))
             cart_items = CartItem.objects.filter(cart=cart, is_active=True)
+
         serializer = CartItemSerializer(cart_items, many=True)
         return Response(serializer.data)
 
@@ -40,13 +47,37 @@ class CartItemListAPIView(APIView):
         product = get_object_or_404(Product, id=product_id)
 
         if request.user.is_authenticated:
-            cart, _ = Cart.objects.get_or_create(user=request.user)
+            # Logged-in user
+            cart_id = _user_cart_id(request.user)
+            cart, _ = Cart.objects.get_or_create(cart_id=cart_id)
+
+            # Merge guest cart if exists
+            session_cart_id = _cart_id(request)
+            try:
+                session_cart = Cart.objects.get(cart_id=session_cart_id)
+                guest_items = CartItem.objects.filter(cart=session_cart, is_active=True)
+                for item in guest_items:
+                    user_item, created = CartItem.objects.get_or_create(
+                        product=item.product,
+                        cart=cart,
+                        defaults={"user": request.user, "quantity": item.quantity}
+                    )
+                    if not created:
+                        user_item.quantity += item.quantity
+                        user_item.save()
+                    item.delete()
+                session_cart.delete()
+            except Cart.DoesNotExist:
+                pass
+
+            # Add product to user cart
             cart_item, created = CartItem.objects.get_or_create(
                 product=product,
                 cart=cart,
                 defaults={"user": request.user, "quantity": quantity}
             )
         else:
+            # Guest user
             cart, _ = Cart.objects.get_or_create(cart_id=_cart_id(request))
             cart_item, created = CartItem.objects.get_or_create(
                 product=product,
@@ -60,6 +91,7 @@ class CartItemListAPIView(APIView):
 
         serializer = CartItemSerializer(cart_item)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
 
 
 class CartItemDetailAPIView(APIView):
