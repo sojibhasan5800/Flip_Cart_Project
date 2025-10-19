@@ -25,21 +25,6 @@ def _user_cart_id(user):
 class CartItemListAPIView(APIView):
     permission_classes = [permissions.AllowAny]
 
-    @swagger_auto_schema(operation_summary="List all cart items")
-    def get(self, request):
-        if request.user.is_authenticated:
-            # Logged-in user cart
-            cart_id = _user_cart_id(request.user)
-            cart, _ = Cart.objects.get_or_create(cart_id=cart_id)
-            cart_items = CartItem.objects.filter(cart=cart, is_active=True)
-        else:
-            # Guest user cart
-            cart, _ = Cart.objects.get_or_create(cart_id=_cart_id(request))
-            cart_items = CartItem.objects.filter(cart=cart, is_active=True)
-
-        serializer = CartItemSerializer(cart_items, many=True)
-        return Response(serializer.data)
-
     @swagger_auto_schema(operation_summary="Add product to cart")
     def post(self, request):
         product_id = request.data.get("product_id")
@@ -97,11 +82,43 @@ class CartItemListAPIView(APIView):
 class CartItemDetailAPIView(APIView):
     permission_classes = [permissions.AllowAny]
 
-    @swagger_auto_schema(operation_summary="Retrieve cart item details")
-    def get(self, request, pk):
-        cart_item = get_object_or_404(CartItem, id=pk)
-        serializer = CartItemSerializer(cart_item)
-        return Response(serializer.data)
+
+    @swagger_auto_schema(operation_summary="Retrieve cart items by cart PK (handles both guest and authenticated users safely)")
+    def get(self, request, pk=None):
+        try:
+            # Case 1: Authenticated user – use user's cart directly
+            if request.user.is_authenticated:
+                cart = Cart.objects.filter(user=request.user, pk=pk).first()
+            else:
+                # Case 2: Guest user – verify session cart_id
+                session_cart_id = _cart_id(request)
+                cart = Cart.objects.filter(cart_id=session_cart_id, pk=pk).first()
+
+            # No cart found
+            if not cart:
+                return Response(
+                    {"detail": "Cart not found."},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+            # Fetch active cart items
+            cart_items = CartItem.objects.filter(cart=cart, is_active=True)
+
+            if not cart_items.exists():
+                return Response(
+                    {"detail": "Cart is empty."},
+                    status=status.HTTP_204_NO_CONTENT
+                )
+
+            serializer = CartItemSerializer(cart_items, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response(
+                {"detail": str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
 
     @swagger_auto_schema(operation_summary="Update cart item quantity")
     def put(self, request, pk):
