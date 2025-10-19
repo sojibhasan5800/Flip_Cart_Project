@@ -37,22 +37,32 @@ class CartItemListAPIView(APIView):
     @swagger_auto_schema(operation_summary="Add product to cart")
     def post(self, request):
         product_id = request.data.get('product_id')
-        quantity = request.data.get('quantity', 1)
+        quantity = int(request.data.get('quantity', 1))  # default to 1 if not provided
         product = get_object_or_404(Product, id=product_id)
 
         # handle authenticated user
         if request.user.is_authenticated:
-            cart_item, created = CartItem.objects.get_or_create(product=product, user=request.user)
+            cart_item, created = CartItem.objects.get_or_create(
+                product=product,
+                user=request.user,
+                defaults={"quantity": quantity}  # <-- Pass quantity here
+            )
         else:
             cart, _ = Cart.objects.get_or_create(cart_id=_cart_id(request))
-            cart_item, created = CartItem.objects.get_or_create(product=product, cart=cart)
+            cart_item, created = CartItem.objects.get_or_create(
+                product=product,
+                cart=cart,
+                defaults={"quantity": quantity}  # <-- Pass quantity here
+            )
 
+        # If CartItem already exists, increment quantity
         if not created:
-            cart_item.quantity += int(quantity)
+            cart_item.quantity += quantity
             cart_item.save()
 
         serializer = CartItemSerializer(cart_item)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
 
 
 class CartItemDetailAPIView(APIView):
@@ -61,6 +71,12 @@ class CartItemDetailAPIView(APIView):
     DELETE: Remove cart item
     """
     permission_classes = [permissions.IsAuthenticated]
+
+    @swagger_auto_schema(operation_summary="Retrieve cart item details")
+    def get(self, request, pk):
+        cart_item = get_object_or_404(CartItem, id=pk)
+        serializer = CartItemSerializer(cart_item)
+        return Response(serializer.data)
 
     @swagger_auto_schema(operation_summary="Update cart item quantity")
     def put(self, request, pk):
