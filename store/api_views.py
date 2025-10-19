@@ -8,6 +8,7 @@ from .serializers import ProductSerializer, ReviewRatingSerializer, ProductGalle
 from django_redis import get_redis_connection
 from django.db.models import F, Value, CharField
 from django.db.models.functions import Concat
+from django.conf import settings
 import json
 
 # ------------------ Product APIs ------------------
@@ -118,21 +119,70 @@ class VariationDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
 # ------------------ Product Search API ------------------
 from .documents import ProductDocument
 from rest_framework import filters
+ELASTICSEARCH_AVAILABLE = False
+
 
 class ProductSearchAPIView(APIView):
+    """
+    Search products using Elasticsearch if available,
+    otherwise fallback to normal Django ORM search.
+    """
+
     def get(self, request):
         query = request.GET.get('search')
         if not query:
-            return Response({'status': False, 'message': 'Search query is required', 'data': []})
-        
-        results = ProductDocument.search().query(
-            'multi_match',
-            query=query,
-            fields=['product_name', 'description'],
-            fuzziness="AUTO",
-            operator="OR",
-            type='best_fields'
-        ).extra(size=10).execute()
+            return Response({
+                'status': False,
+                'message': 'Search query is required',
+                'data': []
+            }, status=status.HTTP_400_BAD_REQUEST)
 
-        products = [{'id': r.id, 'product_name': r.product_name, 'description': getattr(r, 'description',''), 'price': getattr(r,'price',0)} for r in results]
-        return Response({'status': True, 'message': 'Products fetched', 'data': products})
+        # 🔹 Offline Mode / Elasticsearch unavailable
+        if getattr(settings, 'ELASTICSEARCH_OFFLINE', False):
+            products = Product.objects.filter(product_name__icontains=query)
+            serializer = ProductSerializer(products, many=True)
+            return Response({
+                'status': True,
+                'mode': 'ORM_FALLBACK',
+                'message': 'Products fetched via Django ORM',
+                'data': serializer.data
+            }, status=status.HTTP_200_OK)
+
+        # 🔹 Try Elasticsearch search
+        try:
+            results = ProductDocument.search().query(
+                'multi_match',
+                query=query,
+                fields=['product_name', 'description'],
+                fuzziness="AUTO",
+                operator="OR",
+                type='best_fields'
+            ).extra(size=10).execute()
+
+            products = [
+                {
+                    'id': r.id,
+                    'product_name': r.product_name,
+                    'description': getattr(r, 'description', ''),
+                    'price': getattr(r, 'price', 0)
+                }
+                for r in results
+            ]
+
+            return Response({
+                'status': True,
+                'mode': 'ELASTICSEARCH',
+                'message': 'Products fetched successfully',
+                'data': products
+            }, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            # Elasticsearch error হলে fallback ORM search
+            products = Product.objects.filter(product_name__icontains=query)
+            serializer = ProductSerializer(products, many=True)
+            return Response({
+                'status': True,
+                'mode': 'FALLBACK_ON_ERROR',
+                'message': f'Elasticsearch error: {str(e)}',
+                'data': serializer.data
+            }, status=status.HTTP_200_OK)
