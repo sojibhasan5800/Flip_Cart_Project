@@ -14,10 +14,14 @@ class CartItemSerializer(serializers.ModelSerializer):
     variations = VariationSerializer(many=True, read_only=True)
     user = AccountSerializer(read_only=True)
     sub_total = serializers.SerializerMethodField()
+    cart_id = serializers.SerializerMethodField() 
 
     class Meta:
         model = CartItem
-        fields = ['id', 'user', 'product', 'variations', 'cart', 'quantity', 'is_active', 'sub_total']
+        fields = ['id', 'user', 'product', 'variations', 'cart_id', 'quantity', 'is_active', 'sub_total']
 
     def get_sub_total(self, obj):
         return obj.sub_total()
+    
+    def get_cart_id(self, obj):
+        return obj.cart.cart_id if obj.cart else None

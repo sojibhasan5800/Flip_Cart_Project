@@ -7,6 +7,7 @@ from .models import Cart, CartItem
 from store.models import Product, Variation
 from .serializers import CartItemSerializer
 from drf_yasg.utils import swagger_auto_schema
+import uuid
 
 
 def _cart_id(request):
@@ -20,7 +21,7 @@ def _cart_id(request):
 
 def _user_cart_id(user):
     """Generate unique cart_id for logged-in user"""
-    return f"user_{user.id}"
+    return f"{user.id}_{uuid.uuid4().hex[:8]}" 
 
 class CartItemListAPIView(APIView):
     permission_classes = [permissions.AllowAny]
@@ -30,6 +31,11 @@ class CartItemListAPIView(APIView):
     
     def get(self, request):
         try:
+            total = 0
+            quantity = 0
+            discount = 0
+            grand_total = 0
+
             #  Step 1: Get cart id from query param
             pk = request.query_params.get('id', None)
 
@@ -62,9 +68,24 @@ class CartItemListAPIView(APIView):
                     {"detail": "Cart is empty."},
                     status=status.HTTP_204_NO_CONTENT
                 )
+            
+            # Calculate total, quantity, discount, grand_total
+            for item in cart_items:
+                total += item.product.price * item.quantity
+                quantity += item.quantity
+            discount = (5 * total) / 100
+            grand_total = total - discount
 
             serializer = CartItemSerializer(cart_items, many=True)
-            return Response(serializer.data, status=status.HTTP_200_OK)
+              # Include totals in response
+            response_data = {
+                "cart_items": serializer.data,
+                "total": total,
+                "quantity": quantity,
+                "discount": discount,
+                "grand_total": grand_total,
+            }
+            return Response(response_data, status=status.HTTP_200_OK)
 
         except Exception as e:
             return Response(
