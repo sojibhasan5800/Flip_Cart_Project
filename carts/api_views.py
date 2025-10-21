@@ -47,7 +47,7 @@ class CartItemListAPIView(APIView):
 
             # Case 1: Authenticated user – use user's cart directly
             if request.user.is_authenticated:
-                cart = Cart.objects.filter(pk=pk).first()
+                cart = Cart.objects.filter(cart_id=pk).first()
             else:
                 # Case 2: Guest user – verify session cart_id
                 session_cart_id = _cart_id(request)
@@ -145,7 +145,31 @@ class CartItemListAPIView(APIView):
             cart_item.save()
 
         serializer = CartItemSerializer(cart_item)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+        total = 0
+        quantity = 0
+        discount = 0
+        grand_total = 0
+
+        # Fetch active cart items
+        cart_items = CartItem.objects.filter(cart=cart, is_active=True)
+
+        for item in cart_items:
+            total += item.product.price * item.quantity
+            quantity += item.quantity
+        discount = (5 * total) / 100
+        grand_total = total - discount
+
+        # Include totals in response
+        response_data = {
+            "cart_items": serializer.data,
+            "total": total,
+            "quantity": quantity,
+            "discount": discount,
+            "grand_total": grand_total,
+        }
+
+        return Response(response_data, status=status.HTTP_201_CREATED)
 
 
 
@@ -169,3 +193,63 @@ class CartItemDetailAPIView(APIView):
         cart_item = get_object_or_404(CartItem, id=pk)
         cart_item.delete()
         return Response({"detail": "Cart item deleted"}, status=status.HTTP_204_NO_CONTENT)
+
+
+class CheckoutAPIView(APIView):
+    # Allow both authenticated and guest users to access checkout
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+
+    @swagger_auto_schema(operation_summary="Retrieve checkout summary (calculate total, discount, grand total using cart ID)")
+    def get(self, request):
+        try:
+            total = 0
+            quantity = 0
+            discount = 0
+            grand_total = 0
+            cart_items = None
+
+            # Step 1: Get cart_id from query parameters
+            cart_id = request.query_params.get('cart_id', None)
+
+            if request.user.is_authenticated:
+                # Case 1: Logged-in user – get items linked to the authenticated user
+                cart_items = CartItem.objects.filter(user=request.user, is_active=True)
+            else:
+                # Case 2: Guest user – use cart_id from session or query param
+                if not cart_id:
+                    return Response(
+                        {"detail": "Please provide ?cart_id=<id> in query params."},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                cart = Cart.objects.filter(cart_id=cart_id).first()
+                if not cart:
+                    return Response({"detail": "Cart not found."}, status=status.HTTP_404_NOT_FOUND)
+                cart_items = CartItem.objects.filter(cart=cart, is_active=True)
+
+            # Step 2: Handle empty cart
+            if not cart_items.exists():
+                return Response({"detail": "Cart is empty."}, status=status.HTTP_204_NO_CONTENT)
+
+            # Step 3: Calculate totals
+            for item in cart_items:
+                total += item.product.price * item.quantity
+                quantity += item.quantity
+
+            # 5% discount example
+            discount = (5 * total) / 100
+            grand_total = total - discount
+
+            # Step 4: Serialize and return checkout data
+            serializer = CartItemSerializer(cart_items, many=True)
+            response_data = {
+                "cart_items": serializer.data,
+                "total": total,
+                "quantity": quantity,
+                "discount": discount,
+                "grand_total": grand_total,
+            }
+
+            return Response(response_data, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)

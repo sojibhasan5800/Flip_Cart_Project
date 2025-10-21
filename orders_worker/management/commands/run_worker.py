@@ -45,7 +45,7 @@ class Command(BaseCommand):
                         event_type = payload.get("event_type")
 
                         if event_type == "order.created":
-                            print("webscok")
+                            # print("webscok")
                             self.process_order(payload)
                         elif event_type == "product.review":
                             self.process_review(payload)
@@ -110,7 +110,9 @@ class Command(BaseCommand):
                 # Stock update
                 p = Product.objects.select_for_update().get(id=item.product.id)
                 if p.stock < item.quantity:
-                    raise Exception(f"Not enough stock for product {p.id}")
+                    raise Exception( f" Not enough stock for product '{p.product_name}'. "                  
+                                f"Only {p.stock} item(s) available."
+                                )
                 p.stock -= item.quantity
                 p.save()
             cart_items.delete()
@@ -127,7 +129,7 @@ class Command(BaseCommand):
     # -------- Email --------
     def send_order_email(self, order):
         try:
-            subject = 'Your Order is Confirmed ✅'
+            subject = 'Your Order is Confirmed '
             message = render_to_string('orders/order_recieved_email.html', {'user': order.user, 'order': order})
             email = EmailMessage(subject, message, to=[order.user.email])
             email.content_subtype = "html"
