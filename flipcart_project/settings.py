@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     'django_celery_beat', 
     'django_elasticsearch_dsl',
     'django_elasticsearch_dsl_drf',
+    'corsheaders',
 
 
     # Local apps
@@ -66,6 +67,7 @@ INSTALLED_APPS = [
 # Middleware
 # -----------------------------
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     "whitenoise.middleware.WhiteNoiseMiddleware",
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -243,6 +245,8 @@ STRIPE_ENDPOINT_SECRET = config('STRIPE_ENDPOINT_SECRET')
 # -----------------------------
 NGROK_URL = 'https://dino-staminal-kamila.ngrok-free.dev'
 CSRF_TRUSTED_ORIGINS = ['https://dino-staminal-kamila.ngrok-free.dev']
+
+
 # NGROK_URL = None
 # CSRF_TRUSTED_ORIGINS = ['*']
 
@@ -254,6 +258,11 @@ else:
         BASE_URL = "http://127.0.0.1:8000/"
     else:
         BASE_URL= "https://flip-cart-project-1.onrender.com"
+
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",  # React frontend
+]
+
 
 # CSRF_TRUSTED_ORIGINS.append(BASE_URL)
 # -----------------------------
