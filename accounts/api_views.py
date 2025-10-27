@@ -50,6 +50,10 @@ class RegistrationAPIView(generics.CreateAPIView):
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
 
+        # Generate REAL UID and Token
+        uid = urlsafe_base64_encode(force_bytes(user.pk))
+        token = default_token_generator.make_token(user)
+
         # Check custom header for API test
         is_api_test = request.headers.get('X-API-Test') == 'true'
 
@@ -61,6 +65,7 @@ class RegistrationAPIView(generics.CreateAPIView):
         "first_name": user.first_name,
         "last_name": user.last_name
         }
+
 
         # If API test header present, include real UID/token
         if is_api_test:
@@ -77,8 +82,8 @@ class RegistrationAPIView(generics.CreateAPIView):
         message = render_to_string('accounts/account_verification_email.html', {
             'user': user,
             'domain': current_site,
-            'uid': urlsafe_base64_encode(force_bytes(user.pk)),
-            'token': default_token_generator.make_token(user),
+            'uid': uid,
+            'token': token,
             'api':True,
         })
         to_email = user.email
