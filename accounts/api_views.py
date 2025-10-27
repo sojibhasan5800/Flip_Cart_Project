@@ -50,6 +50,9 @@ class RegistrationAPIView(generics.CreateAPIView):
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
 
+        # Check custom header for API test
+        is_api_test = request.headers.get('X-API-Test') == 'true'
+
         # response data with message + user info
         response_data = {
         "detail": "User created. Check email for activation link.",
@@ -58,6 +61,15 @@ class RegistrationAPIView(generics.CreateAPIView):
         "first_name": user.first_name,
         "last_name": user.last_name
         }
+
+        # If API test header present, include real UID/token
+        if is_api_test:
+            response_data.update({
+                "activation_uid": uid,
+                "activation_token": token,
+                "activation_url": f"/api/accounts/activate/{uid}/{token}/"
+            })
+        
         
         # Activation email (use same template as earlier)
         current_site = get_current_site(request)
