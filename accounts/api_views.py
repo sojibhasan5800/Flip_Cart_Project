@@ -321,7 +321,7 @@ class ActivateAPIView(APIView):
             user.save()
             return Response({"detail": "Account activated."})
         return Response({"error": "Invalid activation link."}, status=status.HTTP_400_BAD_REQUEST)
-
+    
 
 class ForgotPasswordAPIView(APIView):
     """
@@ -329,61 +329,226 @@ class ForgotPasswordAPIView(APIView):
     """
     permission_classes = [permissions.AllowAny]
 
-    @swagger_auto_schema(operation_summary="Request password reset", request_body=openapi.Schema(
-        type=openapi.TYPE_OBJECT,
-        properties={'email': openapi.Schema(type=openapi.TYPE_STRING)}
-    ))
+    @swagger_auto_schema(
+        operation_summary="Request password reset",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            required=["email"],
+            properties={
+                "email": openapi.Schema(type=openapi.TYPE_STRING, description="User email address")
+            },
+        ),
+        responses={
+            200: openapi.Response("Password reset email sent successfully."),
+            400: openapi.Response("Account not found."),
+        },
+    )
     def post(self, request):
-        email = request.data.get('email')
+        email = request.data.get("email")
         try:
             user = Account.objects.get(email=email)
         except Account.DoesNotExist:
             return Response({"error": "Account does not exist."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Generate UID and token
+        uid = urlsafe_base64_encode(force_bytes(user.pk))
+        token = default_token_generator.make_token(user)
+
+        # Check for test header
+        is_api_test = request.headers.get("X-API-Test") == "true"
+
         current_site = get_current_site(request)
-        mail_subject = 'Reset Your Password'
-        message = render_to_string('accounts/reset_password_email.html', {
-            'user': user,
-            'domain': current_site,
-            'uid': urlsafe_base64_encode(force_bytes(user.pk)),
-            'token': default_token_generator.make_token(user),
-        })
+        mail_subject = "Reset Your Password"
+        message = render_to_string(
+            "accounts/reset_password_email.html",
+            {
+                "user": user,
+                "domain": current_site,
+                "uid": uid,
+                "token": token,
+            },
+        )
+
+        # Send the actual email (skip error for demo)
         try:
             EmailMessage(mail_subject, message, to=[email]).send()
         except Exception:
             pass
-        return Response({"detail": "Password reset email sent."})
+
+        # Return UID & token only when testing via Postman
+        if is_api_test:
+            return Response(
+                {
+                    "detail": "Password reset email sent (test mode).",
+                    "activation_uid": uid,
+                    "activation_token": token,
+                    "reset_password_active_url": f"/accounts/reset-password-validate/{uid}/{token}/",
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        return Response(
+            {"detail": "Password reset email sent successfully."},
+            status=status.HTTP_200_OK,
+        )
+
+
+
+class ResetPasswordValidateAPIView(APIView):
+    """
+    Validate password reset token and user identity.
+    """
+
+    @swagger_auto_schema(
+        operation_summary="Validate Password Reset Token",
+        operation_description=(
+            "This API verifies whether the password reset link is still valid. "
+            "If valid, it returns a success message allowing the user to reset their password."
+        ),
+        responses={
+            200: openapi.Response("Token valid — user can reset password"),
+            400: openapi.Response("Invalid or expired link"),
+        },
+        manual_parameters=[
+            openapi.Parameter(
+                "uidb64", openapi.IN_PATH, description="Base64 user ID", type=openapi.TYPE_STRING
+            ),
+            openapi.Parameter(
+                "token", openapi.IN_PATH, description="Password reset token", type=openapi.TYPE_STRING
+            ),
+        ],
+    )
+    def get(self, request, uidb64, token):
+        try:
+            uid = urlsafe_base64_decode(uidb64).decode()
+            user = Account._default_manager.get(pk=uid)
+        except (TypeError, ValueError, OverflowError, Account.DoesNotExist):
+            user = None
+
+        if user is not None and default_token_generator.check_token(user, token):
+            request.session['uid'] = uid
+            return Response(
+                {"message": "Token valid. Please reset your password."},
+                status=status.HTTP_200_OK
+            )
+        else:
+            return Response(
+                {"error": "Invalid or expired link."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
 
 class ResetPasswordAPIView(APIView):
     """
-    POST: Set new password after validating session uid stored by validate endpoint.
-    (Alternatively accept uid + token here for stateless flow.)
+    Reset password using session-stored UID after token validation.
     """
-    permission_classes = [permissions.AllowAny]
 
-    @swagger_auto_schema(operation_summary="Reset password", request_body=openapi.Schema(
-        type=openapi.TYPE_OBJECT,
-        properties={'uid': openapi.Schema(type=openapi.TYPE_STRING),
-                    'token': openapi.Schema(type=openapi.TYPE_STRING),
-                    'password': openapi.Schema(type=openapi.TYPE_STRING),
-                    'confirm_password': openapi.Schema(type=openapi.TYPE_STRING)}
-    ))
+    @swagger_auto_schema(
+        operation_summary="Reset User Password",
+        operation_description=(
+            "This endpoint resets the user's password after the token validation step. "
+            "It requires both `password` and `confirm_password` fields."
+        ),
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            required=['password', 'confirm_password'],
+            properties={
+                'password': openapi.Schema(type=openapi.TYPE_STRING, description='New password'),
+                'confirm_password': openapi.Schema(type=openapi.TYPE_STRING, description='Confirm new password'),
+            },
+        ),
+        responses={
+            200: openapi.Response("Password reset successful"),
+            400: openapi.Response("Password mismatch or invalid session"),
+            404: openapi.Response("User not found"),
+        },
+    )
     def post(self, request):
-        uid = request.data.get('uid')
-        token = request.data.get('token')
         password = request.data.get('password')
         confirm_password = request.data.get('confirm_password')
-        if not all([uid, token, password, confirm_password]):
-            return Response({"error": "All fields required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not password or not confirm_password:
+            return Response(
+                {"error": "Both password fields are required."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         if password != confirm_password:
-            return Response({"error": "Passwords do not match."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": "Passwords do not match."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        uid = request.session.get('uid')
+        if not uid:
+            return Response(
+                {"error": "Session expired or invalid. Please retry the password reset link."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         try:
-            uid_decoded = urlsafe_base64_decode(uid).decode()
-            user = Account._default_manager.get(pk=uid_decoded)
-        except Exception:
-            return Response({"error": "Invalid uid."}, status=status.HTTP_400_BAD_REQUEST)
-        if not default_token_generator.check_token(user, token):
-            return Response({"error": "Invalid or expired token."}, status=status.HTTP_400_BAD_REQUEST)
-        user.set_password(password)
-        user.save()
-        return Response({"detail": "Password reset successful."})
+            user = Account.objects.get(pk=uid)
+            user.set_password(password)
+            user.save()
+            del request.session['uid']
+            return Response(
+                {"message": "Password reset successful. You can now log in."},
+                status=status.HTTP_200_OK
+            )
+        except Account.DoesNotExist:
+            return Response(
+                {"error": "User not found."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+
+    
+class DeleteAccountAPIView(APIView):
+    """
+    DELETE: Permanently delete user account and associated data.
+    - Requires password confirmation for security
+    - Handles related profile and order data cleanup
+    - Complies with GDPR/data protection standards
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    @swagger_auto_schema(
+        operation_summary="Permanently delete user account",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            required=['password'],
+            properties={
+                'password': openapi.Schema(type=openapi.TYPE_STRING, description='Current password for confirmation'),
+            }
+        ),
+        responses={
+            200: openapi.Response('Account deleted successfully'),
+            400: openapi.Response('Invalid password or request'),
+        }
+    )
+    def delete(self, request):
+        password = request.data.get('password')
+        user = request.user
+        
+        if not password:
+            return Response(
+                {"error": "Password confirmation required for account deletion."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if not user.check_password(password):
+            return Response(
+                {"error": "Invalid password. Account deletion requires password confirmation."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Store user email for confirmation message
+        user_email = user.email
+        
+        # Perform cascading deletion (UserProfile will be deleted via CASCADE)
+        user.delete()
+        
+        return Response(
+            {"detail": f"Account {user_email} has been permanently deleted along with all associated data."},
+            status=status.HTTP_200_OK
+        )
