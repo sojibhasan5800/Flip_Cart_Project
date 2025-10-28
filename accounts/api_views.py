@@ -502,13 +502,13 @@ class ResetPasswordAPIView(APIView):
             )
         
 
-    
 class DeleteAccountAPIView(APIView):
     """
-    DELETE: Permanently delete user account and associated data.
+    POST: Permanently delete user account and associated data.
     - Requires password confirmation for security
     - Handles related profile and order data cleanup
     - Complies with GDPR/data protection standards
+    - Uses POST instead of DELETE for better client compatibility
     """
     permission_classes = [permissions.IsAuthenticated]
 
@@ -526,7 +526,7 @@ class DeleteAccountAPIView(APIView):
             400: openapi.Response('Invalid password or request'),
         }
     )
-    def delete(self, request):
+    def post(self, request):
         password = request.data.get('password')
         user = request.user
         
