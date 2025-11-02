@@ -100,7 +100,7 @@ class CartItemListAPIView(APIView):
             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
-    @swagger_auto_schema(operation_summary="Add product to cart")
+    @swagger_auto_schema(operation_summary="Add product to cart (minimal response)")
     def post(self, request):
         product_id = request.data.get("product_id")
         quantity = int(request.data.get("quantity", 1))
@@ -108,15 +108,10 @@ class CartItemListAPIView(APIView):
 
         if request.user.is_authenticated:
             cart = Cart.objects.filter(cart_id__startswith=f"{request.user.id}_").first()
-            
 
             if not cart:
                 cart_id = _user_cart_id(request.user)
                 cart = Cart.objects.create(cart_id=cart_id)
-
-            # # Logged-in user
-            # cart_id = _user_cart_id(request.user)
-            # cart, _ = Cart.objects.get_or_create(cart_id=cart_id)
 
             # Merge guest cart if exists
             session_cart_id = _cart_id(request)
@@ -156,29 +151,23 @@ class CartItemListAPIView(APIView):
             cart_item.quantity += quantity
             cart_item.save()
 
-        serializer = CartItemSerializer(cart_item)
-
-        total = 0
-        quantity = 0
-        discount = 0
-        grand_total = 0
-
-        # Fetch active cart items
-        cart_items = CartItem.objects.filter(cart=cart, is_active=True)
-
-        for item in cart_items:
-            total += item.product.price * item.quantity
-            quantity += item.quantity
-        discount = (5 * total) / 100
-        grand_total = total - discount
-
-        # Include totals in response
+        # Prepare minimal response for the newly added cart item
         response_data = {
-            "cart_items": serializer.data,
-            "total": total,
-            "quantity": quantity,
-            "discount": discount,
-            "grand_total": grand_total,
+            "cart_item": {
+                "id": cart_item.id,
+                "product": {
+                    "id": cart_item.product.id,
+                    "name": cart_item.product.product_name,
+                    "slug": cart_item.product.slug,
+                    "price": cart_item.product.price,
+                    "images": cart_item.product.images.url if cart_item.product.images else None,
+                    "stock": cart_item.product.stock,
+                    "is_available": cart_item.product.is_available,
+                },
+                "variations": [{"id": v.id, "name": v.variation_value} for v in cart_item.variations.all()],
+                "quantity": cart_item.quantity,
+                # "sub_total": cart_item.sub_total(),
+            }
         }
 
         return Response(response_data, status=status.HTTP_201_CREATED)

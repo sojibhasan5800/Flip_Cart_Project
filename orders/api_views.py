@@ -29,69 +29,56 @@ from sslcommerz_lib import SSLCOMMERZ
 # ------------------ Order ViewSet ------------------
 
 
-
-
 class PlaceOrderAPIView(APIView):
     permission_classes = [IsAuthenticated]  # Only logged-in users can access
 
     """
-    GET API to allow users to view all their orders along with order items.
+    GET: Retrieve all orders of the logged-in user with ordered products.
     """
-
     def get(self, request):
         user = request.user
-        # Fetch all orders for this user, newest first
         orders = Order.objects.filter(user=user).order_by('-created_at')
 
         if not orders.exists():
             return Response({"detail": "You have no orders yet."}, status=status.HTTP_204_NO_CONTENT)
 
-        # Prepare response
         order_list = []
         for order in orders:
-            # Fetch order items for each order
-            order_items = OrderProduct.objects.filter(order=order)
-            order_serializer = OrderSerializer(order)
-            order_items_serializer = OrderProductSerializer(order_items, many=True)
-
-            # Calculate totals for this order
-            total = sum([item.product_price * item.quantity for item in order_items])
-            discount = order.tax
-            grand_total = order.order_total
-
-            order_list.append({
-                "order": order_serializer.data,
-                "order_items": order_items_serializer.data,
-                "total": total,
-                "discount": discount,
-                "grand_total": grand_total
-            })
+            order_products = OrderProduct.objects.filter(order=order)
+            order_data = {
+                "order_number": order.order_number,
+                "status": order.status,
+                "order_total": order.order_total,
+                "tax": order.tax,
+                "grand_total": order.order_total,  # Can include discount logic if needed
+                "created_at": order.created_at,
+                "products": [
+                    {
+                        "product_id": op.product.id,
+                        "product_name": op.product.product_name,
+                        "quantity": op.quantity,
+                        "price": op.product_price,
+                        "variations": [v.variation_category_value for v in op.variations.all()]
+                    }
+                    for op in order_products
+                ]
+            }
+            order_list.append(order_data)
 
         return Response(order_list, status=status.HTTP_200_OK)
 
     """
-    POST API — Create a new order from a specific cart_id.
+    POST: Create a new order from the logged-in user's cart.
     """
-
     def post(self, request):
         user = request.user
-        cart_id = request.query_params.get('cart_id', None)
-
-        if not cart_id:
-            return Response({"detail": "cart_id query param is required."}, status=status.HTTP_400_BAD_REQUEST)
-
-        try:
-            cart = Cart.objects.get(cart_id=cart_id)
-        except Cart.DoesNotExist:
-            return Response({"detail": "Invalid cart_id or you do not have access."}, status=status.HTTP_404_NOT_FOUND)
-
-        cart_items = CartItem.objects.filter(cart=cart, user=user, is_active=True)
+        cart_items = CartItem.objects.filter(user=user, is_active=True)
 
         if not cart_items.exists():
             return Response({"detail": "Your cart is empty."}, status=status.HTTP_400_BAD_REQUEST)
 
+        # Calculate totals
         total = sum([item.product.price * item.quantity for item in cart_items])
-        quantity = sum([item.quantity for item in cart_items])
         discount = (5 * total) / 100
         grand_total = total - discount
 
@@ -101,9 +88,9 @@ class PlaceOrderAPIView(APIView):
                 return Response({"detail": f"{field} field is required."}, status=status.HTTP_400_BAD_REQUEST)
 
         with transaction.atomic():
+            # Create Order
             order = Order.objects.create(
                 user=user,
-                cart=cart,  # Associate order with cart
                 first_name=request.data['first_name'],
                 last_name=request.data['last_name'],
                 phone=request.data['phone'],
@@ -119,35 +106,47 @@ class PlaceOrderAPIView(APIView):
                 ip=request.META.get('REMOTE_ADDR')
             )
 
+            # Generate order number
             today = datetime.date.today()
             order.order_number = f"{today.strftime('%Y%m%d')}{order.id}"
             order.save()
 
+            # Transfer CartItems → OrderProduct
+            added_products = []
             for item in cart_items:
                 op = OrderProduct.objects.create(
                     order=order,
                     user=user,
                     product=item.product,
                     quantity=item.quantity,
-                    product_price=item.product.price
+                    product_price=item.product.price,
+                    ordered=True
                 )
                 if item.variations.exists():
                     op.variations.set(item.variations.all())
                 op.save()
 
-            # Optional: clear cart items
+                added_products.append({
+                    "product_id": item.product.id,
+                    "product_name": item.product.product_name,
+                    "quantity": item.quantity,
+                    "price": item.product.price,
+                    "variations": [v.variation_category_value for v in item.variations.all()]
+                })
+
+            # Clear cart items after ordering
             # cart_items.delete()
 
-        order_serializer = OrderSerializer(order)
-        order_items_serializer = OrderProductSerializer(order.orderproduct_set.all(), many=True)
-
-        return Response({
-            "order": order_serializer.data,
-            "order_items": order_items_serializer.data,
+        response_data = {
+            "order_number": order.order_number,
+            "status": order.status,
             "total": total,
             "discount": discount,
-            "grand_total": grand_total
-        }, status=status.HTTP_201_CREATED)
+            "grand_total": grand_total,
+            "products": added_products
+        }
+
+        return Response(response_data, status=status.HTTP_201_CREATED)
 
 
 
