@@ -77,7 +77,7 @@ class CartItemListAPIView(APIView):
             grand_total = total - discount
 
             serializer = CartItemSerializer(cart_items, many=True)
-              # Include totals in response
+            # Include totals in response
             response_data = {
                 "cart_items": serializer.data,
                 "total": total,
@@ -102,9 +102,16 @@ class CartItemListAPIView(APIView):
         product = get_object_or_404(Product, id=product_id)
 
         if request.user.is_authenticated:
-            # Logged-in user
-            cart_id = _user_cart_id(request.user)
-            cart, _ = Cart.objects.get_or_create(cart_id=cart_id)
+            cart = Cart.objects.filter(cart_id__startswith=f"{request.user.id}_").first()
+            
+
+            if not cart:
+                cart_id = _user_cart_id(request.user)
+                cart = Cart.objects.create(cart_id=cart_id)
+
+            # # Logged-in user
+            # cart_id = _user_cart_id(request.user)
+            # cart, _ = Cart.objects.get_or_create(cart_id=cart_id)
 
             # Merge guest cart if exists
             session_cart_id = _cart_id(request)
