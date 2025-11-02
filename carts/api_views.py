@@ -26,73 +26,78 @@ def _user_cart_id(user):
 class CartItemListAPIView(APIView):
     permission_classes = [permissions.AllowAny]
 
-    
-    @swagger_auto_schema(operation_summary="Retrieve cart items by cart PK (handles both guest and authenticated users safely)")
-    
+    @swagger_auto_schema(operation_summary="Retrieve cart items by cart PK (optimized response)")
     def get(self, request):
         try:
-            total = 0
-            quantity = 0
-            discount = 0
-            grand_total = 0
-
-            #  Step 1: Get cart id from query param
             pk = request.query_params.get('id', None)
-
             if not pk:
                 return Response(
                     {"detail": "Please provide ?id=<cart_id> in query params."},
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-            # Case 1: Authenticated user – use user's cart directly
             if request.user.is_authenticated:
                 cart = Cart.objects.filter(cart_id=pk).first()
             else:
-                # Case 2: Guest user – verify session cart_id
                 session_cart_id = _cart_id(request)
                 cart = Cart.objects.filter(cart_id=session_cart_id, pk=pk).first()
 
-            # No cart found
             if not cart:
-                return Response(
-                    {"detail": "Cart not found."},
-                    status=status.HTTP_404_NOT_FOUND
-                )
+                return Response({"detail": "Cart not found."}, status=status.HTTP_404_NOT_FOUND)
 
-            # Fetch active cart items
             cart_items = CartItem.objects.filter(cart=cart, is_active=True)
-
             if not cart_items.exists():
-                return Response(
-                    {"detail": "Cart is empty."},
-                    status=status.HTTP_204_NO_CONTENT
-                )
-            
-            # Calculate total, quantity, discount, grand_total
-            for item in cart_items:
-                total += item.product.price * item.quantity
-                quantity += item.quantity
-            discount = (5 * total) / 100
+                return Response({"detail": "Cart is empty."}, status=status.HTTP_204_NO_CONTENT)
+
+            # Calculate totals
+            total = sum(item.product.price * item.quantity for item in cart_items)
+            quantity = sum(item.quantity for item in cart_items)
+            discount = total * 0.05
             grand_total = total - discount
 
-            serializer = CartItemSerializer(cart_items, many=True)
-            # Include totals in response
+            # Prepare optimized cart_items response
+            cart_items_data = []
+            for item in cart_items:
+                cart_items_data.append({
+                    "id": item.id,
+                    "product": {
+                        "id": item.product.id,
+                        "name": item.product.product_name,
+                        "slug": item.product.slug,
+                        "price": item.product.price,
+                        "images": item.product.images.url if item.product.images else None,
+                        "stock": item.product.stock,
+                        "is_available": item.product.is_available,
+                    },
+                    "variations": [{"id": v.id, "name": v.variation_value} for v in item.variations.all()],
+                    "quantity": item.quantity,
+                    "sub_total": item.sub_total()
+                })
+            # Include user info once at top-level
+            user_data = None
+            if request.user.is_authenticated:
+                user_data = {
+                    "id": request.user.id,
+                    "first_name": request.user.first_name,
+                    "last_name": request.user.last_name,
+                    "email": request.user.email,
+                    "phone_number": request.user.phone_number,
+                }
+
             response_data = {
-                "cart_items": serializer.data,
+                "user": user_data,
+                "cart_id": cart.cart_id,
+                "cart_items": cart_items_data,
                 "total": total,
                 "quantity": quantity,
                 "discount": discount,
                 "grand_total": grand_total,
             }
+
             return Response(response_data, status=status.HTTP_200_OK)
 
         except Exception as e:
-            return Response(
-                {"detail": str(e)},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
     @swagger_auto_schema(operation_summary="Add product to cart")
