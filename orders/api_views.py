@@ -193,11 +193,11 @@ class CreateStripeSessionAPIView(APIView):
 
     def post(self, request, *args, **kwargs):
         stripe.api_key = settings.STRIPE_SECRET_KEY
-        order_id = request.query_params.get('order_id')
-        if not order_id:
+        order_number = request.query_params.get('order_number')
+        if not order_number:
             return Response({"detail": "order_id query param is required"}, status=400)
 
-        order = get_object_or_404(Order, id=order_id, user=request.user)
+        order = get_object_or_404(Order, order_number=order_number, user=request.user)
         cart_items = CartItem.objects.filter(user=request.user, is_active=True)
 
         if not cart_items.exists():
@@ -223,6 +223,7 @@ class CreateStripeSessionAPIView(APIView):
             cancel_url=request.build_absolute_uri('/api/orders/stripe/cancel/'),
             metadata={'order_id': order.id, 'order_number': order.order_number}
         )
+        print(session.url)
 
         return Response({"checkout_url": session.url})
 

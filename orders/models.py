@@ -18,8 +18,6 @@ class Payment(models.Model):
 
 
 class Order(models.Model):
-
-
     user = models.ForeignKey(Account, on_delete=models.SET_NULL, null=True)
     payment = models.ForeignKey(Payment, on_delete=models.SET_NULL, blank=True, null=True)
     order_number = models.CharField(max_length=20)
