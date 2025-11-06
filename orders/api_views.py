@@ -449,8 +449,9 @@ class SSLPaymentAPIView(APIView):
             "num_of_item": cart_items.count(),
             "product_name": " / ".join([item.product.product_name for item in cart_items]),
             "product_category": " / ".join(
-                [getattr(item.product, "category", "General") for item in cart_items]
+                [getattr(item.product.category, "name", "General") for item in cart_items]
             ),
+
             "product_profile": "general",
         }
 
@@ -471,8 +472,8 @@ class SSLPaymentAPIView(APIView):
                     "transaction_id": trans_id,
                     "order_number": order.order_number,
                     "cart_id": cart_id,
-                    "order_total":response["total_amount"],
-                    "user_email":response["cus_email"]
+                    "order_total":order.order_total,
+                    "user_email":user.email,
                 },
                 status=status.HTTP_200_OK,
             )
@@ -496,7 +497,7 @@ class PaymentSuccessAPIView(APIView):
     @transaction.atomic
     def post(self, request, *args, **kwargs):
         email = request.query_params.get("email")
-        trans_id = request.query_params.get("transction_id")
+        trans_id = request.query_params.get("transaction_id")
         payment_method = request.query_params.get("payment_method")
         paid = request.query_params.get("paid")
         order_number = request.query_params.get("order_number")

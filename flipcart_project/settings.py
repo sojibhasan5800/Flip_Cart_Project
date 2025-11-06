@@ -368,3 +368,12 @@ else:
             },
         }
 
+# ========================
+# SSLCommerz Configuration
+# ========================
+
+SSLCZ_STORE_ID = "trans68369e6df24cb"
+SSLCZ_STORE_PASS = "trans68369e6df24cb@ssl"
+SSLCZ_IS_SANDBOX = True  # Set False in production
+
+
