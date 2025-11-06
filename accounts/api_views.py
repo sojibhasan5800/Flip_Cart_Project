@@ -42,6 +42,7 @@ class RegistrationAPIView(generics.CreateAPIView):
 
     @swagger_auto_schema(
         operation_summary="Register new user",
+        tags=['Accounts'], 
         operation_description="Creates a new user account and sends activation email.",
         responses={201: openapi.Response('User created', AccountSerializer)}
     )
@@ -111,6 +112,7 @@ class LoginAPIView(APIView):
     @swagger_auto_schema(
         request_body=LoginSerializer,
         operation_summary="Login user",
+        tags=['Accounts'],
         responses={200: 'token'}
     )
     def post(self, request):
