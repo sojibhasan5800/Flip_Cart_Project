@@ -25,12 +25,23 @@ class SellerAnalyticsAPIView(APIView):
         seller = request.user
         cache_key = f"seller_analytics:{seller.id}"
         data = cache.get(cache_key)
+        
         if not data:
-            # fallback to DB
-            analytics = SellerAnalytics.objects.filter(seller=seller).first()
-            if analytics:
-                data = SellerAnalyticsSerializer(analytics).data
+            # Fallback to DB with proper error handling
+            try:
+                analytics = SellerAnalytics.objects.get(seller=seller)
+                serializer = SellerAnalyticsSerializer(analytics)
+                data = serializer.data
                 cache.set(cache_key, data, timeout=300)
-            else:
-                data = {}
+            except SellerAnalytics.DoesNotExist:
+                # Return empty data structure instead of empty dict
+                data = {
+                    'total_sales': 0,
+                    'total_orders': 0,
+                    'total_items_sold': 0,
+                    'top_products': {},
+                    'inventory_summary': {},
+                    'last_updated': None
+                }
+        
         return Response(data)
