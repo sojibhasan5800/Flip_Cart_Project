@@ -196,7 +196,7 @@ def payments_ssl(request,id,order_number,tk=0):
     post_body['emi_option'] = 0
     post_body['cus_name'] = request.user.full_name
     post_body['cus_email'] = request.user.email
-    post_body['cus_phone'] = request.user.phone_number
+    post_body['cus_phone'] = request.user.phone_number if request.user.phone_number else "01700000000"
     post_body['cus_add1'] = customer_details.address_line_1
     post_body['cus_city'] = customer_details.city
     post_body['cus_country'] = customer_details.country
@@ -213,6 +213,8 @@ def payments_ssl(request,id,order_number,tk=0):
     if response.get('status') == 'SUCCESS' and 'GatewayPageURL' in response:
         return redirect(response['GatewayPageURL'])
     else:
+        # print(100)
+        print({'error': response})
         # print("SSLCOMMERZ ERROR:", response)  # for debugging
         return render(request, 'store/checkout.html', {'error': response})
     

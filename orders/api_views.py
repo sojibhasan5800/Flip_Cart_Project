@@ -349,97 +349,142 @@ def generate_transaction_id():
 
 
 
-
 class SSLPaymentAPIView(APIView):
     """
-    Generate SSLCommerz payment session and return Gateway URL
+    Generate SSLCommerz payment session and return Gateway URL.
+    Includes cart_id so that on payment success, related cart items can be cleared.
     """
     permission_classes = [IsAuthenticated]
 
     def post(self, request, *args, **kwargs):
         user = request.user
-        order_id = request.data.get("order_id")
-        amount = request.data.get("amount")  # Total amount to pay
+        cart_id = request.query_params.get('cart_id')
+        # order_number = request.data.get("order_number")
 
-        if not order_id or not amount:
-            return Response({"detail": "Missing order_id or amount"}, status=status.HTTP_400_BAD_REQUEST)
+        if not cart_id:
+            return Response(
+                {"detail": "cart_id is required."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
+        # Validate cart
         try:
-            order = Order.objects.get(id=order_id, user=user, is_ordered=False)
-        except Order.DoesNotExist:
-            return Response({"detail": "Order not found or already paid"}, status=status.HTTP_404_NOT_FOUND)
+            cart = Cart.objects.get(cart_id=cart_id)
+        except Cart.DoesNotExist:
+            return Response(
+                {"detail": "Invalid cart_id."},
+                status=status.HTTP_404_NOT_FOUND
+            )
 
-        # Validate stock
-        cart_items = CartItem.objects.filter(user=user)
+        # Get unpaid order
+        order = (
+            Order.objects.filter(user=user, is_ordered=False)
+            .order_by("-created_at")
+            .first()
+        )
+        if not order:
+            return Response(
+                {"detail": "No unpaid order found for this user."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Validate cart items
+        cart_items = CartItem.objects.filter(user=user, cart=cart)
+        if not cart_items.exists():
+            return Response(
+                {"detail": "No cart items found for this cart."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         for item in cart_items:
-            product = Product.objects.get(id=item.product.id)
-            if product.stock < item.quantity:
-                return Response({
-                    "detail": f" Not enough stock for '{product.product_name}' (Available: {product.stock})"
-                }, status=status.HTTP_400_BAD_REQUEST)
+            if item.product.stock < item.quantity:
+                return Response(
+                    {"detail": f"Not enough stock for '{item.product.product_name}' (Available: {item.product.stock})"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
-        # Generate unique transaction ID
+        # Generate transaction ID
         trans_id = generate_transaction_id()
 
-        # Build success, fail, cancel URLs
+        # Callback URLs
         base_url = f"{request.scheme}://{request.get_host()}"
         query_params = {
             "email": user.email,
-            "transction_id": trans_id,
+            "transaction_id": trans_id,
             "payment_method": "SSLCommerz",
-            "paid": amount,
-            "order_number": order.order_number
+            "paid": order.order_total,
+            "order_number": order.order_number,
+            "cart_id": cart_id,  #  Pass cart_id
         }
         query_string = urlencode(query_params)
-        success_url = f"{base_url}{reverse('payment_success')}?{query_string}"
-        fail_url = f"{base_url}{reverse('payment_fail')}?{query_string}"
-        cancel_url = f"{base_url}{reverse('payment_cancel')}?{query_string}"
 
-        # SSLCommerz configuration
+        success_url = f"{base_url}{reverse('orders_api:payment_success')}?{query_string}"
+        fail_url = f"{base_url}{reverse('orders_api:payment_fail')}?{query_string}"
+        cancel_url = f"{base_url}{reverse('orders_api:payment_cancel')}?{query_string}"
+
+        # SSLCommerz Config
         ssl_settings = {
-            "store_id": "trans68369e6df24cb",
-            "store_pass": "trans68369e6df24cb@ssl",
-            "issandbox": True
+            "store_id": settings.SSLCZ_STORE_ID,
+            "store_pass": settings.SSLCZ_STORE_PASS,
+            "issandbox": settings.SSLCZ_IS_SANDBOX,
         }
         sslcz = SSLCOMMERZ(ssl_settings)
 
-        # Payment details
+        # Payment Details
         post_body = {
-            "total_amount": amount,
+            "total_amount": float(order.order_total),
             "currency": "BDT",
             "tran_id": trans_id,
             "success_url": success_url,
             "fail_url": fail_url,
             "cancel_url": cancel_url,
             "emi_option": 0,
-            "cus_name": user.full_name,
+            "cus_name": user.get_full_name() if hasattr(user, "get_full_name") else f"{user.first_name} {user.last_name}",
             "cus_email": user.email,
-            "cus_phone": user.phone_number,
-            "cus_add1": order.address_line_1,
-            "cus_city": order.city,
-            "cus_country": order.country,
+            "cus_phone": getattr(user, "phone_number", None) or "01700000000",
+            "cus_add1": order.address_line_1 or "Dhaka",
+            "cus_city": order.city or "Dhaka",
+            "cus_country": order.country or "Bangladesh",
             "shipping_method": "NO",
             "num_of_item": cart_items.count(),
             "product_name": " / ".join([item.product.product_name for item in cart_items]),
-            "product_category": " / ".join([item.product.category for item in cart_items]) if hasattr(item.product, 'category') else "General",
-            "product_profile": "general"
+            "product_category": " / ".join(
+                [getattr(item.product, "category", "General") for item in cart_items]
+            ),
+            "product_profile": "general",
         }
 
-        # Create session
-        response = sslcz.createSession(post_body)
+        # Create Session
+        try:
+            response = sslcz.createSession(post_body)
+        except Exception as e:
+            return Response(
+                {"detail": f"Error connecting to SSLCommerz: {str(e)}"},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
 
         if response.get("status") == "SUCCESS" and "GatewayPageURL" in response:
-            return Response({
-                "message": "SSLCommerz session created",
-                "gateway_url": response["GatewayPageURL"],
-                "transaction_id": trans_id
-            }, status=status.HTTP_200_OK)
-        else:
-            return Response({
-                "detail": "Failed to create SSLCommerz session",
-                "error": response
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
+            return Response(
+                {
+                    "message": "SSLCommerz session created successfully.",
+                    "gateway_url": response["GatewayPageURL"],
+                    "transaction_id": trans_id,
+                    "order_number": order.order_number,
+                    "cart_id": cart_id,
+                    "order_total":response["total_amount"],
+                    "user_email":response["cus_email"]
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        return Response(
+            {
+                "detail": "Failed to create SSLCommerz session.",
+                "error": response,
+            },
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
 
 
 
@@ -450,45 +495,53 @@ class PaymentSuccessAPIView(APIView):
 
     @transaction.atomic
     def post(self, request, *args, **kwargs):
-        email = request.query_params.get('email')
-        trans_id = request.query_params.get('transction_id')
-        payment_method = request.query_params.get('payment_method')
-        paid = request.query_params.get('paid')
-        status_code = request.query_params.get('status')
-        order_number = request.query_params.get('order_number')
+        email = request.query_params.get("email")
+        trans_id = request.query_params.get("transction_id")
+        payment_method = request.query_params.get("payment_method")
+        paid = request.query_params.get("paid")
+        order_number = request.query_params.get("order_number")
+        cart_id = request.query_params.get("cart_id")
 
-        if not email or not order_number:
-            return Response({"detail": "Missing required parameters"}, status=status.HTTP_400_BAD_REQUEST)
+        if not (email and order_number and cart_id):
+            return Response(
+                {"detail": "Missing required parameters (email/order_number/cart_id)"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         try:
             current_user = Account.objects.get(email=email)
             order = Order.objects.get(user=current_user, is_ordered=False, order_number=order_number)
-        except (Account.DoesNotExist, Order.DoesNotExist):
-            return Response({"detail": "Invalid user or order"}, status=status.HTTP_404_NOT_FOUND)
+            cart = Cart.objects.get(cart_id=cart_id)
+        except (Account.DoesNotExist, Order.DoesNotExist, Cart.DoesNotExist):
+            return Response({"detail": "Invalid user, order or cart"}, status=status.HTTP_404_NOT_FOUND)
 
-        # Check stock first
-        cart_items = CartItem.objects.filter(user=current_user)
+        #  CartItems for this cart only
+        cart_items = CartItem.objects.filter(user=current_user, cart=cart)
+        if not cart_items.exists():
+            return Response({"detail": "Cart is empty"}, status=status.HTTP_400_BAD_REQUEST)
+
+        #  Check stock
         for item in cart_items:
             product = Product.objects.select_for_update().get(id=item.product_id)
             if product.stock < item.quantity:
-                raise Exception(f" Not enough stock for product '{product.product_name}' (Available: {product.stock})")
+                raise Exception(f"Not enough stock for '{product.product_name}'")
 
-        # Save payment info
+        #  Create Payment
         payment = Payment.objects.create(
             user=current_user,
             payment_id=trans_id,
             payment_method=payment_method,
             amount_paid=paid,
-            status=status_code
+            status="Completed",
         )
 
-        # Update order
+        #  Mark order as completed
         order.payment = payment
         order.is_ordered = True
         order.status = "Completed"
         order.save()
 
-        # Move cart → OrderProduct
+        #  Move CartItem → OrderProduct
         for item in cart_items:
             op = OrderProduct.objects.create(
                 order=order,
@@ -497,7 +550,7 @@ class PaymentSuccessAPIView(APIView):
                 product=item.product,
                 quantity=item.quantity,
                 product_price=item.product.price,
-                ordered=True
+                ordered=True,
             )
             op.variations.set(item.variations.all())
             op.save()
@@ -507,21 +560,27 @@ class PaymentSuccessAPIView(APIView):
             product.stock -= item.quantity
             product.save()
 
-        cart_items.delete()
+        #  Clear this cart only
+        # cart_items.delete()
+        cart.delete()
 
-        # Send confirmation email
-        mail_subject = 'Thank you for your order!'
-        message = render_to_string('orders/order_recieved_email.html', {'user': current_user, 'order': order})
+        #  Email
+        mail_subject = "Thank you for your order!"
+        message = render_to_string("orders/order_recieved_email.html", {
+            "user": current_user,
+            "order": order,
+        })
         EmailMessage(mail_subject, message, to=[current_user.email]).send()
 
         login(request, current_user)
 
         return Response({
-            "message": " Payment successful and order completed.",
+            "message": "Payment successful and order completed.",
             "order_number": order.order_number,
             "transaction_id": payment.payment_id,
             "status": order.status,
         }, status=status.HTTP_200_OK)
+
 
 
 # -------------------- PAYMENT CANCEL --------------------
@@ -554,6 +613,7 @@ class PaymentCancelAPIView(APIView):
 
 
 # -------------------- PAYMENT FAIL --------------------
+
 class PaymentFailAPIView(APIView):
     """
     When SSLCommerz payment fails (e.g., insufficient balance)

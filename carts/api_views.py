@@ -166,6 +166,7 @@ class CartItemListAPIView(APIView):
                 },
                 "variations": [{"id": v.id, "name": v.variation_value} for v in cart_item.variations.all()],
                 "quantity": cart_item.quantity,
+                "cart_id": cart.cart_id,
                 # "sub_total": cart_item.sub_total(),
             }
         }
