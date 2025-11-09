@@ -141,7 +141,10 @@ class LogoutAPIView(APIView):
     """
     permission_classes = [permissions.IsAuthenticated]
 
-    @swagger_auto_schema(operation_summary="Logout user")
+    @swagger_auto_schema(
+            operation_summary="Logout user",
+            tags=['Accounts'],
+            )
     def post(self, request):
         try:
         # blacklist all refresh tokens for user
@@ -165,7 +168,7 @@ class DashboardAPIView(APIView):
     """
     permission_classes = [permissions.IsAuthenticated]
 
-    @swagger_auto_schema(operation_summary="User dashboard")
+    @swagger_auto_schema(operation_summary="User dashboard",tags=['Accounts'])
     def get(self, request):
         orders_qs = Order.objects.filter(user_id=request.user.id, is_ordered=True).order_by('-created_at')
         orders_count = orders_qs.count()
@@ -189,7 +192,8 @@ class EditProfileAPIView(APIView):
 
     @swagger_auto_schema(
         operation_summary="Retrieve user profile",
-        responses={200: AccountSerializer}
+        responses={200: AccountSerializer},
+        tags=['Accounts'],
     )
     def get(self, request):
         userprofile, _ = UserProfile.objects.get_or_create(user=request.user)
@@ -235,7 +239,8 @@ class ChangePasswordAPIView(APIView):
                 'new_password': openapi.Schema(type=openapi.TYPE_STRING),
                 'confirm_password': openapi.Schema(type=openapi.TYPE_STRING),
             }
-        )
+        ),
+        tags=['Accounts'],
     )
     def post(self, request):
         current_password = request.data.get('current_password')
@@ -261,7 +266,7 @@ class MyOrdersAPIView(APIView):
     """
     permission_classes = [permissions.IsAuthenticated]
 
-    @swagger_auto_schema(operation_summary="List my orders")
+    @swagger_auto_schema(operation_summary="List my orders",)
     def get(self, request):
         orders = Order.objects.filter(user=request.user, is_ordered=True).order_by('-created_at')
         data = []
@@ -282,7 +287,7 @@ class OrderDetailAPIView(APIView):
     """
     permission_classes = [permissions.IsAuthenticated]
 
-    @swagger_auto_schema(operation_summary="Order detail")
+    @swagger_auto_schema(operation_summary="Order detail",tags=['Accounts'],)
     def get(self, request, order_id):
         order = get_object_or_404(Order, order_number=order_id, user=request.user, is_ordered=True)
         order_items = OrderProduct.objects.filter(order__order_number=order_id)
@@ -331,20 +336,6 @@ class ForgotPasswordAPIView(APIView):
     """
     permission_classes = [permissions.AllowAny]
 
-    @swagger_auto_schema(
-        operation_summary="Request password reset",
-        request_body=openapi.Schema(
-            type=openapi.TYPE_OBJECT,
-            required=["email"],
-            properties={
-                "email": openapi.Schema(type=openapi.TYPE_STRING, description="User email address")
-            },
-        ),
-        responses={
-            200: openapi.Response("Password reset email sent successfully."),
-            400: openapi.Response("Account not found."),
-        },
-    )
     def post(self, request):
         email = request.data.get("email")
         try:

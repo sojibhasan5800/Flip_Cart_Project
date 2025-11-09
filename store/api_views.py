@@ -9,6 +9,7 @@ from django_redis import get_redis_connection
 from django.db.models import F, Value, CharField
 from django.db.models.functions import Concat
 from django.conf import settings
+from rest_framework.pagination import PageNumberPagination
 import json
 
 # ------------------ Product APIs ------------------
@@ -41,11 +42,32 @@ class ProductDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
             {"message": "Product deleted successfully"},
             status=status.HTTP_200_OK
         )
+    
+# ------------------ Review APIs With Pagination ------------------
+class ReviewPagination(PageNumberPagination):
+    page_size = 5
+    page_size_query_param = 'page_size'
+    max_page_size = 20
+    
+    def get_paginated_response(self, data):
+        return Response({
+            'status': True,
+            'message': 'Reviews fetched successfully',
+            'pagination': {
+                'total_reviews': self.page.paginator.count,
+                'total_pages': self.page.paginator.num_pages,
+                'current_page': self.page.number,
+                'next_page': self.get_next_link(),
+                'previous_page': self.get_previous_link(),
+            },
+            'data': data
+        })
 
 # ------------------ Review APIs ------------------
 class ReviewRatingListAPIView(generics.ListAPIView):
     serializer_class = ReviewRatingSerializer
     permission_classes = [permissions.AllowAny]
+    pagination_class = ReviewPagination
 
     def get_queryset(self):
         queryset = ReviewRating.objects.filter(status=True).order_by('-created_at')
