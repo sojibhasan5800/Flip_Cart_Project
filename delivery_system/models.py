@@ -52,3 +52,40 @@ class Division(models.Model):
         
         verbose_name_plural = "Divisions"
         unique_together = ['tenant', 'name']
+
+class District(models.Model):
+    """District Model - Districts under each department"""
+    tenant = models.ForeignKey(DeliveryTenant, on_delete=models.CASCADE, related_name='districts')
+    division = models.ForeignKey(Division, on_delete=models.CASCADE, related_name='districts')
+    name = models.CharField(max_length=100)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    def __str__(self):
+        return f"{self.name} - {self.division.name} ({self.tenant.name})"
+    
+    class Meta:
+        verbose_name = "District"
+        verbose_name_plural = "Districts"
+        unique_together = ['tenant', 'division', 'name']
+
+
+class DeliveryArea(models.Model):
+    """Delivery Area Model - District-wise Delivery Charges and Time"""
+    tenant = models.ForeignKey(DeliveryTenant, on_delete=models.CASCADE, related_name='delivery_areas')
+    district = models.ForeignKey(District, on_delete=models.CASCADE, related_name='delivery_areas')
+    area_name = models.CharField(max_length=200)
+    delivery_charge = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    min_delivery_days = models.PositiveIntegerField(default=3)
+    max_delivery_days = models.PositiveIntegerField(default=7)
+    is_available = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    def __str__(self):
+        return f"{self.area_name}, {self.district.name} - ৳{self.delivery_charge} ({self.tenant.name})"
+    
+    class Meta:
+        verbose_name = "Delivery Area"
+        verbose_name_plural = "Delivery Areas"
+        unique_together = ['tenant', 'district', 'area_name']
