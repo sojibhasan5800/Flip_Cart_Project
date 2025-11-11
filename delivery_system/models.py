@@ -178,3 +178,60 @@ class DeliveryOrder(models.Model):
         verbose_name = "Delivery Order"
         verbose_name_plural = "Delivery Orders"
         ordering = ['-created_at']
+
+
+
+
+
+
+class DeliveryTracking(models.Model):
+    """ডেলিভারি ট্র্যাকিং মডেল - প্রতিটি স্ট্যাটাস চেঞ্জের হিস্ট্রি রাখবে"""
+    tenant = models.ForeignKey(DeliveryTenant, on_delete=models.CASCADE, related_name='tracking_history')
+    delivery_order = models.ForeignKey(DeliveryOrder, on_delete=models.CASCADE, related_name='tracking_history')
+    status = models.CharField(max_length=20, choices=DeliveryOrder.DELIVERY_STATUS)
+    description = models.TextField()
+    location = models.CharField(max_length=255, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    def __str__(self):
+        return f"{self.delivery_order.delivery_id} - {self.status} at {self.created_at} ({self.tenant.name})"
+    
+    class Meta:
+        verbose_name = "Delivery Tracking"
+        verbose_name_plural = "Delivery Tracking History"
+        ordering = ['-created_at']
+
+
+class DeliverySettings(models.Model):
+    """Tenant-based delivery settings"""
+    tenant = models.OneToOneField(DeliveryTenant, on_delete=models.CASCADE, related_name='settings')
+    
+    # General Settings
+    auto_create_delivery = models.BooleanField(default=True, 
+        help_text="Automatically create delivery order when payment is completed")
+    send_delivery_notifications = models.BooleanField(default=True,
+        help_text="Send SMS/Email notifications for delivery updates")
+    
+    # Delivery Rules
+    same_day_delivery = models.BooleanField(default=False)
+    same_day_cutoff_time = models.TimeField(default='14:00', 
+        help_text="Order before this time for same day delivery")
+    
+    # Notification Settings
+    notify_on_creation = models.BooleanField(default=True)
+    notify_on_status_change = models.BooleanField(default=True)
+    notify_on_delivery = models.BooleanField(default=True)
+    
+    # Integration Settings
+    sms_gateway_enabled = models.BooleanField(default=False)
+    email_notifications_enabled = models.BooleanField(default=True)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    def __str__(self):
+        return f"Delivery Settings - {self.tenant.name}"
+    
+    class Meta:
+        verbose_name = "Delivery Settings"
+        verbose_name_plural = "Delivery Settings"
