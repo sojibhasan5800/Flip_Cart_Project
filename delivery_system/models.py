@@ -37,3 +37,18 @@ class DeliveryDomain(DomainMixin):
     """
     pass
 
+class Division(models.Model):
+    """Division Model - For the divisions of Bangladesh"""
+    tenant = models.ForeignKey(DeliveryTenant, on_delete=models.CASCADE, related_name='divisions')
+    name = models.CharField(max_length=100)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    def __str__(self):
+        return f"{self.name} - {self.tenant.name}"
+    
+    class Meta:
+        verbose_name = "Division"
+        
+        verbose_name_plural = "Divisions"
+        unique_together = ['tenant', 'name']
