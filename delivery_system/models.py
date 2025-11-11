@@ -116,3 +116,65 @@ class DeliveryTimeSlot(models.Model):
         verbose_name = "Delivery Time Slot"
         verbose_name_plural = "Delivery Time Slots"
         unique_together = ['tenant', 'slot_code']
+
+
+class DeliveryOrder(models.Model):
+    """Delivery Order Model - Automatically created when payment is complete"""
+    DELIVERY_STATUS = [
+        ('pending', 'Pending'),
+        ('confirmed', 'Confirmed'),
+        ('picked_up', 'Picked Up'),
+        ('in_transit', 'In Transit'),
+        ('out_for_delivery', 'Out for Delivery'),
+        ('delivered', 'Delivered'),
+        ('cancelled', 'Cancelled'),
+        ('failed', 'Delivery Failed'),
+    ]
+    
+    # Tenant Information
+    tenant = models.ForeignKey(DeliveryTenant, on_delete=models.CASCADE, related_name='delivery_orders')
+    
+    # Order Information
+    order = models.OneToOneField(Order, on_delete=models.CASCADE, related_name='delivery_order')
+    delivery_id = models.CharField(max_length=20, unique=True, blank=True)
+    
+    # Delivery Information
+    delivery_area = models.ForeignKey(DeliveryArea, on_delete=models.SET_NULL, null=True)
+    delivery_charge = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    delivery_time_slot = models.ForeignKey(DeliveryTimeSlot, on_delete=models.SET_NULL, null=True, blank=True)
+    estimated_delivery_date = models.DateField(null=True, blank=True)
+    actual_delivery_date = models.DateField(null=True, blank=True)
+    
+    # Status Tracking
+    status = models.CharField(max_length=20, choices=DELIVERY_STATUS, default='pending')
+    status_changed_at = models.DateTimeField(auto_now=True)
+    
+    # Delivery Agent Information
+    delivery_agent_name = models.CharField(max_length=100, blank=True)
+    delivery_agent_phone = models.CharField(max_length=15, blank=True)
+    
+    # Tracking Information
+    tracking_url = models.URLField(blank=True)
+    notes = models.TextField(blank=True)
+    
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    def __str__(self):
+        return f"Delivery #{self.delivery_id} for Order #{self.order.order_number} ({self.tenant.name})"
+    
+    def save(self, *args, **kwargs):
+        if not self.delivery_id:
+            self.delivery_id = self.generate_delivery_id()
+        super().save(*args, **kwargs)
+    
+    def generate_delivery_id(self):
+        """Generate unique delivery ID"""
+        import uuid
+        return f"DL{self.tenant.name[:2].upper()}{uuid.uuid4().hex[:6].upper()}"
+    
+    class Meta:
+        verbose_name = "Delivery Order"
+        verbose_name_plural = "Delivery Orders"
+        ordering = ['-created_at']
