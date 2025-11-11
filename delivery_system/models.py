@@ -89,3 +89,30 @@ class DeliveryArea(models.Model):
         verbose_name = "Delivery Area"
         verbose_name_plural = "Delivery Areas"
         unique_together = ['tenant', 'district', 'area_name']
+
+
+class DeliveryTimeSlot(models.Model):
+    """ডেলিভারি টাইম স্লট - গ্রাহকরা তাদের পছন্দের সময় সিলেক্ট করতে পারবে"""
+    TIME_SLOTS = [
+        ('09:00-12:00', 'Morning (9:00 AM - 12:00 PM)'),
+        ('12:00-15:00', 'Noon (12:00 PM - 3:00 PM)'),
+        ('15:00-18:00', 'Afternoon (3:00 PM - 6:00 PM)'),
+        ('18:00-21:00', 'Evening (6:00 PM - 9:00 PM)'),
+    ]
+    
+    tenant = models.ForeignKey(DeliveryTenant, on_delete=models.CASCADE, related_name='time_slots')
+    slot_name = models.CharField(max_length=100)
+    start_time = models.TimeField()
+    end_time = models.TimeField()
+    slot_code = models.CharField(max_length=20, choices=TIME_SLOTS)
+    is_available = models.BooleanField(default=True)
+    max_orders_per_slot = models.PositiveIntegerField(default=50)
+    current_orders = models.PositiveIntegerField(default=0)
+    
+    def __str__(self):
+        return f"{self.slot_name} ({self.start_time} - {self.end_time}) - {self.tenant.name}"
+    
+    class Meta:
+        verbose_name = "Delivery Time Slot"
+        verbose_name_plural = "Delivery Time Slots"
+        unique_together = ['tenant', 'slot_code']
