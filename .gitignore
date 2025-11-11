@@ -18,11 +18,13 @@
 # rabbitmq-server.bat
 
 
-# docker compose down
-# docker compose down -v
+# docker compose down (remove container but not volume)
+# docker compose down -v (remove container and volume)
 
-# docker compose build
-# docker compose up -d --build
+
+# docker compose build (images build not container runing)
+# docker compose up -d --build (update image and run container in background)
+# docker compose up -d  (run container in background)
 
 
 

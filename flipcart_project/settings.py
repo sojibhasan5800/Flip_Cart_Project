@@ -19,6 +19,9 @@ SECRET_KEY = 'django-insecure-ym8a4^z1je)5nww3s6jgf4=7md$1_nrda&-b^y+taa@!3u(otb
 
 # Localhost এ কাজ করার জন্য True রাখুন, deploy করলে False দিন
 DEBUG = True
+USE_DOCKER = True
+Tenatst_MODE = False
+LOCAL_Postgresql_Database = True
 
 ALLOWED_HOSTS = (
     ['*'] if DEBUG else ['flip-cart-project-1.onrender.com']
@@ -28,45 +31,127 @@ ALLOWED_HOSTS = (
 # -----------------------------
 # Installed Apps
 # -----------------------------
-INSTALLED_APPS = [
-    'daphne',
-    'django.contrib.admin',
-    'django.contrib.auth',
-    'django.contrib.contenttypes',
-    'django.contrib.sessions',
-    'django.contrib.messages',
-    'django.contrib.staticfiles',
+if Tenatst_MODE:
+    SHARED_APPS  = [
+        'django_tenants', 
+        'delivery_system',
+        'daphne',
+        'django.contrib.admin',
+        'django.contrib.auth',
+        'django.contrib.contenttypes',
+        'django.contrib.sessions',
+        'django.contrib.messages',
+        'django.contrib.staticfiles',
 
-    # Third-party
-    'rest_framework',
-    'rest_framework.authtoken',
-    'rest_framework_simplejwt.token_blacklist',
-    'django_filters',
-    'cloudinary_storage',
-    'drf_yasg',
-    'admin_thumbnails',
-    'channels',             
-    'django_celery_results',
-    'django_celery_beat', 
-    'django_elasticsearch_dsl',
-    'django_elasticsearch_dsl_drf',
-    'corsheaders',
+        # Third-party
+        'rest_framework',
+        'rest_framework.authtoken',
+        'rest_framework_simplejwt.token_blacklist',
+        'django_filters',
+        'cloudinary_storage',
+        'drf_yasg',
+        'admin_thumbnails',
+        'channels',             
+        'django_celery_results',
+        'django_celery_beat', 
+        'django_elasticsearch_dsl',
+        'django_elasticsearch_dsl_drf',
+        'corsheaders',
+        'colorfield',
 
 
-    # Local apps
-    'accounts',
-    'category',
-    'store',
-    'carts',
-    'orders',
-    'seller_dashboard',
-    'orders_worker',
-]
+
+        # Local apps
+        # 'accounts',
+        # 'category',
+        # 'store',
+        # 'carts',
+        # 'orders',
+        # 'seller_dashboard',
+        # 'orders_worker',
+    ]
+
+    TENANT_APPS = [
+        'daphne',
+        'django.contrib.admin',
+        'django.contrib.auth',
+        'django.contrib.contenttypes',
+        'django.contrib.sessions',
+        'django.contrib.messages',
+        'django.contrib.staticfiles',
+
+        # Third-party
+        'rest_framework',
+        'rest_framework.authtoken',
+        'rest_framework_simplejwt.token_blacklist',
+        'django_filters',
+        'cloudinary_storage',
+        'drf_yasg',
+        'admin_thumbnails',
+        'channels',             
+        'django_celery_results',
+        'django_celery_beat', 
+        'django_elasticsearch_dsl',
+        'django_elasticsearch_dsl_drf',
+        'corsheaders',
+
+
+        # Local apps
+        'accounts',
+        'category',
+        'store',
+        'carts',
+        'orders',
+        'seller_dashboard',
+        'orders_worker',
+    ]
+    INSTALLED_APPS = SHARED_APPS + [
+        app for app in TENANT_APPS if app not in SHARED_APPS
+    ]
+
+    
+else:
+
+    INSTALLED_APPS = [
+        'daphne',
+        'django.contrib.admin',
+        'django.contrib.auth',
+        'django.contrib.contenttypes',
+        'django.contrib.sessions',
+        'django.contrib.messages',
+        'django.contrib.staticfiles',
+
+        # Third-party
+        'rest_framework',
+        'rest_framework.authtoken',
+        'rest_framework_simplejwt.token_blacklist',
+        'django_filters',
+        'cloudinary_storage',
+        'drf_yasg',
+        'admin_thumbnails',
+        'channels',             
+        'django_celery_results',
+        'django_celery_beat', 
+        'django_elasticsearch_dsl',
+        'django_elasticsearch_dsl_drf',
+        'corsheaders',
+
+
+        # Local apps
+        'accounts',
+        'category',
+        'store',
+        'carts',
+        'orders',
+        'seller_dashboard',
+        'orders_worker',
+    ]
 
 # -----------------------------
 # Middleware
 # -----------------------------
 MIDDLEWARE = [
+    'django_tenants.middleware.main.TenantMainMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     "whitenoise.middleware.WhiteNoiseMiddleware",
@@ -110,7 +195,8 @@ TEMPLATES = [
 # -----------------------------
 # Database
 # -----------------------------
-if DEBUG:
+
+if DEBUG and not USE_DOCKER:
     # Localhost: SQLite
     DATABASES = {
         'default': {
@@ -118,6 +204,31 @@ if DEBUG:
             'NAME': BASE_DIR / 'db.sqlite3',
         }
     }
+elif DEBUG and USE_DOCKER:
+    # Localhost: Postgres (Docker)
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': config('POSTGRES_DB', default='flipcart_db'),
+            'USER': config('POSTGRES_USER', default='flipcart_user'),
+            'PASSWORD': config('POSTGRES_PASSWORD', default='flipcart_pass'),
+            'HOST': config('POSTGRES_HOST', default='db'),
+            'PORT': config('POSTGRES_PORT', default='5432'),
+        }
+    }
+elif DEBUG and LOCAL_Postgresql_Database:
+        DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': 'postgres',
+            'USER': 'postgres',
+            'PASSWORD': '1234',
+            'HOST': 'localhost',
+            'PORT': '5432',
+            
+        }
+    }
+
 else:
     # Production: Postgres (Render)
     DATABASES = {
@@ -125,6 +236,19 @@ else:
             default='postgresql://flip_data_user:hINuFmo29D1wMLpsFhEsTdTYQBSJiFbg@dpg-d2r8cqmr433s73fa64n0-a.oregon-postgres.render.com/flip_data'
         )
     }
+
+
+# -----------------------------
+# django-tenants Config
+# -----------------------------
+
+DATABASE_ROUTERS = (
+    'django_tenants.routers.TenantSyncRouter',
+)
+TENANT_MODEL = "delivery_system.Client"
+TENANT_DOMAIN_MODEL = "delivery_system.Domain"
+
+
 
 # -----------------------------
 # Static & Media Files
@@ -263,6 +387,21 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",  # React frontend
 ]
 
+# -----------------------------
+# Redis Configuration (Smart Detection)
+# -----------------------------
+if USE_DOCKER:
+    # Docker environment - use container names
+    REDIS_HOST = 'redis'
+    REDIS_PORT = 6379
+    RABBITMQ_HOST = 'rabbitmq'  # যদি পরে rabbitmq add করেন
+else:
+    # Local development - use localhost
+    REDIS_HOST = '127.0.0.1'
+    REDIS_PORT = 6379
+    RABBITMQ_HOST = 'localhost'
+
+REDIS_URL = f'redis://{REDIS_HOST}:{REDIS_PORT}'
 
 # CSRF_TRUSTED_ORIGINS.append(BASE_URL)
 # -----------------------------
@@ -274,7 +413,7 @@ CHANNEL_LAYERS = {
     'default': {
         'BACKEND': 'channels_redis.core.RedisChannelLayer',
         'CONFIG': {
-            "hosts": [("127.0.0.1", 6379)],
+            "hosts": [(REDIS_HOST, REDIS_PORT)],
         },
     },
 }
@@ -283,7 +422,7 @@ CHANNEL_LAYERS = {
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": "redis://127.0.0.1:6379/1",
+        "LOCATION": f"{REDIS_URL}/1",
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
         }
@@ -295,8 +434,12 @@ CACHES = {
 # -----------------------------
 
 # CELERY_BROKER_URL = 'redis://127.0.0.1:6379/0'
-CELERY_BROKER_URL = 'amqp://guest:guest@localhost:5672//'
-CELERY_RESULT_BACKEND = 'redis://127.0.0.1:6379/0' # 'django-db' 
+if USE_DOCKER:
+    CELERY_BROKER_URL = f'redis://{REDIS_HOST}:{REDIS_PORT}/0'
+else:
+    CELERY_BROKER_URL = 'redis://127.0.0.1:6379/0'
+
+CELERY_RESULT_BACKEND = f'redis://{REDIS_HOST}:{REDIS_PORT}/0'
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
