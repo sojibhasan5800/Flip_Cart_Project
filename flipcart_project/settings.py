@@ -19,9 +19,9 @@ SECRET_KEY = 'django-insecure-ym8a4^z1je)5nww3s6jgf4=7md$1_nrda&-b^y+taa@!3u(otb
 
 # Localhost এ কাজ করার জন্য True রাখুন, deploy করলে False দিন
 DEBUG = True
-USE_DOCKER = True
+USE_DOCKER = False
 Tenatst_MODE = False
-LOCAL_Postgresql_Database = True
+LOCAL_Postgresql_Database = False
 
 ALLOWED_HOSTS = (
     ['*'] if DEBUG else ['flip-cart-project-1.onrender.com']
@@ -31,121 +31,78 @@ ALLOWED_HOSTS = (
 # -----------------------------
 # Installed Apps
 # -----------------------------
-if Tenatst_MODE:
-    SHARED_APPS  = [
-        'django_tenants', 
-        'delivery_system',
-        'daphne',
-        'django.contrib.admin',
-        'django.contrib.auth',
-        'django.contrib.contenttypes',
-        'django.contrib.sessions',
-        'django.contrib.messages',
-        'django.contrib.staticfiles',
 
-        # Third-party
-        'rest_framework',
-        'rest_framework.authtoken',
-        'rest_framework_simplejwt.token_blacklist',
-        'django_filters',
-        'cloudinary_storage',
-        'drf_yasg',
-        'admin_thumbnails',
-        'channels',             
-        'django_celery_results',
-        'django_celery_beat', 
-        'django_elasticsearch_dsl',
-        'django_elasticsearch_dsl_drf',
-        'corsheaders',
-        'colorfield',
+SHARED_APPS = [
+    # Tenant Core
+    'django_tenants',
+    'daphne',
 
+    # Django Default Apps (MUST BE IN SHARED)
+    'django.contrib.contenttypes',
+    'django.contrib.auth',
+    'django.contrib.sessions',
+    'django.contrib.messages',
+    'django.contrib.admin',  # Admin should be shared for tenant management
+    'django.contrib.staticfiles',
 
+    # Third-party
+    'rest_framework',
+    'rest_framework.authtoken',
+    'rest_framework_simplejwt.token_blacklist',
+    'django_filters',
+    'cloudinary_storage',
+    'corsheaders',
+    'drf_yasg',
+    'channels',
+    'colorfield',
+    'django_celery_results',
+    'django_celery_beat',
+    'django_elasticsearch_dsl',
+    'django_elasticsearch_dsl_drf',
+    'admin_thumbnails',
 
-        # Local apps
-        # 'accounts',
-        # 'category',
-        # 'store',
-        # 'carts',
-        # 'orders',
-        # 'seller_dashboard',
-        # 'orders_worker',
-    ]
-
-    TENANT_APPS = [
-        'daphne',
-        'django.contrib.admin',
-        'django.contrib.auth',
-        'django.contrib.contenttypes',
-        'django.contrib.sessions',
-        'django.contrib.messages',
-        'django.contrib.staticfiles',
-
-        # Third-party
-        'rest_framework',
-        'rest_framework.authtoken',
-        'rest_framework_simplejwt.token_blacklist',
-        'django_filters',
-        'cloudinary_storage',
-        'drf_yasg',
-        'admin_thumbnails',
-        'channels',             
-        'django_celery_results',
-        'django_celery_beat', 
-        'django_elasticsearch_dsl',
-        'django_elasticsearch_dsl_drf',
-        'corsheaders',
+    # Your shared/local apps
+    'accounts',          # superadmin login / user creation
+    'delivery_system',   # shared tenant + domain config
+    # 'core',              # global config, landing page, etc.
+]
 
 
-        # Local apps
-        'accounts',
-        'category',
-        'store',
-        'carts',
-        'orders',
-        'seller_dashboard',
-        'orders_worker',
-    ]
-    INSTALLED_APPS = SHARED_APPS + [
-        app for app in TENANT_APPS if app not in SHARED_APPS
-    ]
+TENANT_APPS = [
+    # # Tenant-specific apps (data isolation)
+    'category',          # each shop has its own categories
+    'store',             # each shop has its own products
+    'carts',             # per-tenant shopping carts
+    'orders',            # each shop has separate orders
+    'seller_dashboard',  # per-tenant seller panel
+    'orders_worker',     # per-tenant background order consumer
+]
 
-    
-else:
+# -----------------------------
+# django-tenants Config
+# -----------------------------
 
-    INSTALLED_APPS = [
-        'daphne',
-        'django.contrib.admin',
-        'django.contrib.auth',
-        'django.contrib.contenttypes',
-        'django.contrib.sessions',
-        'django.contrib.messages',
-        'django.contrib.staticfiles',
-
-        # Third-party
-        'rest_framework',
-        'rest_framework.authtoken',
-        'rest_framework_simplejwt.token_blacklist',
-        'django_filters',
-        'cloudinary_storage',
-        'drf_yasg',
-        'admin_thumbnails',
-        'channels',             
-        'django_celery_results',
-        'django_celery_beat', 
-        'django_elasticsearch_dsl',
-        'django_elasticsearch_dsl_drf',
-        'corsheaders',
+# Important: Remove duplicates
+INSTALLED_APPS = list(SHARED_APPS) + [app for app in TENANT_APPS if app not in SHARED_APPS]
 
 
-        # Local apps
-        'accounts',
-        'category',
-        'store',
-        'carts',
-        'orders',
-        'seller_dashboard',
-        'orders_worker',
-    ]
+# Tenant Model Configuration
+TENANT_MODEL = "delivery_system.DeliveryTenant"
+TENANT_DOMAIN_MODEL = "delivery_system.DeliveryDomain"
+
+# Tenant Database Router
+DATABASE_ROUTERS = (
+    'django_tenants.routers.TenantSyncRouter',
+)
+
+# Tenant Public Schema
+PUBLIC_SCHEMA_NAME = 'public'
+
+# Tenant Subdomain Settings
+TENANT_SUBFOLDER_PREFIX = 'tenants'
+# Or use subdomains:
+# TENANT_USES_SUBDOMAINS = True
+
 
 # -----------------------------
 # Middleware
@@ -195,58 +152,52 @@ TEMPLATES = [
 # -----------------------------
 # Database
 # -----------------------------
-
-if DEBUG and not USE_DOCKER:
-    # Localhost: SQLite
+if DEBUG :
+    # Localhost: PostgreSQL (django-tenants requires PostgreSQL)
     DATABASES = {
         'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'db.sqlite3',
-        }
-    }
-elif DEBUG and USE_DOCKER:
-    # Localhost: Postgres (Docker)
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'NAME': config('POSTGRES_DB', default='flipcart_db'),
-            'USER': config('POSTGRES_USER', default='flipcart_user'),
-            'PASSWORD': config('POSTGRES_PASSWORD', default='flipcart_pass'),
-            'HOST': config('POSTGRES_HOST', default='db'),
-            'PORT': config('POSTGRES_PORT', default='5432'),
-        }
-    }
-elif DEBUG and LOCAL_Postgresql_Database:
-        DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'NAME': 'postgres',
+            'ENGINE': 'django_tenants.postgresql_backend',  # public schema migrate করার জন্য
+            'NAME': 'flipcart_tenants',
             'USER': 'postgres',
             'PASSWORD': '1234',
             'HOST': 'localhost',
             'PORT': '5432',
-            
         }
     }
 
-else:
-    # Production: Postgres (Render)
-    DATABASES = {
-        'default': dj_database_url.config(
-            default='postgresql://flip_data_user:hINuFmo29D1wMLpsFhEsTdTYQBSJiFbg@dpg-d2r8cqmr433s73fa64n0-a.oregon-postgres.render.com/flip_data'
-        )
-    }
 
+# elif DEBUG and USE_DOCKER:
+#     # Localhost: Postgres (Docker)
+#     DATABASES = {
+#         'default': {
+#             'ENGINE': 'django.db.backends.postgresql',
+#             'NAME': config('POSTGRES_DB', default='flipcart_db'),
+#             'USER': config('POSTGRES_USER', default='flipcart_user'),
+#             'PASSWORD': config('POSTGRES_PASSWORD', default='flipcart_pass'),
+#             'HOST': config('POSTGRES_HOST', default='db'),
+#             'PORT': config('POSTGRES_PORT', default='5432'),
+#         }
+#     }
+# elif DEBUG and LOCAL_Postgresql_Database:
+#         DATABASES = {
+#         'default': {
+#             'ENGINE': 'django.db.backends.postgresql',
+#             'NAME': 'postgres',
+#             'USER': 'postgres',
+#             'PASSWORD': '1234',
+#             'HOST': 'localhost',
+#             'PORT': '5432',
+            
+#         }
+#     }
 
-# -----------------------------
-# django-tenants Config
-# -----------------------------
-
-DATABASE_ROUTERS = (
-    'django_tenants.routers.TenantSyncRouter',
-)
-TENANT_MODEL = "delivery_system.Client"
-TENANT_DOMAIN_MODEL = "delivery_system.Domain"
+# else:
+#     # Production: Postgres (Render)
+#     DATABASES = {
+#         'default': dj_database_url.config(
+#             default='postgresql://flip_data_user:hINuFmo29D1wMLpsFhEsTdTYQBSJiFbg@dpg-d2r8cqmr433s73fa64n0-a.oregon-postgres.render.com/flip_data'
+#         )
+#     }
 
 
 
@@ -518,5 +469,6 @@ else:
 SSLCZ_STORE_ID = "trans68369e6df24cb"
 SSLCZ_STORE_PASS = "trans68369e6df24cb@ssl"
 SSLCZ_IS_SANDBOX = True  # Set False in production
+
 
 

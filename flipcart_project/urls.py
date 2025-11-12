@@ -35,11 +35,15 @@ from django.urls import path,include
 from django.conf import settings
 from django.conf.urls.static import static
 from . import views
+from . import api_views
+from . import api_urls
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', views.home, name='home'),
-    path('home_api_load_products/', views.home, name='home_api_load_products'),
+    # path('', api_views.HomeProductsAPIView, name='home'),
+
+    # path('home_api_load_products/', views.home, name='home_api_load_products'),
     path('store/', include('store.urls')),
     path('carts/', include('carts.urls')),
     path('accounts/', include('accounts.urls')),
@@ -57,7 +61,7 @@ urlpatterns = [
     path('api/store/', include('store.api_urls', namespace='store_api')),
     path('api/orders/', include('orders.api_urls', namespace='orders_api')),
     path('api/seller/', include('seller_dashboard.api_urls', namespace='seller_dashboard_api')),
-
+    path('api/delivery/', include('delivery_system.api_urls', namespace='delivery_system_api')),
 
 
     path('swagger(<format>.json|.yaml)', schema_view.without_ui(cache_timeout=0), name='schema-json'),
