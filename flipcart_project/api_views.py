@@ -9,7 +9,8 @@ from django_redis import get_redis_connection
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 import json
-
+from django_tenants.utils import schema_context
+from delivery_system.models import DeliveryTenant
 
 class HomeProductCursorPagination(CursorPagination):
     page_size = 12
@@ -62,6 +63,7 @@ class HomeProductsAPIView(APIView):
     
     def get(self, request):
         # Try to fetch cached data from Redis
+        all_products = []
         cache_key = 'home_products'
         cache = get_redis_connection("default")
 
@@ -74,8 +76,29 @@ class HomeProductsAPIView(APIView):
                 'data': json.loads(cached_data)
             })
 
-        # If cache not found, fetch data from database
-        products = Product.objects.filter(is_available=True).order_by('-created_date')[:12]
+        # Fetch products from all active tenants
+        tenants = DeliveryTenant.objects.filter(is_active=True)
+        for tenant in tenants:
+
+            # Switch to tenant schema
+            with schema_context(tenant.schema_name):
+                products = Product.objects.filter(is_available=True).order_by('-created_date')[:12]
+                serializer = ProductSerializer(products, many=True)
+
+                # Add store info for each product
+                for product_data in serializer.data:
+                    product_data['store_name'] = tenant.name
+                    product_data['store_domain'] = tenant.domains.first().domain if tenant.domains.exists() else None
+                    all_products.append(product_data)
+
+            if not all_products:
+                return Response({
+                    'status': False,
+                    'message': 'No products available',
+                    'data': []
+                }, status=status.HTTP_404_NOT_FOUND)
+
+       
 
         if not products.exists():
             return Response({
@@ -86,15 +109,143 @@ class HomeProductsAPIView(APIView):
 
         serializer = ProductSerializer(products, many=True)
 
-        # Prepare response data
+       # Prepare response data
         response_data = {
-            'products': serializer.data,
-            'has_next': products.count() == 12,  # If 12 products exist, more are available
-            'next_cursor': products.last().id if products else None,
-            'total_initial_products': products.count(),
+            'products': all_products,
+            'has_next': len(all_products) == 12,
+            'next_cursor': all_products[-1]['id'] if all_products else None,
+            'total_initial_products': len(all_products),
         }
 
-        # Cache data in Redis (1 hour)
+        # Cache the response for 1 hour
+        cache.set(cache_key, json.dumps(response_data), ex=3600)
+
+
+        return Response({
+            'status': True,
+            'message': 'Initial products fetched successfully',
+            'data': response_data
+        })
+
+
+# home/api_views.py
+
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from rest_framework.pagination import CursorPagination
+from store.models import Product
+from store.serializers import ProductSerializer
+from django_redis import get_redis_connection
+from drf_yasg.utils import swagger_auto_schema
+from drf_yasg import openapi
+import json
+from django_tenants.utils import schema_context
+from delivery_system.models import DeliveryTenant
+
+# ---------------------------
+# Cursor Pagination for Home Products
+# ---------------------------
+class HomeProductCursorPagination(CursorPagination):
+    """
+    Cursor-based pagination settings for homepage products
+    """
+    page_size = 12  # number of products per page
+    ordering = '-created_date'  # newest products first
+    cursor_query_param = 'cursor'  # query parameter for pagination
+
+# ---------------------------
+# HomeProducts API - Initial Data Load
+# ---------------------------
+class HomeProductsAPIView(APIView):
+    """
+    Homepage Product API with Infinite Scroll (Initial Data Load)
+    """
+    @swagger_auto_schema(
+        operation_summary="Fetch initial homepage products (with caching)",
+        operation_description=(
+            "Fetch the first batch of available products for the homepage with cursor pagination. "
+            "If Redis cache is available, data will be fetched from cache to improve performance."
+        ),
+        responses={
+            200: openapi.Response(
+                description="Products fetched successfully",
+                examples={
+                    "application/json": {
+                        "status": True,
+                        "message": "Initial products fetched successfully",
+                        "data": {
+                            "products": [
+                                {
+                                    "id": 1,
+                                    "product_name": "iPhone 15",
+                                    "price": "999.99",
+                                    "image_url": "https://example.com/product1.jpg",
+                                }
+                            ],
+                            "has_next": True,
+                            "next_cursor": 3,
+                            "total_initial_products": 12,
+                        },
+                    }
+                },
+            ),
+            404: openapi.Response(
+                description="No products available",
+                examples={"application/json": {"status": False, "message": "No products available", "data": []}},
+            ),
+        },
+        tags=["Home Products"],
+    )
+    
+    def get(self, request):
+        """
+        Fetch initial homepage products with tenant-aware schema and caching
+        """
+        all_products = []
+        cache_key = 'home_products'
+        cache = get_redis_connection("default")
+
+        # Try fetching data from Redis cache
+        cached_data = cache.get(cache_key)
+        if cached_data:
+            return Response({
+                'status': True,
+                'message': 'Products fetched from cache',
+                'data': json.loads(cached_data)
+            })
+
+        # Fetch products from all active tenants
+        tenants = DeliveryTenant.objects.filter(is_active=True)
+
+        for tenant in tenants:
+            # Switch to tenant schema
+            with schema_context(tenant.schema_name):
+                products = Product.objects.filter(is_available=True).order_by('-created_date')[:12]
+                serializer = ProductSerializer(products, many=True)
+
+                # Add store info for each product
+                for product_data in serializer.data:
+                    product_data['store_name'] = tenant.name
+                    product_data['store_domain'] = tenant.domains.first().domain if tenant.domains.exists() else None
+                    all_products.append(product_data)
+
+        if not all_products:
+            return Response({
+                'status': False,
+                'message': 'No products available',
+                'data': []
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        # Prepare response data
+        response_data = {
+            'products': all_products,
+            'has_next': len(all_products) == 12,
+            'next_cursor': all_products[-1]['id'] if all_products else None,
+            'total_initial_products': len(all_products),
+        }
+
+        # Cache the response for 1 hour
         cache.set(cache_key, json.dumps(response_data), ex=3600)
 
         return Response({
@@ -104,11 +255,13 @@ class HomeProductsAPIView(APIView):
         })
 
 
+# ---------------------------
+# LoadMoreProducts API - Infinite Scroll
+# ---------------------------
 class LoadMoreProductsAPIView(APIView):
     """
     Load More Products API for Infinite Scroll
     """
-
     @swagger_auto_schema(
         operation_summary="Load more products for infinite scrolling",
         operation_description=(
@@ -171,8 +324,10 @@ class LoadMoreProductsAPIView(APIView):
         tags=["Home Products"],
     )
     
-    
     def get(self, request):
+        """
+        Fetch next batch of products using cursor for infinite scroll
+        """
         cursor = request.GET.get('cursor')
 
         if not cursor:
@@ -185,26 +340,32 @@ class LoadMoreProductsAPIView(APIView):
         try:
             cursor_id = int(cursor)
             page_size = 12
+            all_products = []
 
-            # Cursor-based pagination
-            products = Product.objects.filter(
-                is_available=True,
-                id__lt=cursor_id  # Get products with IDs smaller than cursor_id
-            ).order_by('-created_date')[:page_size]
+            tenants = DeliveryTenant.objects.filter(is_active=True)
 
-            serializer = ProductSerializer(products, many=True)
+            # Fetch products for each tenant schema
+            for tenant in tenants:
+                with schema_context(tenant.schema_name):
+                    products = Product.objects.filter(
+                        is_available=True,
+                        id__lt=cursor_id
+                    ).order_by('-created_date')[:page_size]
+                    serializer = ProductSerializer(products, many=True)
 
-            next_cursor = products.last().id if products else None
-            has_next = Product.objects.filter(
-                is_available=True,
-                id__lt=next_cursor
-            ).exists() if next_cursor else False
+                    for product_data in serializer.data:
+                        product_data['store_name'] = tenant.name
+                        product_data['store_domain'] = tenant.domains.first().domain if tenant.domains.exists() else None
+                        all_products.append(product_data)
+
+            next_cursor = all_products[-1]['id'] if all_products else None
+            has_next = len(all_products) == page_size
 
             response_data = {
-                'products': serializer.data,
+                'products': all_products,
                 'has_next': has_next,
                 'next_cursor': next_cursor,
-                'count': len(serializer.data)
+                'count': len(all_products)
             }
 
             return Response({

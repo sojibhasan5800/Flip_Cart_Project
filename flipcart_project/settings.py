@@ -101,7 +101,8 @@ PUBLIC_SCHEMA_NAME = 'public'
 # Tenant Subdomain Settings
 TENANT_SUBFOLDER_PREFIX = 'tenants'
 # Or use subdomains:
-# TENANT_USES_SUBDOMAINS = True
+TENANT_USES_SUBDOMAINS = True
+SHOW_PUBLIC_IF_NO_TENANT_FOUND = True
 
 
 # -----------------------------
@@ -142,8 +143,8 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
-                'category.context_processors.menu_links',
-                'carts.context_processors.counter',
+                # 'category.context_processors.menu_links',
+                # 'carts.context_processors.counter',
             ],
         },
     },
