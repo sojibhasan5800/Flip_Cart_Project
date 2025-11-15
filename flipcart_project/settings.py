@@ -109,10 +109,15 @@ SHOW_PUBLIC_IF_NO_TENANT_FOUND = True
 # Middleware
 # -----------------------------
 MIDDLEWARE = [
+    # Django Tenants – must stay at the top
     'django_tenants.middleware.main.TenantMainMiddleware',
+
+    # Security / CORS / Static
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     "whitenoise.middleware.WhiteNoiseMiddleware",
+
+    # Core Middleware
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -120,11 +125,15 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 
-    # Custom Middleware
+    # Tenant Admin Middleware (ADD HERE)
+    'flipcart_project.middleware.tenant_admin.TenantAdminMiddleware',
+
+    # Other Custom Middlewares (keep these after tenant admin)
     'flipcart_project.middleware.user_activity.UserActivityMiddleware',
     'flipcart_project.middleware.performance.PerformanceMiddleware',
     'flipcart_project.middleware.security.SecurityMiddleware',
 ]
+
 
 ROOT_URLCONF = 'flipcart_project.urls'
 WSGI_APPLICATION = 'flipcart_project.wsgi.application'
