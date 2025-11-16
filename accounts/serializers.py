@@ -1,10 +1,90 @@
 # accounts/api/serializers.py
 from rest_framework import serializers
-from .models import Account, UserProfile
+from .models import Account, UserProfile, Tenant
 from django.contrib.auth import authenticate
 from django.core.validators import validate_email
 from django.core.exceptions import ValidationError
+from django.contrib.auth.password_validation import validate_password
+import re
 
+class MerchantRegistrationSerializer(serializers.Serializer):
+    """Serializer for merchant registration"""
+    
+    # Business info
+    business_name = serializers.CharField(max_length=100)
+    subdomain = serializers.CharField(max_length=50)
+    
+    # Personal info
+    first_name = serializers.CharField(max_length=50)
+    last_name = serializers.CharField(max_length=50)
+    email = serializers.EmailField()
+    phone = serializers.CharField(max_length=20)
+    password = serializers.CharField(write_only=True, min_length=8)
+    confirm_password = serializers.CharField(write_only=True)
+    
+    def validate_subdomain(self, value):
+        """Validate subdomain format and availability"""
+        # Check format (alphanumeric and hyphens only)
+        if not re.match(r'^[a-z0-9]([a-z0-9-]*[a-z0-9])?$', value):
+            raise serializers.ValidationError(
+                'Subdomain can only contain lowercase letters, numbers, and hyphens. Cannot start or end with hyphen.'
+            )
+        
+        # Check reserved subdomains
+        reserved = ['www', 'admin', 'api', 'blog', 'support', 'help', 'mail']
+        if value in reserved:
+            raise serializers.ValidationError('This subdomain is reserved. Please choose another one.')
+        
+        # Check length
+        if len(value) < 3:
+            raise serializers.ValidationError('Subdomain must be at least 3 characters long.')
+        
+        return value
+    
+    def validate_password(self, value):
+        """Validate password strength"""
+        validate_password(value)
+        return value
+    
+    def validate(self, data):
+        """Cross-field validation"""
+        if data['password'] != data['confirm_password']:
+            raise serializers.ValidationError({
+                'confirm_password': 'Passwords do not match.'
+            })
+        
+        return data
+
+class TenantSerializer(serializers.ModelSerializer):
+    """Serializer for Tenant model"""
+    
+    class Meta:
+        model = Tenant
+        fields = [
+            'id', 'name', 'subdomain', 'email', 'phone', 
+            'is_active', 'is_trial', 'trial_ends_at', 'created_at'
+        ]
+        read_only_fields = ['id', 'created_at']
+
+class MerchantProfileSerializer(serializers.ModelSerializer):
+    """Serializer for merchant profile"""
+    
+    tenant = TenantSerializer(read_only=True)
+    
+    class Meta:
+        model = Account
+        fields = [
+            'id', 'first_name', 'last_name', 'email', 'phone_number',
+            'is_tenant_owner', 'date_joined', 'tenant'
+        ]
+        read_only_fields = ['id', 'date_joined', 'tenant']
+
+
+
+
+
+
+# ------------------------ previous ----------------------------
 
 class RegistrationSerializer(serializers.ModelSerializer):
     """
