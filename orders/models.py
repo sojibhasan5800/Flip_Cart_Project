@@ -1,5 +1,5 @@
 from django.db import models
-from accounts.models import Account
+from accounts.models import Account,Tenant
 from store.models import Product, Variation
 from .context import STATUS
 
@@ -21,6 +21,9 @@ class Order(models.Model):
     user = models.ForeignKey(Account, on_delete=models.SET_NULL, null=True)
     payment = models.ForeignKey(Payment, on_delete=models.SET_NULL, blank=True, null=True)
     order_number = models.CharField(max_length=20)
+    # Tenant isolation
+    tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name='orders')
+
     first_name = models.CharField(max_length=50)
     last_name = models.CharField(max_length=50)
     phone = models.CharField(max_length=15)
@@ -38,7 +41,12 @@ class Order(models.Model):
     is_ordered = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-
+    
+    class Meta:
+        indexes = [
+            models.Index(fields=['tenant', 'created_at']),
+            models.Index(fields=['tenant', 'status']),
+        ]
 
     def full_name(self):
         return f'{self.first_name} {self.last_name}'
