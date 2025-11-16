@@ -230,6 +230,155 @@ def merchant_dashboard_api(request):
 
 
 
+class MerchantSubscriptionAPIView(APIView):
+    """
+    Merchant subscription management
+    GET /api/accounts/merchant/subscription/
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        if not request.user.is_merchant_user:
+            return Response({
+                'status': False,
+                'message': 'Access denied. Merchant account required.'
+            }, status=status.HTTP_403_FORBIDDEN)
+        
+        tenant = request.user.tenant
+        
+        subscription_data = {
+            'status': 'trial' if tenant.is_trial else 'active',
+            'trial_ends_at': tenant.trial_ends_at,
+            'is_paid': tenant.is_paid,
+            'stripe_customer_id': tenant.stripe_customer_id,
+            'stripe_subscription_id': tenant.stripe_subscription_id,
+        }
+        
+        return Response({
+            'status': True,
+            'data': subscription_data
+        })
+
+class CustomerRegistrationAPIView(APIView):
+    """
+    Customer registration for specific tenant store
+    POST /api/accounts/customer/register/
+    """
+    permission_classes = [AllowAny]
+    
+    def post(self, request):
+        # Check if we're in tenant context
+        if not hasattr(request, 'tenant') or not request.tenant:
+            return Response({
+                'status': False,
+                'message': 'Customer registration must be done through a specific store'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        tenant = request.tenant
+        
+        # Use your existing registration serializer but add tenant
+        serializer = UserRegistrationSerializer(data=request.data)
+        
+        if serializer.is_valid():
+            try:
+                # Create user with tenant
+                user = Account.objects.create_user(
+                    first_name=serializer.validated_data['first_name'],
+                    last_name=serializer.validated_data['last_name'],
+                    username=serializer.validated_data['email'].split('@')[0],
+                    email=serializer.validated_data['email'],
+                    password=serializer.validated_data['password'],
+                    tenant=tenant  # Assign to current tenant
+                )
+                user.is_active = True
+                user.save()
+                
+                # Create user profile
+                UserProfile.objects.create(user=user)
+                
+                return Response({
+                    'status': True,
+                    'message': 'Customer account created successfully',
+                    'data': {
+                        'user_id': user.id,
+                        'email': user.email,
+                        'first_name': user.first_name,
+                        'last_name': user.last_name,
+                        'tenant': tenant.name
+                    }
+                }, status=status.HTTP_201_CREATED)
+                
+            except Exception as e:
+                return Response({
+                    'status': False,
+                    'message': f'Registration failed: {str(e)}'
+                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        else:
+            return Response({
+                'status': False,
+                'message': 'Invalid data provided',
+                'errors': serializer.errors
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+class CustomerLoginAPIView(APIView):
+    """
+    Customer login for specific tenant store
+    POST /api/accounts/customer/login/
+    """
+    permission_classes = [AllowAny]
+    
+    def post(self, request):
+        from django.contrib.auth import authenticate
+        from rest_framework_simplejwt.tokens import RefreshToken
+        
+        email = request.data.get('email')
+        password = request.data.get('password')
+        
+        if not email or not password:
+            return Response({
+                'status': False,
+                'message': 'Email and password required'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Authenticate user
+        user = authenticate(email=email, password=password)
+        
+        if user is not None:
+            # Check if user belongs to current tenant
+            if hasattr(request, 'tenant') and request.tenant:
+                if user.tenant != request.tenant:
+                    return Response({
+                        'status': False,
+                        'message': 'Invalid credentials for this store'
+                    }, status=status.HTTP_401_UNAUTHORIZED)
+            
+            # Generate JWT tokens
+            refresh = RefreshToken.for_user(user)
+            
+            return Response({
+                'status': True,
+                'message': 'Login successful',
+                'data': {
+                    'user': {
+                        'id': user.id,
+                        'email': user.email,
+                        'first_name': user.first_name,
+                        'last_name': user.last_name,
+                        'is_tenant_owner': user.is_tenant_owner
+                    },
+                    'tokens': {
+                        'refresh': str(refresh),
+                        'access': str(refresh.access_token),
+                    }
+                }
+            })
+        else:
+            return Response({
+                'status': False,
+                'message': 'Invalid credentials'
+            }, status=status.HTTP_401_UNAUTHORIZED)
+
 #------------- previous code ------------------
 
 

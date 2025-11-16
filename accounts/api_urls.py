@@ -3,7 +3,8 @@ from django.urls import path
 from .api_views import (
     RegistrationAPIView, LoginAPIView, LogoutAPIView, DashboardAPIView,
     EditProfileAPIView, ChangePasswordAPIView, MyOrdersAPIView, OrderDetailAPIView,
-    ActivateAPIView, ForgotPasswordAPIView, ResetPasswordAPIView,ResetPasswordValidateAPIView,DeleteAccountAPIView
+    ActivateAPIView, ForgotPasswordAPIView, ResetPasswordAPIView,ResetPasswordValidateAPIView,DeleteAccountAPIView,
+    merchant_registration_api,merchant_dashboard_api
 )
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
@@ -25,4 +26,10 @@ urlpatterns = [
     path('delete-account/', DeleteAccountAPIView.as_view(), name='delete_account'),
     path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),      # login JWT
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),     # refresh JWT
+
+        # Multi-tenant specific URLs
+    # Merchant APIs
+    path('merchant/register/', merchant_registration_api.as_view(), name='merchant_register'),
+    path('merchant/dashboard/', merchant_dashboard_api.as_view(), name='merchant_dashboard'),
+    path('merchant/subscription/', MerchantSubscriptionAPIView.as_view(), name='merchant_subscription'),
 ]
