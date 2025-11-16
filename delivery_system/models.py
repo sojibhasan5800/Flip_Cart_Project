@@ -235,3 +235,8 @@ class DeliverySettings(models.Model):
     class Meta:
         verbose_name = "Delivery Settings"
         verbose_name_plural = "Delivery Settings"
+
+
+
+
+#----------------------new ----------------------------

@@ -1,50 +1,51 @@
 # flipcart_project/middleware/tenant_admin.py
 
-from django_tenants.utils import get_tenant
-
 class TenantAdminMiddleware:
     """
-    Middleware to control admin panel access based on tenant.
-    - Superadmin (public schema) → can access everything.
-    - Tenant admin → only their own tenant data (handled by django-tenants).
+    Middleware to control admin panel access based on the active tenant.
+    - Super Admin (public schema) → Can access everything
+    - Tenant Admin → Can access only their own tenant’s data
     """
 
     def __init__(self, get_response):
         self.get_response = get_response
 
     def __call__(self, request):
-        # Process request first
+        # Process the request first
         response = self.get_response(request)
 
-        # Admin panel detection
+        # Detect if the request is for Django admin
         if 'admin' in request.path:
             try:
+                from django_tenants.utils import get_tenant
                 current_tenant = get_tenant(request)
             except Exception:
                 current_tenant = None
 
             user = request.user
 
-            # Safe superuser check (prevents AttributeError)
+            # Safe superuser/staff check (prevents attribute errors)
             is_superadmin = getattr(user, "is_superuser", False)
             is_staff = getattr(user, "is_staff", False)
 
-            # If logged-in user but not staff → block access
+            # Logged-in user but not staff → block access
             if user.is_authenticated and not is_staff:
-                # Non-staff users cannot access admin ever
-                pass
+                from django.contrib import messages
+                from django.shortcuts import redirect
+                messages.error(request, "You don't have permission to access the admin panel.")
+                return redirect('/')
 
-            # PUBLIC SCHEMA → superadmin access
+            # Public schema admin access → only superadmins allowed
             if current_tenant and current_tenant.schema_name == "public":
-                # Only superadmin can use public admin panel
+                # Only superadmin can access public admin panel
                 if not is_superadmin:
-                    # non-superadmin cannot access public admin
-                    pass
+                    messages.error(request, "Only superadmin can access the public admin panel.")
+                    return redirect('/')
 
-            # TENANT SCHEMA → tenant admin access
+            # Tenant schema admin access → tenant admin allowed
             elif current_tenant:
-                # Tenant admin: django-tenants handles isolation
-                # No special action needed
+                # Tenant admin access is automatically handled by django-tenants
+                # No special action needed here
                 pass
 
         return response

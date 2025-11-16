@@ -1,12 +1,49 @@
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
 from cloudinary.models import CloudinaryField
+import uuid
+
 
 
 # Create your models here.
 
+# ----------------------- New ----------------------------
+
+
+class TenantManager(models.Manager):
+    def get_by_subdomain(self, subdomain):
+        return self.get(subdomain=subdomain, is_active=True)
+
+class Tenant(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=100)
+    subdomain = models.CharField(max_length=50, unique=True)
+    email = models.EmailField(unique=True)
+    phone = models.CharField(max_length=20)
+    is_active = models.BooleanField(default=True)
+    is_trial = models.BooleanField(default=True)
+    trial_ends_at = models.DateTimeField(null=True, blank=True)
+    stripe_customer_id = models.CharField(max_length=100, blank=True)
+    stripe_subscription_id = models.CharField(max_length=100, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    objects = TenantManager()
+    
+    def __str__(self):
+        return f"{self.name} ({self.subdomain})"
+    
+    @property
+    def is_paid(self):
+        return bool(self.stripe_subscription_id) and not self.is_trial
+    
+
+
+
+# ----------------------- Previous ----------------------------
+
 class MyAccountManager(BaseUserManager):
-    def create_user(self, first_name, last_name, username, email, password=None):
+    def create_user(self, first_name, last_name, username, email, password=None,tenant=None):
         if not email:
             raise ValueError('User must have an email address')
 
@@ -18,6 +55,7 @@ class MyAccountManager(BaseUserManager):
             username = username,
             first_name = first_name,
             last_name = last_name,
+            tenant=tenant,
         )
 
         user.set_password(password)
@@ -48,6 +86,14 @@ class Account(AbstractBaseUser):
     email           = models.EmailField(max_length=100, unique=True)
     phone_number    = models.CharField(max_length=50)
 
+    # Tenant relationship
+    tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, null=True, blank=True,related_name='users')
+
+    # Role-based fields
+    is_tenant_owner = models.BooleanField(default=False)
+    is_tenant_staff = models.BooleanField(default=False)
+                              
+
     # required
     date_joined     = models.DateTimeField(auto_now_add=True)
     last_login      = models.DateTimeField(auto_now_add=True)
@@ -72,6 +118,14 @@ class Account(AbstractBaseUser):
 
     def has_module_perms(self, add_label):
         return True
+    
+    @property
+    def is_platform_admin(self):
+        return self.is_superadmin and self.tenant is None
+    
+    @property
+    def is_merchant_user(self):
+        return self.tenant is not None
 
 
 class UserProfile(models.Model):
@@ -88,3 +142,6 @@ class UserProfile(models.Model):
 
     def full_address(self):
         return f'{self.address_line_1} {self.address_line_2}'
+
+
+
