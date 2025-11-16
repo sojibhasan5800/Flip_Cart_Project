@@ -179,6 +179,57 @@ def merchant_registration_api(request):
         }, status=status.HTTP_400_BAD_REQUEST)
 
 
+
+
+@api_view(['GET'])
+def merchant_dashboard_api(request):
+    """
+    Get merchant dashboard data
+    API Endpoint: GET /api/merchant/dashboard/
+    Access: Only merchant users
+    """
+    if not request.user.is_merchant_user:
+        return Response({
+            'status': False,
+            'message': 'Access denied. Merchant account required.'
+        }, status=status.HTTP_403_FORBIDDEN)
+    
+    tenant = request.user.tenant
+    
+    # Get basic tenant info
+    tenant_data = TenantSerializer(tenant).data
+    
+    # Get store statistics (you'll need to implement these)
+    from store.models import Product
+    from orders.models import Order
+    
+    total_products = Product.objects.filter(tenant=tenant).count()
+    total_orders = Order.objects.filter(tenant=tenant).count()
+    active_products = Product.objects.filter(tenant=tenant, is_available=True).count()
+    
+    dashboard_data = {
+        'tenant': tenant_data,
+        'stats': {
+            'total_products': total_products,
+            'total_orders': total_orders,
+            'active_products': active_products,
+        },
+        'subscription': {
+            'status': 'trial' if tenant.is_trial else 'active',
+            'trial_ends_at': tenant.trial_ends_at,
+            'is_paid': tenant.is_paid
+        }
+    }
+    
+    return Response({
+        'status': True,
+        'data': dashboard_data
+    }, status=status.HTTP_200_OK)
+
+
+
+
+
 #------------- previous code ------------------
 
 
