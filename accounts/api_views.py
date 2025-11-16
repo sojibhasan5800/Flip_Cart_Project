@@ -16,11 +16,172 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, OutstandingToken
 from drf_yasg import openapi
 
-from .models import Account, UserProfile
+from .models import Account, UserProfile, Tenant
 from .serializers import (
     RegistrationSerializer, LoginSerializer, AccountSerializer, UserProfileSerializer
 )
 from orders.models import Order, OrderProduct  # keep parity with your views (requires orders app)
+from rest_framework.permissions import AllowAny
+from django.utils import timezone
+from datetime import timedelta
+import stripe
+from django.conf import settings
+from .serializers import MerchantRegistrationSerializer, TenantSerializer
+
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def merchant_registration_api(request):
+    """
+    Merchant registration with automatic Stripe subscription creation
+    API Endpoint: POST /api/accounts/merchant/register/
+    """
+    serializer = MerchantRegistrationSerializer(data=request.data)
+    
+    if serializer.is_valid():
+        # Extract validated data
+        validated_data = serializer.validated_data
+        business_name = validated_data['business_name']
+        subdomain = validated_data['subdomain']
+        email = validated_data['email']
+        
+        # Check if subdomain is available
+        if Tenant.objects.filter(subdomain=subdomain).exists():
+            return Response({
+                'status': False,
+                'message': 'Subdomain already taken. Please choose another one.',
+                'error_code': 'SUBDOMAIN_EXISTS'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Check if email already exists
+        if Account.objects.filter(email=email).exists():
+            return Response({
+                'status': False,
+                'message': 'Email already registered.',
+                'error_code': 'EMAIL_EXISTS'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            # Create tenant first
+            tenant = Tenant.objects.create(
+                name=business_name,
+                subdomain=subdomain,
+                email=email,
+                phone=validated_data['phone'],
+                is_trial=True,
+                trial_ends_at=timezone.now() + timedelta(days=14)  # 14-day trial
+            )
+            
+            # Create Stripe customer and subscription
+            stripe.api_key = settings.STRIPE_SECRET_KEY
+            
+            # Create Stripe customer
+            stripe_customer = stripe.Customer.create(
+                email=email,
+                name=business_name,
+                metadata={
+                    'tenant_id': str(tenant.id),
+                    'subdomain': subdomain,
+                    'type': 'merchant'
+                }
+            )
+            
+            # Create subscription with trial
+            subscription = stripe.Subscription.create(
+                customer=stripe_customer.id,
+                items=[{
+                    'price': settings.STRIPE_PLANS['basic']['price_id']  # Basic plan
+                }],
+                trial_period_days=14,
+                metadata={
+                    'tenant_id': str(tenant.id),
+                    'subdomain': subdomain
+                }
+            )
+            
+            # Update tenant with Stripe IDs
+            tenant.stripe_customer_id = stripe_customer.id
+            tenant.stripe_subscription_id = subscription.id
+            tenant.save()
+            
+            # Create merchant owner account
+            username = email.split('@')[0]
+            user = Account.objects.create_user(
+                first_name=validated_data['first_name'],
+                last_name=validated_data['last_name'],
+                username=username,
+                email=email,
+                password=validated_data['password'],
+                tenant=tenant
+            )
+            user.is_tenant_owner = True
+            user.is_active = True
+            user.is_tenant_staff = True
+            user.save()
+            
+            # Create user profile
+            UserProfile.objects.create(user=user)
+            
+            # Prepare response data
+            response_data = {
+                'status': True,
+                'message': 'Merchant account created successfully!',
+                'data': {
+                    'tenant': TenantSerializer(tenant).data,
+                    'user': {
+                        'id': user.id,
+                        'email': user.email,
+                        'first_name': user.first_name,
+                        'last_name': user.last_name,
+                        'is_tenant_owner': user.is_tenant_owner
+                    },
+                    'subscription': {
+                        'status': 'trial',
+                        'trial_ends_at': tenant.trial_ends_at,
+                        'plan': 'basic'
+                    },
+                    'store_url': f"https://{subdomain}.flipcart.com"
+                }
+            }
+            
+            return Response(response_data, status=status.HTTP_201_CREATED)
+            
+        except stripe.error.StripeError as e:
+            # Clean up if Stripe fails
+            if 'tenant' in locals():
+                tenant.delete()
+            
+            return Response({
+                'status': False,
+                'message': f'Payment processing failed: {str(e)}',
+                'error_code': 'STRIPE_ERROR'
+            }, status=status.HTTP_400_BAD_REQUEST)
+            
+        except Exception as e:
+            # Clean up if any other error occurs
+            if 'tenant' in locals():
+                tenant.delete()
+            if 'user' in locals():
+                user.delete()
+                
+            return Response({
+                'status': False,
+                'message': f'Registration failed: {str(e)}',
+                'error_code': 'REGISTRATION_ERROR'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    else:
+        return Response({
+            'status': False,
+            'message': 'Invalid data provided',
+            'errors': serializer.errors
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+
+#------------- previous code ------------------
+
+
 
 # ---------------------------
 # Registration API
