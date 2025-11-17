@@ -11,10 +11,19 @@ from django.db.models import F, Value, CharField
 from django.db.models.functions import Concat
 from django.conf import settings
 from rest_framework.pagination import PageNumberPagination
+from merchant_user.context import OrganizationContext
 import json
 
 
 # ---------------------- new code ----------------------
+
+class MerchantProductListAPIView(APIView):
+    def get(self, request):
+        org = request.user.organization
+        with OrganizationContext(org):
+            products = Product.objects.all()  # automatically filtered by org
+            data = [{"id": p.id, "name": p.name} for p in products]
+            return Response({"status": True, "data": data})
 
 class TenantAwareViewSet(viewsets.ModelViewSet):
     """Base ViewSet that automatically filters by tenant"""

@@ -1,7 +1,5 @@
 from django.db import models
-from category.models import Category
 from django.urls import reverse
-from accounts.models import Account,Tenant
 from django.db.models import Avg, Count
 from cloudinary.models import CloudinaryField
 from django.conf import settings
@@ -9,6 +7,11 @@ from django_redis import get_redis_connection
 import json
 from django.db.models import F, Value, CharField
 from django.db.models.functions import Concat
+from merchant_user.context import OrganizationContext, get_organization_aware_manager
+from category.models import Category
+from accounts.models import Account
+from merchant_user.models import Organization
+
 
 # Create your models here.
 
@@ -22,16 +25,17 @@ class Product(models.Model):
     is_available    = models.BooleanField(default=True)
     category        = models.ForeignKey(Category, on_delete=models.CASCADE)
     # Tenant isolation
-    tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name='products')
+    organization  = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name='products')
     
     created_date    = models.DateTimeField(auto_now_add=True)
     modified_date   = models.DateTimeField(auto_now=True)
+    objects = get_organization_aware_manager(models.Manager)()
     
     class Meta:
-        unique_together = ['tenant', 'slug']  # Slug unique per tenant
+        unique_together = ['organization', 'slug']  # Slug unique per tenant
         indexes = [
-            models.Index(fields=['tenant', 'is_available']),
-            models.Index(fields=['tenant', 'category']),
+            models.Index(fields=['organization', 'is_available']),
+            models.Index(fields=['organization', 'category']),
         ]
 
     def save(self, *args, **kwargs):

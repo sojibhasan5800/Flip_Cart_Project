@@ -4,7 +4,7 @@ import uuid
 
 
 
-class TenantManager(models.Manager):
+class OrganizationManager(models.Manager):
     def get_by_subdomain(self, subdomain):
         return self.get(subdomain=subdomain, is_active=True)
 
@@ -22,7 +22,7 @@ class Organization(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
-    objects = TenantManager()
+    objects = OrganizationManager()
     
     def __str__(self):
         return f"{self.name} ({self.subdomain})"
