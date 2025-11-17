@@ -7,7 +7,7 @@ from django.utils import timezone
 from datetime import timedelta
 import stripe
 from django.conf import settings
-from merchant_user.models import Tenant
+from merchant_user.models import Organization
 from merchant_user.serializers import (MerchantRegistrationSerializer,TenantSerializer,SubscriptionSerializer,
                                        MerchantUserRegistrationSerializer,TenantAccountSerializer)
 from accounts.serializers import  AccountSerializer
@@ -32,7 +32,7 @@ class MerchantRegistrationAPIView(APIView):
             
             try:
                 # Create tenant
-                tenant = Tenant.objects.create(
+                organization = Organization.objects.create(
                     name=business_name,
                     subdomain=subdomain,
                     email=email,
@@ -49,7 +49,7 @@ class MerchantRegistrationAPIView(APIView):
                     email=email,
                     name=business_name,
                     metadata={
-                        'tenant_id': str(tenant.id),
+                        'organization_id': str(organization.id),
                         'subdomain': subdomain,
                         'type': 'merchant'
                     }
@@ -63,15 +63,15 @@ class MerchantRegistrationAPIView(APIView):
                     }],
                     trial_period_days=14,
                     metadata={
-                        'tenant_id': str(tenant.id),
+                        'organization_id': str(organization.id),
                         'subdomain': subdomain
                     }
                 )
                 
                 # Update tenant with Stripe info
-                tenant.stripe_customer_id = stripe_customer.id
-                tenant.stripe_subscription_id = subscription.id
-                tenant.save()
+                organization.stripe_customer_id = stripe_customer.id
+                organization.stripe_subscription_id = subscription.id
+                organization.save()
                 
                 # Create merchant owner account using UserRegistrationSerializer
                 user_data = {
@@ -85,7 +85,7 @@ class MerchantRegistrationAPIView(APIView):
                 
                 user_serializer = MerchantUserRegistrationSerializer(
                     data=user_data, 
-                    context={'tenant': tenant}
+                    context={'organization': organization}
                 )
                 
                 if user_serializer.is_valid():
@@ -95,11 +95,11 @@ class MerchantRegistrationAPIView(APIView):
                         'status': True,
                         'message': 'Merchant account created successfully',
                         'data': {
-                            'tenant': TenantSerializer(tenant).data,
+                            'organization': TenantSerializer(organization).data,
                             'user': TenantAccountSerializer(user).data,
                             'subscription': {
                                 'status': 'trial',
-                                'trial_ends_at': tenant.trial_ends_at,
+                                'trial_ends_at': organization.trial_ends_at,
                                 'plan': 'basic'
                             },
                             'store_url': f"https://{subdomain}.flipcart.com"
@@ -108,7 +108,7 @@ class MerchantRegistrationAPIView(APIView):
                     
                     return Response(response_data, status=status.HTTP_201_CREATED)
                 else:
-                    tenant.delete()
+                    organization.delete()
                     return Response({
                         'status': False,
                         'message': 'User creation failed',
@@ -116,8 +116,8 @@ class MerchantRegistrationAPIView(APIView):
                     }, status=status.HTTP_400_BAD_REQUEST)
                 
             except stripe.error.StripeError as e:
-                if 'tenant' in locals():
-                    tenant.delete()
+                if 'organization' in locals():
+                    organization.delete()
                 return Response({
                     'status': False,
                     'message': f'Payment processing failed: {str(e)}',
@@ -125,8 +125,8 @@ class MerchantRegistrationAPIView(APIView):
                 }, status=status.HTTP_400_BAD_REQUEST)
                 
             except Exception as e:
-                if 'tenant' in locals():
-                    tenant.delete()
+                if 'organization' in locals():
+                    organization.delete()
                 return Response({
                     'status': False,
                     'message': f'Registration failed: {str(e)}',
@@ -154,25 +154,25 @@ class MerchantDashboardAPIView(APIView):
                 'message': 'Access denied. Merchant account required.'
             }, status=status.HTTP_403_FORBIDDEN)
         
-        tenant = request.user.tenant
+        organization = request.user.organization
         
         # Get store statistics
         from store.models import Product
         from orders.models import Order
         
-        total_products = Product.objects.filter(tenant=tenant).count()
-        total_orders = Order.objects.filter(tenant=tenant).count()
-        active_products = Product.objects.filter(tenant=tenant, is_available=True).count()
+        total_products = Product.objects.filter(organization=organization).count()
+        total_orders = Order.objects.filter(organization=organization).count()
+        active_products = Product.objects.filter(organization=organization, is_available=True).count()
         
         dashboard_data = {
-            'tenant': TenantSerializer(tenant).data,
+            'organization': TenantSerializer(organization).data,
             'user': AccountSerializer(request.user).data,
             'stats': {
                 'total_products': total_products,
                 'total_orders': total_orders,
                 'active_products': active_products,
             },
-            'subscription': SubscriptionSerializer(tenant).data
+            'subscription': SubscriptionSerializer(organization).data
         }
         
         return Response({
@@ -221,7 +221,7 @@ class MerchantSubscriptionAPIView(APIView):
                 'message': 'Access denied. Merchant account required.'
             }, status=status.HTTP_403_FORBIDDEN)
         
-        tenant = request.user.tenant
+        organization = request.user.organization
         
         try:
             # Fetch latest subscription data from Stripe
@@ -229,8 +229,8 @@ class MerchantSubscriptionAPIView(APIView):
             
             subscription_data = {}
             
-            if tenant.stripe_subscription_id:
-                subscription = stripe.Subscription.retrieve(tenant.stripe_subscription_id)
+            if organization.stripe_subscription_id:
+                subscription = stripe.Subscription.retrieve(organization.stripe_subscription_id)
                 subscription_data = {
                     'stripe_status': subscription.status,
                     'current_period_start': subscription.current_period_start,
@@ -238,7 +238,7 @@ class MerchantSubscriptionAPIView(APIView):
                     'cancel_at_period_end': subscription.cancel_at_period_end,
                 }
             
-            subscription_info = SubscriptionSerializer(tenant).data
+            subscription_info = SubscriptionSerializer(organization).data
             subscription_info.update(subscription_data)
             
             return Response({
@@ -270,22 +270,22 @@ class MerchantSubscriptionAPIView(APIView):
                 'available_plans': list(settings.STRIPE_PLANS.keys())
             }, status=status.HTTP_400_BAD_REQUEST)
         
-        tenant = request.user.tenant
+        organization = request.user.organization
         
         try:
             stripe.api_key = settings.STRIPE_SECRET_KEY
             
-            if not tenant.stripe_subscription_id:
+            if not organization.stripe_subscription_id:
                 return Response({
                     'status': False,
                     'message': 'No active subscription found'
                 }, status=status.HTTP_400_BAD_REQUEST)
             
             # Update subscription
-            subscription = stripe.Subscription.retrieve(tenant.stripe_subscription_id)
+            subscription = stripe.Subscription.retrieve(organization.stripe_subscription_id)
             
             updated_subscription = stripe.Subscription.modify(
-                tenant.stripe_subscription_id,
+                organization.stripe_subscription_id,
                 items=[{
                     'id': subscription['items']['data'][0].id,
                     'price': settings.STRIPE_PLANS[plan_type]['price_id']
@@ -318,12 +318,12 @@ class MerchantSubscriptionAPIView(APIView):
                 'message': 'Access denied. Merchant account required.'
             }, status=status.HTTP_403_FORBIDDEN)
         
-        tenant = request.user.tenant
+        organization = request.user.organization
         
         try:
             stripe.api_key = settings.STRIPE_SECRET_KEY
             
-            if not tenant.stripe_subscription_id:
+            if not organization.stripe_subscription_id:
                 return Response({
                     'status': False,
                     'message': 'No active subscription found'
@@ -331,7 +331,7 @@ class MerchantSubscriptionAPIView(APIView):
             
             # Cancel subscription at period end
             canceled_subscription = stripe.Subscription.modify(
-                tenant.stripe_subscription_id,
+                organization.stripe_subscription_id,
                 cancel_at_period_end=True
             )
             
@@ -366,19 +366,19 @@ class ReactivateSubscriptionAPIView(APIView):
                 'message': 'Access denied. Merchant account required.'
             }, status=status.HTTP_403_FORBIDDEN)
         
-        tenant = request.user.tenant
+        organization = request.user.organization
         
         try:
             stripe.api_key = settings.STRIPE_SECRET_KEY
             
-            if not tenant.stripe_subscription_id:
+            if not organization.stripe_subscription_id:
                 return Response({
                     'status': False,
                     'message': 'No subscription found'
                 }, status=status.HTTP_400_BAD_REQUEST)
             
             # Reactivate subscription
-            subscription = stripe.Subscription.retrieve(tenant.stripe_subscription_id)
+            subscription = stripe.Subscription.retrieve(organization.stripe_subscription_id)
             
             if not subscription.cancel_at_period_end:
                 return Response({
@@ -387,7 +387,7 @@ class ReactivateSubscriptionAPIView(APIView):
                 }, status=status.HTTP_400_BAD_REQUEST)
             
             reactivated_subscription = stripe.Subscription.modify(
-                tenant.stripe_subscription_id,
+                organization.stripe_subscription_id,
                 cancel_at_period_end=False
             )
             

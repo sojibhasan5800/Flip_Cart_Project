@@ -8,7 +8,7 @@ class TenantManager(models.Manager):
     def get_by_subdomain(self, subdomain):
         return self.get(subdomain=subdomain, is_active=True)
 
-class Tenant(models.Model):
+class Organization(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=100)
     subdomain = models.CharField(max_length=50, unique=True)

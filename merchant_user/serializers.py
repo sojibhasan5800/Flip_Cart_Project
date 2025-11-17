@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.password_validation import validate_password
-from .models import Account, UserProfile, Tenant
+from .models import Account, UserProfile, Organization
 from accounts.serializers import RegistrationSerializer, AccountSerializer,UserProfileSerializer
 import re
 
@@ -42,7 +42,7 @@ class MerchantRegistrationSerializer(serializers.Serializer):
             raise serializers.ValidationError('Subdomain cannot exceed 50 characters.')
         
         # Check availability
-        if Tenant.objects.filter(subdomain=value).exists():
+        if Organization.objects.filter(subdomain=value).exists():
             raise serializers.ValidationError('This subdomain is already taken. Please choose another one.')
         
         return value
@@ -73,15 +73,15 @@ class MerchantUserRegistrationSerializer(RegistrationSerializer):
     """
     def create(self, validated_data):
         # get tenant from context
-        tenant = self.context.get("tenant")
+        organization = self.context.get("organization", None)
         
         # save user using the parent serializer's create logic
         # temporarily store tenant, then assign it after user creation
         user = super().create(validated_data)  # call parent RegistrationSerializer.create()
 
         # assign tenant
-        if tenant:
-            user.tenant = tenant
+        if organization:
+            user.organization = organization
         user.is_tenant_owner = True
         user.is_active = True
         user.is_tenant_staff = True
@@ -96,7 +96,7 @@ class TenantSerializer(serializers.ModelSerializer):
     """Serializer for Tenant model"""
     
     class Meta:
-        model = Tenant
+        model = Organization
         fields = [
             'id', 'name', 'subdomain', 'email', 'phone', 
             'is_active', 'is_trial', 'trial_ends_at', 'created_at'
@@ -108,7 +108,7 @@ class TenantAccountSerializer(AccountSerializer):
     Account serializer with tenant info and roles
     Inherits from AccountSerializer to avoid duplication
     """
-    tenant = TenantSerializer(read_only=True)
+    organization = TenantSerializer(read_only=True)
 
     class Meta(AccountSerializer.Meta):
         # extend base fields
@@ -116,7 +116,7 @@ class TenantAccountSerializer(AccountSerializer):
             'is_tenant_owner',
             'is_tenant_staff',
             'last_login',
-            'tenant',
+            'organization',
         ]
         read_only_fields = AccountSerializer.Meta.read_only_fields + ['last_login']
 
@@ -129,13 +129,13 @@ class MerchantUserProfileSerializer(UserProfileSerializer):
     Adds is_merchant_user field
     """
     is_merchant_user = serializers.SerializerMethodField()
-    tenant = TenantSerializer(read_only=True)
+    organization = TenantSerializer(read_only=True)
 
     class Meta(UserProfileSerializer.Meta):
         # extend fields from base
         fields = UserProfileSerializer.Meta.fields + ['is_merchant_user','tennant']
-        read_only_fields = ['id', 'date_joined', 'tenant']
-        
+        read_only_fields = ['id', 'date_joined', 'organization']
+
     def get_is_merchant_user(self, obj):
         # obj is UserProfile instance; check if related user has tenant
         return obj.user.tenant is not None
@@ -151,7 +151,7 @@ class SubscriptionSerializer(serializers.Serializer):
     
     def to_representation(self, instance):
         data = super().to_representation(instance)
-        if isinstance(instance, Tenant):
+        if isinstance(instance, Organization):
             data.update({
                 'status': 'trial' if instance.is_trial else 'active',
                 'trial_ends_at': instance.trial_ends_at,

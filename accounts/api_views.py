@@ -21,7 +21,7 @@ from datetime import timedelta
 import stripe
 from django.conf import settings
 
-from .models import Account, UserProfile, Tenant
+from .models import Account, UserProfile, Tenan
 from orders.models import Order, OrderProduct  # keep parity with your views (requires orders app)
 
 from .serializers import (

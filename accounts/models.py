@@ -1,16 +1,8 @@
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
 from cloudinary.models import CloudinaryField
-from merchant_user.models import Tenant
+from merchant_user.models import Organization
 
-
-
-
-# Create your models here.
-
-# ----------------------- New ----------------------------
-
-    
 
 
 
@@ -61,7 +53,7 @@ class Account(AbstractBaseUser):
     phone_number    = models.CharField(max_length=50)
 
     # Tenant relationship
-    tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, null=True, blank=True,related_name='users')
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, null=True, blank=True,related_name='users')
 
     # Role-based fields
     is_tenant_owner = models.BooleanField(default=False)
