@@ -482,3 +482,50 @@ SSLCZ_IS_SANDBOX = True  # Set False in production
 
 
 
+
+
+
+# ========================
+# Stripe Plans Configuration
+# ========================
+
+STRIPE_PLANS = {
+    'basic': {
+        'name': 'Basic Plan',
+        'price': 1999,  # $19.99 in cents
+        'price_id': 'price_1PQAb2SAy6gqZ2y1X8X8X8X8',  # আপনার actual Stripe Price ID দিন
+        'features': [
+            'Up to 100 products', 
+            'Basic analytics', 
+            'Email support',
+            'Standard delivery options'
+        ]
+    },
+    'premium': {
+        'name': 'Premium Plan',
+        'price': 4999,  # $49.99 in cents  
+        'price_id': 'price_1PQAb2SAy6gqZ2y1X8X8X8X9',  # আপনার actual Stripe Price ID দিন
+        'features': [
+            'Unlimited products',
+            'Advanced analytics', 
+            'Priority support',
+            'Custom delivery options',
+            'API access'
+        ]
+    },
+    'enterprise': {
+        'name': 'Enterprise Plan',
+        'price': 9999,  # $99.99 in cents
+        'price_id': 'price_1PQAb2SAy6gqZ2y1X8X8X8X0',  # আপনার actual Stripe Price ID দিন
+        'features': [
+            'Unlimited products',
+            'Real-time analytics',
+            '24/7 phone support',
+            'Custom integrations',
+            'Dedicated account manager'
+        ]
+    }
+}
+
+
+

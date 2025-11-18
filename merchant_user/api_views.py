@@ -11,6 +11,10 @@ from merchant_user.models import Organization
 from merchant_user.serializers import (MerchantRegistrationSerializer,TenantSerializer,SubscriptionSerializer,
                                        MerchantUserRegistrationSerializer,TenantAccountSerializer)
 from accounts.serializers import  AccountSerializer
+from django.db import transaction
+from django_tenants.utils import schema_context
+from delivery_system.models import DeliveryTenant,DeliveryDomain
+from django.core.management import call_command
 
 
 
@@ -20,31 +24,68 @@ class MerchantRegistrationAPIView(APIView):
     POST /api/accounts/merchant/register/
     """
     permission_classes = [AllowAny]
-    
+
     def post(self, request):
         serializer = MerchantRegistrationSerializer(data=request.data)
-        
+
+        # 1. Validate input
         if serializer.is_valid():
             validated_data = serializer.validated_data
             business_name = validated_data['business_name']
             subdomain = validated_data['subdomain']
             email = validated_data['email']
-            
+
             try:
-                # Create tenant
-                organization = Organization.objects.create(
-                    name=business_name,
-                    subdomain=subdomain,
-                    email=email,
-                    phone=validated_data['phone'],
-                    is_trial=True,
-                    trial_ends_at=timezone.now() + timedelta(days=14)
-                )
-                
-                # Stripe integration
+                # 2. Create tenant inside atomic transaction (ensures DB safety)
+                with transaction.atomic():
+
+                    # 2.1 Create Organization
+                    organization = Organization.objects.create(
+                        name=business_name,
+                        subdomain=subdomain,
+                        email=email,
+                        phone=validated_data['phone'],
+                        is_trial=True,
+                        trial_ends_at=timezone.now() + timedelta(days=14)
+                    )
+
+                    # 2.2 Create Delivery Tenant
+                    delivery_tenant = DeliveryTenant.objects.create(
+                        name=business_name,
+                        schema_name=subdomain,  
+                        # ← Very important! Schema name must match subdomain.
+                        description=f"Delivery system for {business_name}",
+                        default_delivery_charge=60.00,
+                        free_delivery_threshold=1000.00,
+                        is_active=True
+                    )
+
+                    # 2.3 Create Delivery Domain
+                    DeliveryDomain.objects.create(
+                        domain=f"{subdomain}.flipcart.com",
+                        # If using localhost for testing: {subdomain}.localhost
+                        tenant=delivery_tenant,
+                        is_primary=True
+                    )
+
+                    # 2.4 Link Organization ↔ DeliveryTenant
+                    organization.delivery_tenant = delivery_tenant
+                    organization.save()
+
+                    # 2.5 Create tenant schema
+                    delivery_tenant.create_schema(check_if_exists=True)
+
+                    # 2.6 Switch to new tenant schema and run migrations
+                    with schema_context(delivery_tenant.schema_name):
+                        call_command('migrate', '--noinput')
+
+                        # Optional: Seed default delivery data
+                        call_command('seed_delivery_data')
+
+                # 3. Stripe Integration
                 stripe.api_key = settings.STRIPE_SECRET_KEY
-                
-                # Create Stripe customer
+
+                # 3.1 Create Stripe Customer
                 stripe_customer = stripe.Customer.create(
                     email=email,
                     name=business_name,
@@ -54,8 +95,8 @@ class MerchantRegistrationAPIView(APIView):
                         'type': 'merchant'
                     }
                 )
-                
-                # Create subscription with trial
+
+                # 3.2 Create Subscription with free trial
                 subscription = stripe.Subscription.create(
                     customer=stripe_customer.id,
                     items=[{
@@ -67,13 +108,13 @@ class MerchantRegistrationAPIView(APIView):
                         'subdomain': subdomain
                     }
                 )
-                
-                # Update tenant with Stripe info
+
+                # 3.3 Save Stripe data in Organization
                 organization.stripe_customer_id = stripe_customer.id
                 organization.stripe_subscription_id = subscription.id
                 organization.save()
-                
-                # Create merchant owner account using UserRegistrationSerializer
+
+                # 4. Create Merchant Owner Account
                 user_data = {
                     'first_name': validated_data['first_name'],
                     'last_name': validated_data['last_name'],
@@ -82,15 +123,17 @@ class MerchantRegistrationAPIView(APIView):
                     'password': validated_data['password'],
                     'confirm_password': validated_data['confirm_password']
                 }
-                
+
                 user_serializer = MerchantUserRegistrationSerializer(
-                    data=user_data, 
+                    data=user_data,
                     context={'organization': organization}
                 )
-                
+
+                # 4.1 Validate and Save Merchant Owner User
                 if user_serializer.is_valid():
                     user = user_serializer.save()
-                    
+
+                    # 5. Return success response
                     response_data = {
                         'status': True,
                         'message': 'Merchant account created successfully',
@@ -105,8 +148,10 @@ class MerchantRegistrationAPIView(APIView):
                             'store_url': f"https://{subdomain}.flipcart.com"
                         }
                     }
-                    
+
                     return Response(response_data, status=status.HTTP_201_CREATED)
+
+                # If user creation fails → delete Organization + revert
                 else:
                     organization.delete()
                     return Response({
@@ -114,7 +159,8 @@ class MerchantRegistrationAPIView(APIView):
                         'message': 'User creation failed',
                         'errors': user_serializer.errors
                     }, status=status.HTTP_400_BAD_REQUEST)
-                
+
+            # Stripe related errors
             except stripe.error.StripeError as e:
                 if 'organization' in locals():
                     organization.delete()
@@ -123,7 +169,8 @@ class MerchantRegistrationAPIView(APIView):
                     'message': f'Payment processing failed: {str(e)}',
                     'error_code': 'STRIPE_ERROR'
                 }, status=status.HTTP_400_BAD_REQUEST)
-                
+
+            # General errors
             except Exception as e:
                 if 'organization' in locals():
                     organization.delete()
@@ -132,13 +179,13 @@ class MerchantRegistrationAPIView(APIView):
                     'message': f'Registration failed: {str(e)}',
                     'error_code': 'REGISTRATION_ERROR'
                 }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
-        else:
-            return Response({
-                'status': False,
-                'message': 'Invalid data provided',
-                'errors': serializer.errors
-            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Invalid initial data
+        return Response({
+            'status': False,
+            'message': 'Invalid data provided',
+            'errors': serializer.errors
+        }, status=status.HTTP_400_BAD_REQUEST)
 
 class MerchantDashboardAPIView(APIView):
     """

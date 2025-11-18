@@ -1,5 +1,6 @@
 from django.db import models
 import uuid
+from delivery_system.models import DeliveryTenant
 # Create your models here.
 
 
@@ -10,6 +11,13 @@ class OrganizationManager(models.Manager):
 
 class Organization(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    delivery_tenant = models.OneToOneField(
+        DeliveryTenant,
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True,
+        related_name='organization'
+        )   
     name = models.CharField(max_length=100)
     subdomain = models.CharField(max_length=50, unique=True)
     email = models.EmailField(unique=True)

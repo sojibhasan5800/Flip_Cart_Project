@@ -62,6 +62,7 @@ urlpatterns = [
     path('api/orders/', include('orders.api_urls', namespace='orders_api')),
     path('api/seller/', include('seller_dashboard.api_urls', namespace='seller_dashboard_api')),
     path('api/delivery/', include('delivery_system.api_urls', namespace='delivery_system_api')),
+    path('api/merchant_user/', include('merchant_user.api_urls', namespace='merchant_user_api')),
 
 
     path('swagger(<format>.json|.yaml)', schema_view.without_ui(cache_timeout=0), name='schema-json'),

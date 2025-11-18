@@ -4,7 +4,7 @@ from .api_views import (
     RegistrationAPIView, LoginAPIView, LogoutAPIView, DashboardAPIView,
     EditProfileAPIView, ChangePasswordAPIView, MyOrdersAPIView, OrderDetailAPIView,
     ActivateAPIView, ForgotPasswordAPIView, ResetPasswordAPIView,ResetPasswordValidateAPIView,DeleteAccountAPIView,
-    MerchantRegistrationAPIView,MerchantDashboardAPIView,MerchantSubscriptionAPIView,CustomerRegistrationAPIView
+   
 )
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
@@ -27,13 +27,5 @@ urlpatterns = [
     path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),      # login JWT
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),     # refresh JWT
 
-        # Multi-tenant specific URLs
-    # Merchant APIs
-    path('merchant/register/', MerchantRegistrationAPIView.as_view(), name='merchant_register'),
-    path('merchant/dashboard/', MerchantDashboardAPIView.as_view(), name='merchant_dashboard'),
-    path('merchant/subscription/', MerchantSubscriptionAPIView.as_view(), name='merchant_subscription'),
 
-    # Tenant Customer APIs (public)
-    path('customer/register/', CustomerRegistrationAPIView.as_view(), name='customer_register'),
-    # path('customer/login/', CustomerLoginAPIView.as_view(), name='customer_login'),
 ]

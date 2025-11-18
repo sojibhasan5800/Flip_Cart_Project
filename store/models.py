@@ -11,6 +11,7 @@ from merchant_user.context import OrganizationContext, get_organization_aware_ma
 from category.models import Category
 from accounts.models import Account
 from merchant_user.models import Organization
+from delivery_system.models import DeliveryTenant
 
 
 # Create your models here.
@@ -26,6 +27,14 @@ class Product(models.Model):
     category        = models.ForeignKey(Category, on_delete=models.CASCADE)
     # Tenant isolation
     organization  = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name='products')
+    #  NEW: Add delivery tenant link for delivery system
+    delivery_tenant = models.ForeignKey(
+        DeliveryTenant, 
+        on_delete=models.CASCADE, 
+        related_name='products',
+        null=True, 
+        blank=True
+    )
     
     created_date    = models.DateTimeField(auto_now_add=True)
     modified_date   = models.DateTimeField(auto_now=True)
@@ -36,10 +45,16 @@ class Product(models.Model):
         indexes = [
             models.Index(fields=['organization', 'is_available']),
             models.Index(fields=['organization', 'category']),
+            models.Index(fields=['delivery_tenant', 'is_available']),
+            models.Index(fields=['delivery_tenant', 'category']),
         ]
 
     def save(self, *args, **kwargs):
     # if stock 0 then is_available False 
+        # Auto-set delivery_tenant from organization
+        if self.organization and self.organization.delivery_tenant and not self.delivery_tenant:
+            self.delivery_tenant = self.organization.delivery_tenant
+
         if self.stock == 0:
             self.is_available = False
         else:
