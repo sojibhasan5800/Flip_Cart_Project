@@ -1,12 +1,10 @@
 from django.db import models
-from accounts.models import Account,Tenant
-from store.models import Product, Variation
 from .context import STATUS
 
 
 
 class Payment(models.Model):
-    user = models.ForeignKey(Account, on_delete=models.CASCADE)
+    user = models.ForeignKey("accounts.Account", on_delete=models.CASCADE)
     payment_id = models.CharField(max_length=100)
     payment_method = models.CharField(max_length=100)
     amount_paid = models.CharField(max_length=100) # this is the total amount paid
@@ -18,11 +16,13 @@ class Payment(models.Model):
 
 
 class Order(models.Model):
-    user = models.ForeignKey(Account, on_delete=models.SET_NULL, null=True)
+    user = models.ForeignKey("accounts.Account", on_delete=models.SET_NULL, null=True)
     payment = models.ForeignKey(Payment, on_delete=models.SET_NULL, blank=True, null=True)
     order_number = models.CharField(max_length=20)
     # Tenant isolation
-    tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name='orders')
+    # tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name='orders')
+    organization = models.ForeignKey("merchant_user.Organization", on_delete=models.CASCADE, related_name='orders')
+
 
     first_name = models.CharField(max_length=50)
     last_name = models.CharField(max_length=50)
@@ -44,8 +44,8 @@ class Order(models.Model):
     
     class Meta:
         indexes = [
-            models.Index(fields=['tenant', 'created_at']),
-            models.Index(fields=['tenant', 'status']),
+            models.Index(fields=['organization', 'created_at']),
+            models.Index(fields=['organization', 'status']),
         ]
 
     def full_name(self):
@@ -61,9 +61,9 @@ class Order(models.Model):
 class OrderProduct(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE)
     payment = models.ForeignKey(Payment, on_delete=models.SET_NULL, blank=True, null=True)
-    user = models.ForeignKey(Account, on_delete=models.CASCADE)
-    product = models.ForeignKey(Product, on_delete=models.CASCADE)
-    variations = models.ManyToManyField(Variation, blank=True)
+    user = models.ForeignKey("accounts.Account", on_delete=models.CASCADE)
+    product = models.ForeignKey("store.Product", on_delete=models.CASCADE)
+    variations = models.ManyToManyField("store.Variation", blank=True)
     quantity = models.IntegerField()
     product_price = models.FloatField()
     ordered = models.BooleanField(default=False)

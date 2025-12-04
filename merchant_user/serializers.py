@@ -1,6 +1,8 @@
 from rest_framework import serializers
 from django.contrib.auth.password_validation import validate_password
-from .models import Account, UserProfile, Organization
+# from .models import Account, UserProfile
+from accounts.models import Account, UserProfile
+from merchant_user.models import Organization
 from accounts.serializers import RegistrationSerializer, AccountSerializer,UserProfileSerializer
 import re
 

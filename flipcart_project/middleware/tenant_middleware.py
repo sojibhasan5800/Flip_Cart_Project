@@ -1,51 +1,51 @@
-from django.http import Http404
-from django.shortcuts import redirect
-from accounts.models import Tenant
-import re
+# flipcart_project/middleware/tenant_admin.py
 
-class TenantMiddleware:
+class TenantAdminMiddleware:
+    """
+    Middleware to control admin panel access based on the active tenant.
+    - Super Admin (public schema) → Can access everything
+    - Tenant Admin → Can access only their own tenant’s data
+    """
+
     def __init__(self, get_response):
         self.get_response = get_response
 
     def __call__(self, request):
-        host = request.get_host()
-        
-        # Extract subdomain from host
-        subdomain = self.extract_subdomain(host)
-        
-        if subdomain and subdomain not in ['www', 'admin', 'api']:
-            try:
-                tenant = Tenant.objects.get_by_subdomain(subdomain)
-                request.tenant = tenant
-                
-                # Set tenant context for all requests
-                if hasattr(request, 'user') and request.user.is_authenticated:
-                    # Ensure user belongs to this tenant
-                    if request.user.tenant != tenant and not request.user.is_platform_admin:
-                        request.tenant = None
-                        return redirect(f"https://{request.get_host().replace(subdomain + '.', '')}")
-                        
-            except Tenant.DoesNotExist:
-                # Tenant not found - redirect to main site
-                main_domain = self.get_main_domain(host)
-                return redirect(f"https://{main_domain}")
-        else:
-            request.tenant = None
-
+        # Process the request first
         response = self.get_response(request)
+
+        # Detect if the request is for Django admin
+        if 'admin' in request.path:
+            try:
+                from django_tenants.utils import get_tenant
+                current_tenant = get_tenant(request)
+            except Exception:
+                current_tenant = None
+
+            user = request.user
+
+            # Safe superuser/staff check (prevents attribute errors)
+            is_superadmin = getattr(user, "is_superuser", False)
+            is_staff = getattr(user, "is_staff", False)
+
+            # Logged-in user but not staff → block access
+            if user.is_authenticated and not is_staff:
+                from django.contrib import messages
+                from django.shortcuts import redirect
+                messages.error(request, "You don't have permission to access the admin panel.")
+                return redirect('/')
+
+            # Public schema admin access → only superadmins allowed
+            if current_tenant and current_tenant.schema_name == "public":
+                # Only superadmin can access public admin panel
+                if not is_superadmin:
+                    messages.error(request, "Only superadmin can access the public admin panel.")
+                    return redirect('/')
+
+            # Tenant schema admin access → tenant admin allowed
+            elif current_tenant:
+                # Tenant admin access is automatically handled by django-tenants
+                # No special action needed here
+                pass
+
         return response
-
-    def extract_subdomain(self, host):
-        """Extract subdomain from hostname"""
-        pattern = r'^(?:http://|https://)?([^\.]+)\.'
-        match = re.match(pattern, host)
-        if match:
-            return match.group(1)
-        return None
-
-    def get_main_domain(self, host):
-        """Get main domain from host"""
-        parts = host.split('.')
-        if len(parts) > 2:
-            return '.'.join(parts[1:])
-        return host

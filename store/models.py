@@ -8,10 +8,7 @@ import json
 from django.db.models import F, Value, CharField
 from django.db.models.functions import Concat
 from merchant_user.context import OrganizationContext, get_organization_aware_manager
-from category.models import Category
-from accounts.models import Account
-from merchant_user.models import Organization
-from delivery_system.models import DeliveryTenant
+
 
 
 # Create your models here.
@@ -24,12 +21,12 @@ class Product(models.Model):
     images          = CloudinaryField('image', blank=True)
     stock           = models.IntegerField()
     is_available    = models.BooleanField(default=True)
-    category        = models.ForeignKey(Category, on_delete=models.CASCADE)
+    category        = models.ForeignKey("category.Category", on_delete=models.CASCADE)
     # Tenant isolation
-    organization  = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name='products')
+    organization  = models.ForeignKey("merchant_user.Organization", on_delete=models.CASCADE, related_name='products')
     #  NEW: Add delivery tenant link for delivery system
     delivery_tenant = models.ForeignKey(
-        DeliveryTenant, 
+        "delivery_system.DeliveryTenant", 
         on_delete=models.CASCADE, 
         related_name='products',
         null=True, 
@@ -108,7 +105,7 @@ class Variation(models.Model):
 
 class ReviewRating(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
-    user = models.ForeignKey(Account, on_delete=models.CASCADE)
+    user = models.ForeignKey("accounts.Account", on_delete=models.CASCADE)
     subject = models.CharField(max_length=100, blank=True)
     review = models.TextField(max_length=500, blank=True)
     rating = models.FloatField()

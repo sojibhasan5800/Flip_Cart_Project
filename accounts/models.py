@@ -9,7 +9,7 @@ from merchant_user.models import Organization
 # ----------------------- Previous ----------------------------
 
 class MyAccountManager(BaseUserManager):
-    def create_user(self, first_name, last_name, username, email, password=None,tenant=None):
+    def create_user(self, first_name, last_name, username, email, password=None,organization=None):
         if not email:
             raise ValueError('User must have an email address')
 
@@ -21,7 +21,7 @@ class MyAccountManager(BaseUserManager):
             username = username,
             first_name = first_name,
             last_name = last_name,
-            tenant=tenant,
+            organization=organization,
         )
 
         user.set_password(password)
@@ -87,11 +87,11 @@ class Account(AbstractBaseUser):
     
     @property
     def is_platform_admin(self):
-        return self.is_superadmin and self.tenant is None
+        return self.is_superadmin and self.organization is None
     
     @property
     def is_merchant_user(self):
-        return self.tenant is not None
+        return self.organization is not None
 
 
 class UserProfile(models.Model):

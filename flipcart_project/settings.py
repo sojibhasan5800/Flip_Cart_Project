@@ -64,6 +64,7 @@ SHARED_APPS = [
     # Your shared/local apps
     'accounts',          # superadmin login / user creation
     'delivery_system',   # shared tenant + domain config
+    'merchant_user',
     # 'core',              # global config, landing page, etc.
 ]
 
@@ -126,7 +127,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 
     # Tenant Admin Middleware (ADD HERE)
-    'flipcart_project.middleware.tenant_admin.TenantAdminMiddleware',
+    # 'flipcart_project.middleware.tenant_admin.TenantAdminMiddleware',
 
     # Other Custom Middlewares (keep these after tenant admin)
     'flipcart_project.middleware.user_activity.UserActivityMiddleware',
