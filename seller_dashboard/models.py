@@ -5,7 +5,7 @@ from django.utils import timezone
 User = get_user_model()
 
 class SellerAnalytics(models.Model):
-    seller = models.ForeignKey(User, on_delete=models.CASCADE)
+    seller = models.ForeignKey(User, on_delete=models.DO_NOTHING,null=True, related_name='analytics')
     # total_sales = models.FloatField(default=0)
     total_sales = models.IntegerField(default=0)
     total_orders = models.IntegerField(default=0)

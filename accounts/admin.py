@@ -53,6 +53,13 @@ class AccountAdmin(UserAdmin):
     filter_horizontal = ()
     list_filter = ()
     fieldsets = ()
+    
+    def delete_queryset(self, request, queryset):
+        for obj in queryset:
+            obj.delete()  # কাস্টম delete() কল
+
+    def delete_model(self, request, obj):
+        obj.delete()
 
 # UserProfile Admin
 class UserProfileAdmin(admin.ModelAdmin):

@@ -10,6 +10,8 @@ from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 from django_tenants.utils import get_tenant, tenant_context
 
+from orders.models import Order 
+
 from .models import (
     Division, District, DeliveryArea, DeliveryTimeSlot, 
     DeliveryOrder, DeliveryTracking, DeliverySettings
@@ -19,7 +21,7 @@ from .serializers import (
     DeliveryTimeSlotSerializer, DeliveryOrderSerializer, DeliveryTrackingSerializer,
     DeliveryCalculatorSerializer, DeliverySettingsSerializer
 )
-from orders.models import Order
+# from orders.models import Order
 
 
 class DivisionListAPIView(generics.ListAPIView):
@@ -225,6 +227,7 @@ class DeliveryOrderCreateAPIView(APIView):
         try:
             with transaction.atomic():
                 # Get order and validate
+                # order = get_object_or_404(Order, id=order_id, user=request.user)
                 order = get_object_or_404(Order, id=order_id, user=request.user)
                 delivery_area = get_object_or_404(
                     DeliveryArea, 

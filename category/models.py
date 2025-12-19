@@ -2,7 +2,7 @@ from django.db import models
 from django.urls import reverse
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ObjectDoesNotExist
-# User = get_user_model()
+User = get_user_model()
 
 # Create your models here.
 def get_default_admin_user():
@@ -20,7 +20,7 @@ class Category(models.Model):
     description = models.TextField(max_length=255, blank=True)
     cat_image = models.ImageField(upload_to='photos/categories', blank=True)
 
-    account = models.ForeignKey('accounts.Account', on_delete=models.CASCADE, default= get_default_admin_user,null=True,blank=True)
+    # account = models.ForeignKey('accounts.Account', on_delete=models.CASCADE, default= get_default_admin_user,null=True,blank=True)
 
 
     class Meta:

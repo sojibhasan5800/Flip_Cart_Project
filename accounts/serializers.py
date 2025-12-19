@@ -1,10 +1,12 @@
 # accounts/api/serializers.py
+from sqlite3 import IntegrityError
 from rest_framework import serializers
 from .models import Account, UserProfile 
 from django.contrib.auth import authenticate
 from django.core.validators import validate_email
 from django.core.exceptions import ValidationError
 from django.contrib.auth.password_validation import validate_password
+from django.db import IntegrityError, transaction
 import re
 
 class UserProfileSerializer(serializers.ModelSerializer):
@@ -54,23 +56,54 @@ class RegistrationSerializer(serializers.ModelSerializer):
 
         if Account.objects.filter(email=email).exists():
             raise serializers.ValidationError({"email": "This email is already registered. Please login or use another email."})
-        counter = 1
-        while Account.objects.filter(username=username).exists():
-            username = f"{base_username}{counter}"
-            counter += 1
+        
 
-        user = Account.objects.create_user(
-            first_name=validated_data['first_name'],
-            last_name=validated_data['last_name'],
-            email=email,
-            username=username,
-            password=validated_data['password']
-        )
-        user.phone_number = validated_data.get('phone_number', '')
-        user.save()
-        # create user profile (keeps parity with MVT behaviour)
+        # counter = 1
+        # while Account.objects.filter(username=username).exists():
+        #     username = f"{base_username}{counter}"
+        #     counter += 1
+        
+
+        counter = 1
+        MAX_ATTEMPTS = 10
+
+        while counter <= MAX_ATTEMPTS:
+            try:              
+                user = Account.objects.create_user(
+                    first_name=validated_data['first_name'],
+                    last_name=validated_data['last_name'],
+                    email=email,
+                    username=username,
+                    password=validated_data['password'],
+                    phone_number=validated_data.get('phone_number', '')
+                )
+                break  # success
+            except IntegrityError as e:
+                error_msg = str(e)
+                print("IntegrityError caught!")
+                print("Error message:", error_msg)
+
+                # check which field caused the error
+                if 'username' in error_msg:
+                    print("Conflict field: username =", username)
+                    username = f"{base_username}{counter}"
+                    counter += 1
+                elif 'email' in error_msg:
+                    print("Conflict field: email =", email)
+                    # email conflict হলে retry সম্ভব নয়, error raise করা
+                    raise serializers.ValidationError({"email": "এই email ইতিমধ্যেই register করা হয়েছে।"})
+                else:
+                    # অন্য কোনো ডাটাবেস error
+                    print("Other field conflict or DB error")
+                    raise serializers.ValidationError({"error": "User create করতে সমস্যা।"})
+     
+                 
+
+        # create user profile
         UserProfile.objects.get_or_create(user=user)
         return user
+    # raise serializers.ValidationError({"username": "Could not generate a unique username. Please try again."})
+
 
 
 class LoginSerializer(serializers.Serializer):
@@ -83,7 +116,6 @@ class LoginSerializer(serializers.Serializer):
 
     def validate(self, data):
         user = authenticate(email=data['email'], password=data['password'])
-        print(user)
         if not user:
             raise serializers.ValidationError("Invalid credentials.")
         if not user.is_active:

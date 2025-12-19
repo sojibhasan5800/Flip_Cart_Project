@@ -2,6 +2,7 @@ from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
 from cloudinary.models import CloudinaryField
 from merchant_user.models import Organization
+from django_tenants.utils import get_tenant_model, tenant_context
 
 
 
@@ -9,7 +10,12 @@ from merchant_user.models import Organization
 # ----------------------- Previous ----------------------------
 
 class MyAccountManager(BaseUserManager):
-    def create_user(self, first_name, last_name, username, email, password=None,organization=None):
+
+    # def get_queryset(self):
+    # # Override default queryset to return only active users
+    #     return super().get_queryset().filter(is_active=True)
+
+    def create_user(self, first_name, last_name, username, email,phone_number=None, password=None,organization=None):
         if not email:
             raise ValueError('User must have an email address')
 
@@ -21,6 +27,7 @@ class MyAccountManager(BaseUserManager):
             username = username,
             first_name = first_name,
             last_name = last_name,
+            phone_number = phone_number,
             organization=organization,
         )
 
@@ -85,14 +92,27 @@ class Account(AbstractBaseUser):
     def has_module_perms(self, add_label):
         return True
     
-    @property
-    def is_platform_admin(self):
-        return self.is_superadmin and self.organization is None
-    
-    @property
-    def is_merchant_user(self):
-        return self.organization is not None
-
+    def delete(self, using=None, keep_parents=False):
+        TenantModel = get_tenant_model()
+        tenants = TenantModel.objects.all()
+        for tenant in tenants:
+            try:
+                with tenant_context(tenant):
+                    # ReviewRating: NULL
+                    from store.models import ReviewRating
+                    ReviewRating.objects.filter(user=self).update(user=None)
+                    # Carts: ডিলিট
+                    from carts.models import Cart, CartItem
+                    Cart.objects.filter(user=self).delete()
+                    CartItem.objects.filter(user=self).delete()
+                    # Orders: NULL
+                    from orders.models import Order, OrderProduct
+                    Order.objects.filter(user=self).update(user=None)
+                    OrderProduct.objects.filter(user=self).update(user=None)
+                    # অন্যান্য যদি থাকে, অ্যাড করুন
+            except Exception as e:
+                pass  # ডিলিটেড টেন্যান্ট স্কিপ
+        super(Account, self).delete(using=using, keep_parents=keep_parents)
 
 class UserProfile(models.Model):
     user = models.OneToOneField(Account, on_delete=models.CASCADE)

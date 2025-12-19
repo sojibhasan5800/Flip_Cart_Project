@@ -22,6 +22,7 @@ class DeliveryTenant(TenantMixin):
     updated_at = models.DateTimeField(auto_now=True)
     
     auto_create_schema = True
+    auto_drop_schema = True
     
     def __str__(self):
         return f"{self.name} (Tenant)"

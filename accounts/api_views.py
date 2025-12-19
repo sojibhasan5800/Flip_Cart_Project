@@ -1,3 +1,4 @@
+
 # accounts/api/views.py
 from rest_framework import status, generics, permissions
 from rest_framework.response import Response
@@ -27,6 +28,8 @@ from orders.models import Order, OrderProduct  # keep parity with your views (re
 from .serializers import (
     AccountSerializer,RegistrationSerializer, LoginSerializer, AccountSerializer, UserProfileSerializer
 )
+from django.shortcuts import redirect
+
 
 
 #------------- previous code ------------------
@@ -89,11 +92,11 @@ class RegistrationAPIView(generics.CreateAPIView):
         
         
         # Activation email (use same template as earlier)
-        current_site = get_current_site(request)
+        # current_site = get_current_site(request)
         mail_subject = 'Please activate your account'
         message = render_to_string('accounts/account_verification_email.html', {
             'user': user,
-            'domain': current_site,
+            'base_url': settings.BASE_URL, 
             'uid': uid,
             'token': token,
             'api':True,
@@ -109,6 +112,7 @@ class RegistrationAPIView(generics.CreateAPIView):
 
 # ---------------------------
 # Login API
+from django_tenants.utils import schema_context
 # ---------------------------
 class LoginAPIView(APIView):
     """
@@ -127,17 +131,21 @@ class LoginAPIView(APIView):
         responses={200: 'token'}
     )
     def post(self, request):
-        serializer = LoginSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        user = serializer.validated_data['user']
 
-        # Generate JWT tokens
-        refresh = RefreshToken.for_user(user)
-        return Response({
-            "refresh": str(refresh),
-            "access": str(refresh.access_token),
-            "user": AccountSerializer(user).data
-        }, status=status.HTTP_200_OK)
+        with schema_context('public'):  #  IMPORTANT
+            serializer = LoginSerializer(data=request.data)
+            print("Login data received:", request.data)
+            serializer.is_valid(raise_exception=True)
+            user = serializer.validated_data['user']
+            print("Logged in user:", user)
+
+            refresh = RefreshToken.for_user(user)
+
+            return Response({
+                "refresh": str(refresh),
+                "access": str(refresh.access_token),
+                "user": AccountSerializer(user).data
+            }, status=status.HTTP_200_OK)
    
 
 # ---------------------------
@@ -337,9 +345,12 @@ class ActivateAPIView(APIView):
         if user is not None and default_token_generator.check_token(user, token):
             user.is_active = True
             user.save()
-            return Response({"detail": "Account activated."})
-        return Response({"error": "Invalid activation link."}, status=status.HTTP_400_BAD_REQUEST)
-    
+            frontend_url = (
+                    f"{settings.FRONTEND_URL}/auth/login"
+                    f"?command=verification&email={user.email}"
+                )
+            return redirect(frontend_url)
+        return redirect(f"{settings.FRONTEND_URL}/auth/login?command=invalid")
 
 class ForgotPasswordAPIView(APIView):
     """

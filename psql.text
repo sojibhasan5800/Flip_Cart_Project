@@ -1,5 +1,5 @@
 all databse--> \l
-connection---> \c databse_name
+connection---> \c flipcart_tenants
 all_public_table -->\dt
 all_schema_tenant --> \dn
 entery tenant_databse --> SET search_path TO schmea_name;

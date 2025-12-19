@@ -14,8 +14,8 @@ from merchant_user.context import OrganizationContext, get_organization_aware_ma
 # Create your models here.
 
 class Product(models.Model):
-    product_name    = models.CharField(max_length=200, unique=True)
-    slug            = models.SlugField(max_length=200, unique=True)
+    product_name    = models.CharField(max_length=200)
+    slug            = models.SlugField(max_length=200)
     description     = models.TextField(max_length=500, blank=True)
     price           = models.IntegerField()
     images          = CloudinaryField('image', blank=True)
@@ -23,11 +23,12 @@ class Product(models.Model):
     is_available    = models.BooleanField(default=True)
     category        = models.ForeignKey("category.Category", on_delete=models.CASCADE)
     # Tenant isolation
-    organization  = models.ForeignKey("merchant_user.Organization", on_delete=models.CASCADE, related_name='products')
+    # organization  = models.ForeignKey("merchant_user.Organization", on_delete=models.CASCADE, related_name='products')
+    organization    = models.ForeignKey("merchant_user.Organization", on_delete=models.SET_NULL, null=True, related_name='products')
     #  NEW: Add delivery tenant link for delivery system
     delivery_tenant = models.ForeignKey(
         "delivery_system.DeliveryTenant", 
-        on_delete=models.CASCADE, 
+        on_delete=models.SET_NULL, 
         related_name='products',
         null=True, 
         blank=True
@@ -105,7 +106,8 @@ class Variation(models.Model):
 
 class ReviewRating(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
-    user = models.ForeignKey("accounts.Account", on_delete=models.CASCADE)
+    # user = models.ForeignKey("accounts.Account", on_delete=models.CASCADE)
+    user = models.ForeignKey("accounts.Account", on_delete=models.DO_NOTHING, null=True, blank=True)
     subject = models.CharField(max_length=100, blank=True)
     review = models.TextField(max_length=500, blank=True)
     rating = models.FloatField()

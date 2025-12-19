@@ -4,7 +4,8 @@ from .context import STATUS
 
 
 class Payment(models.Model):
-    user = models.ForeignKey("accounts.Account", on_delete=models.CASCADE)
+    user = models.ForeignKey("accounts.Account", on_delete=models.DO_NOTHING, null=True)
+    # user = models.ForeignKey("accounts.Account", on_delete=models.CASCADE)
     payment_id = models.CharField(max_length=100)
     payment_method = models.CharField(max_length=100)
     amount_paid = models.CharField(max_length=100) # this is the total amount paid
@@ -16,7 +17,7 @@ class Payment(models.Model):
 
 
 class Order(models.Model):
-    user = models.ForeignKey("accounts.Account", on_delete=models.SET_NULL, null=True)
+    user = models.ForeignKey("accounts.Account", on_delete=models.DO_NOTHING, null=True)
     payment = models.ForeignKey(Payment, on_delete=models.SET_NULL, blank=True, null=True)
     order_number = models.CharField(max_length=20)
     # Tenant isolation
@@ -61,7 +62,7 @@ class Order(models.Model):
 class OrderProduct(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE)
     payment = models.ForeignKey(Payment, on_delete=models.SET_NULL, blank=True, null=True)
-    user = models.ForeignKey("accounts.Account", on_delete=models.CASCADE)
+    user = models.ForeignKey("accounts.Account", on_delete=models.DO_NOTHING, null=True)
     product = models.ForeignKey("store.Product", on_delete=models.CASCADE)
     variations = models.ManyToManyField("store.Variation", blank=True)
     quantity = models.IntegerField()

@@ -22,6 +22,7 @@ DEBUG = True
 USE_DOCKER = False
 Tenatst_MODE = False
 LOCAL_Postgresql_Database = False
+DEPLOYMENT_MODE = False
 
 ALLOWED_HOSTS = (
     ['*'] if DEBUG else ['flip-cart-project-1.onrender.com']
@@ -130,9 +131,9 @@ MIDDLEWARE = [
     # 'flipcart_project.middleware.tenant_admin.TenantAdminMiddleware',
 
     # Other Custom Middlewares (keep these after tenant admin)
-    'flipcart_project.middleware.user_activity.UserActivityMiddleware',
-    'flipcart_project.middleware.performance.PerformanceMiddleware',
-    'flipcart_project.middleware.security.SecurityMiddleware',
+    # 'flipcart_project.middleware.user_activity.UserActivityMiddleware',
+    # 'flipcart_project.middleware.performance.PerformanceMiddleware',
+    # 'flipcart_project.middleware.security.SecurityMiddleware',
 ]
 
 
@@ -333,21 +334,28 @@ NGROK_URL = 'https://dino-staminal-kamila.ngrok-free.dev'
 CSRF_TRUSTED_ORIGINS = ['https://dino-staminal-kamila.ngrok-free.dev']
 
 
+
 # NGROK_URL = None
 # CSRF_TRUSTED_ORIGINS = ['*']
 
-if NGROK_URL:
+if DEPLOYMENT_MODE:
     BASE_URL = NGROK_URL
     
 else:
     if DEBUG:
-        BASE_URL = "http://127.0.0.1:8000/"
+        BASE_URL = "http://127.0.0.1:8000"
     else:
         BASE_URL= "https://flip-cart-project-1.onrender.com"
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",  # React frontend
 ]
+
+FRONTEND_URL = None
+if  DEPLOYMENT_MODE:
+    FRONTEND_URL = "https://flip-cart-project-frontend.onrender.com"
+else:
+    FRONTEND_URL = "http://localhost:3000"
 
 # -----------------------------
 # Redis Configuration (Smart Detection)
