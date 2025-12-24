@@ -567,3 +567,5 @@ class DeleteAccountAPIView(APIView):
             {"detail": f"Account {user_email} has been permanently deleted along with all associated data."},
             status=status.HTTP_200_OK
         )
+
+

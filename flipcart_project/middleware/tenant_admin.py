@@ -1,51 +1,76 @@
-# flipcart_project/middleware/tenant_admin.py
+from django.http import JsonResponse
+from django_tenants.utils import get_tenant
+from rest_framework_simplejwt.authentication import JWTAuthentication
+from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
+
 
 class TenantAdminMiddleware:
-    """
-    Middleware to control admin panel access based on the active tenant.
-    - Super Admin (public schema) → Can access everything
-    - Tenant Admin → Can access only their own tenant’s data
-    """
 
     def __init__(self, get_response):
         self.get_response = get_response
 
     def __call__(self, request):
-        # Process the request first
-        response = self.get_response(request)
 
-        # Detect if the request is for Django admin
-        if 'admin' in request.path:
-            try:
-                from django_tenants.utils import get_tenant
-                current_tenant = get_tenant(request)
-            except Exception:
-                current_tenant = None
+        if not request.path.startswith("/api/admin/check/"):
+            return self.get_response(request)
 
-            user = request.user
+        # 🔹 Resolve tenant
+        try:
+            tenant = get_tenant(request)
+        except Exception:
+            tenant = None
+        
+        print("HOST:", request.get_host())
+        print("tenant:", tenant)
 
-            # Safe superuser/staff check (prevents attribute errors)
-            is_superadmin = getattr(user, "is_superuser", False)
-            is_staff = getattr(user, "is_staff", False)
 
-            # Logged-in user but not staff → block access
-            if user.is_authenticated and not is_staff:
-                from django.contrib import messages
-                from django.shortcuts import redirect
-                messages.error(request, "You don't have permission to access the admin panel.")
-                return redirect('/')
+        # 🔹 JWT decode
+        auth_header = request.META.get("HTTP_AUTHORIZATION")
+        if not auth_header or not auth_header.startswith("Bearer "):
+            return JsonResponse(
+                {"detail": "Authentication required", "is_public_admin": False},
+                status=401
+            )
 
-            # Public schema admin access → only superadmins allowed
-            if current_tenant and current_tenant.schema_name == "public":
-                # Only superadmin can access public admin panel
-                if not is_superadmin:
-                    messages.error(request, "Only superadmin can access the public admin panel.")
-                    return redirect('/')
+        raw_token = auth_header.split(" ")[1]
 
-            # Tenant schema admin access → tenant admin allowed
-            elif current_tenant:
-                # Tenant admin access is automatically handled by django-tenants
-                # No special action needed here
-                pass
+        try:
+            validated_token = JWTAuthentication().get_validated_token(raw_token)
+            user = JWTAuthentication().get_user(validated_token)
+        except (TokenError, InvalidToken):
+            return JsonResponse(
+                {"detail": "Invalid or expired token", "is_public_admin": False},
+                status=401
+            )
 
-        return response
+        # 🔹 Only public schema admin allowed
+        if not tenant or tenant.schema_name != "public":
+            return JsonResponse(
+                {"detail": "Not public schema", "is_public_admin": False},
+                status=403
+            )
+
+        # 🔹 Role checks
+        if not user.is_authenticated:
+            return JsonResponse(
+                {"detail": "Authentication required", "is_public_admin": False},
+                status=401
+            )
+
+        if not user.is_staff:
+            return JsonResponse(
+                {"detail": "Admin access denied", "is_public_admin": False},
+                status=403
+            )
+
+        if not user.is_superadmin:
+            return JsonResponse(
+                {"detail": "Only superadmin allowed", "is_public_admin": False},
+                status=403
+            )
+
+        # ✅ Allowed
+        request.user = user
+        request.is_public_admin = True
+
+        return self.get_response(request)

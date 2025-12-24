@@ -43,6 +43,8 @@ SHARED_APPS = [
     'django.contrib.auth',
     'django.contrib.sessions',
     'django.contrib.messages',
+    'accounts',          # superadmin login / user creation
+    'merchant_user',
     'django.contrib.admin',  # Admin should be shared for tenant management
     'django.contrib.staticfiles',
 
@@ -63,9 +65,8 @@ SHARED_APPS = [
     'admin_thumbnails',
 
     # Your shared/local apps
-    'accounts',          # superadmin login / user creation
-    'delivery_system',   # shared tenant + domain config
-    'merchant_user',
+   
+    # 'delivery_user',
     # 'core',              # global config, landing page, etc.
 ]
 
@@ -76,8 +77,9 @@ TENANT_APPS = [
     'store',             # each shop has its own products
     'carts',             # per-tenant shopping carts
     'orders',            # each shop has separate orders
+    # 'delivery_system',   # per-tenant delivery_system panel
     'seller_dashboard',  # per-tenant seller panel
-    'orders_worker',     # per-tenant background order consumer
+    # 'orders_worker',     # per-tenant background order consumer
 ]
 
 # -----------------------------
@@ -89,8 +91,8 @@ INSTALLED_APPS = list(SHARED_APPS) + [app for app in TENANT_APPS if app not in S
 
 
 # Tenant Model Configuration
-TENANT_MODEL = "delivery_system.DeliveryTenant"
-TENANT_DOMAIN_MODEL = "delivery_system.DeliveryDomain"
+TENANT_MODEL = "merchant_user.Organization"
+TENANT_DOMAIN_MODEL = "merchant_user.OrganizationDomain"
 
 # Tenant Database Router
 DATABASE_ROUTERS = (
@@ -127,7 +129,10 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 
-    # Tenant Admin Middleware (ADD HERE)
+    # Custom Middleware for admin access control
+      'flipcart_project.middleware.tenant_admin.TenantAdminMiddleware',
+    # Tenant Admin Middleware
+
     # 'flipcart_project.middleware.tenant_admin.TenantAdminMiddleware',
 
     # Other Custom Middlewares (keep these after tenant admin)
@@ -169,7 +174,7 @@ if DEBUG :
     DATABASES = {
         'default': {
             'ENGINE': 'django_tenants.postgresql_backend',  # public schema migrate করার জন্য
-            'NAME': 'flipcart_tenants',
+            'NAME': 'GocartDB',
             'USER': 'postgres',
             'PASSWORD': '1234',
             'HOST': 'localhost',
@@ -535,6 +540,11 @@ STRIPE_PLANS = {
         ]
     }
 }
+
+# ImageKit
+IMAGEKIT_PUBLIC_KEY = "public_K/Li/QIxreloJJo5Xc4yG8So9X8="
+IMAGEKIT_PRIVATE_KEY = "private_MlLDeuFx9gF6XWrRujo8h7Mklow="
+IMAGEKIT_URL_ENDPOINT = "https://ik.imagekit.io/ehdyydeuq"
 
 
 

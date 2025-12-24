@@ -7,7 +7,7 @@ from django_redis import get_redis_connection
 import json
 from django.db.models import F, Value, CharField
 from django.db.models.functions import Concat
-from merchant_user.context import OrganizationContext, get_organization_aware_manager
+# from merchant_user.context import OrganizationContext, get_organization_aware_manager
 
 
 
@@ -18,34 +18,35 @@ class Product(models.Model):
     slug            = models.SlugField(max_length=200)
     description     = models.TextField(max_length=500, blank=True)
     price           = models.IntegerField()
-    images          = CloudinaryField('image', blank=True)
+    # images          = models.URLField(blank=True, null=True)
+    images          = CloudinaryField('image', blank=True) 
     stock           = models.IntegerField()
     is_available    = models.BooleanField(default=True)
     category        = models.ForeignKey("category.Category", on_delete=models.CASCADE)
     # Tenant isolation
     # organization  = models.ForeignKey("merchant_user.Organization", on_delete=models.CASCADE, related_name='products')
-    organization    = models.ForeignKey("merchant_user.Organization", on_delete=models.SET_NULL, null=True, related_name='products')
+    # organization    = models.ForeignKey("merchant_user.Organization", on_delete=models.SET_NULL, null=True, related_name='products')
     #  NEW: Add delivery tenant link for delivery system
-    delivery_tenant = models.ForeignKey(
-        "delivery_system.DeliveryTenant", 
-        on_delete=models.SET_NULL, 
-        related_name='products',
-        null=True, 
-        blank=True
-    )
+    # delivery_tenant = models.ForeignKey(
+    #     "delivery_system.DeliveryTenant", 
+    #     on_delete=models.SET_NULL, 
+    #     related_name='products',
+    #     null=True, 
+    #     blank=True
+    # )
     
     created_date    = models.DateTimeField(auto_now_add=True)
     modified_date   = models.DateTimeField(auto_now=True)
-    objects = get_organization_aware_manager(models.Manager)()
+    # objects = get_organization_aware_manager(models.Manager)()
     
-    class Meta:
-        unique_together = ['organization', 'slug']  # Slug unique per tenant
-        indexes = [
-            models.Index(fields=['organization', 'is_available']),
-            models.Index(fields=['organization', 'category']),
-            models.Index(fields=['delivery_tenant', 'is_available']),
-            models.Index(fields=['delivery_tenant', 'category']),
-        ]
+    # class Meta:
+    #     unique_together = ['organization', 'slug']  # Slug unique per tenant
+    #     indexes = [
+    #         models.Index(fields=['organization', 'is_available']),
+    #         models.Index(fields=['organization', 'category']),
+    #         models.Index(fields=['delivery_tenant', 'is_available']),
+    #         models.Index(fields=['delivery_tenant', 'category']),
+    #     ]
 
     def save(self, *args, **kwargs):
     # if stock 0 then is_available False 
@@ -150,7 +151,8 @@ class ReviewRating(models.Model):
 
 class ProductGallery(models.Model):
     product = models.ForeignKey(Product, default=None, on_delete=models.CASCADE)
-    image =  CloudinaryField('image', blank=True)
+    image =  CloudinaryField('image', blank=True)  
+    # image =   models.URLField()
 
     def __str__(self):
         return self.product.product_name

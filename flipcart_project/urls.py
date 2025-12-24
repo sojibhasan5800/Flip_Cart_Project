@@ -36,11 +36,14 @@ from django.conf import settings
 from django.conf.urls.static import static
 from . import views
 from . import api_views
+from . import middlware_views
 from . import api_urls
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', views.home, name='home'),
+    path("api/admin/check/",middlware_views.PublicAdminCheckAPIView.as_view()),
+
     # path('', api_views.HomeProductsAPIView, name='home'),
 
     # path('home_api_load_products/', views.home, name='home_api_load_products'),
@@ -61,7 +64,7 @@ urlpatterns = [
     path('api/store/', include('store.api_urls', namespace='store_api')),
     path('api/orders/', include('orders.api_urls', namespace='orders_api')),
     path('api/seller/', include('seller_dashboard.api_urls', namespace='seller_dashboard_api')),
-    path('api/delivery/', include('delivery_system.api_urls', namespace='delivery_system_api')),
+    # path('api/delivery/', include('delivery_system.api_urls', namespace='delivery_system_api')),
     path('api/merchant_user/', include('merchant_user.api_urls', namespace='merchant_user_api')),
 
 

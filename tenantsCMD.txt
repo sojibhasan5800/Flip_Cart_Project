@@ -1,0 +1,28 @@
+(accounts models accounts)
+#  (cm)  organization = models.ForeignKey('merchant_user.Organization', on_delete=models.CASCADE, null=True, blank=True,related_name='users')
+
+python manage.py makemigrations accounts
+
+python manage.py makemigrations merchant_user
+
+python manage.py migrate_schemas --shared
+
+(accounts models accounts)
+(ucm)  organization = models.ForeignKey('merchant_user.Organization', on_delete=models.CASCADE, null=True, blank=True,related_name='users')
+python manage.py makemigrations accounts
+python manage.py migrate_schemas --shared
+python manage.py migrate_schemas --tenant
+
+
+
+
+যদি কোনো specific tenant migrate করতে চাও:
+python manage.py migrate_schemas --tenant=tenant_schema_name
+
+
+
+
+
+# পুরানো মাইগ্রেশন ফাইল ডিলিট করতে পারো যদি প্রজেক্ট নতুন থাকে
+rm -rf accounts/migrations
+rm -rf merchant_user/migrations

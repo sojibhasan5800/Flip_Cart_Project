@@ -35,14 +35,18 @@ class MyAccountManager(BaseUserManager):
         user.save(using=self._db)
         return user
 
-    def create_superuser(self, first_name, last_name, email, username, password):
+    def create_superuser(self, first_name, last_name, email, username, password, phone_number=None):
         user = self.create_user(
             email = self.normalize_email(email),
             username = username,
             password = password,
             first_name = first_name,
             last_name = last_name,
+            phone_number=phone_number or '0000000000',
         )
+        # tenant fields False
+        user.is_tenant_owner = False
+        user.is_tenant_staff = False
         user.is_admin = True
         user.is_active = True
         user.is_staff = True
@@ -60,7 +64,7 @@ class Account(AbstractBaseUser):
     phone_number    = models.CharField(max_length=50)
 
     # Tenant relationship
-    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, null=True, blank=True,related_name='users')
+    organization = models.ForeignKey('merchant_user.Organization', on_delete=models.CASCADE, null=True, blank=True,related_name='users')
 
     # Role-based fields
     is_tenant_owner = models.BooleanField(default=False)
