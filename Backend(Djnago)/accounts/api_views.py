@@ -22,6 +22,8 @@ from datetime import timedelta
 import stripe
 from django.conf import settings
 
+from merchant_user.models import Organization
+
 from .models import Account, UserProfile
 from orders.models import Order, OrderProduct  # keep parity with your views (requires orders app)
 
@@ -175,28 +177,121 @@ class LogoutAPIView(APIView):
         return Response({"detail": "Logged out."}, status=status.HTTP_200_OK)
 
 
+from django_tenants.utils import schema_context
+from django_tenants.utils import get_tenant_model
+
 # ---------------------------
 # Dashboard API
 # ---------------------------
+
+from django_tenants.utils import get_tenant_model, schema_context
+
+
+
 class DashboardAPIView(APIView):
     """
-    GET: Returns basic dashboard info for authenticated user.
-    - Counts user's completed orders and returns basic profile data.
-    Performance:
-    - Limit DB hits; uses `count()` instead of retrieving objects fully where possible.
+    Role-based Dashboard API
+
+    Roles:
+    1. Super Admin  -> Platform analytics (all tenants summary)
+    2. Merchant     -> Vendor dashboard (tenant specific)
+    3. Customer     -> User orders & profile
     """
     permission_classes = [permissions.IsAuthenticated]
 
-    @swagger_auto_schema(operation_summary="User dashboard",tags=['Accounts'])
+    @swagger_auto_schema(
+        operation_summary="Dashboard data based on user role",
+        tags=["Dashboard"]
+    )
     def get(self, request):
-        orders_qs = Order.objects.filter(user_id=request.user.id, is_ordered=True).order_by('-created_at')
-        orders_count = orders_qs.count()
-        userprofile, _ = UserProfile.objects.get_or_create(user=request.user)
+        user = request.user
+
+        # -----------------------------
+        # 1️⃣ SUPER ADMIN DASHBOARD
+        # -----------------------------
+        if user.is_superadmin:
+            return self._super_admin_dashboard(user)
+
+        # -----------------------------
+        # 2️⃣ MERCHANT DASHBOARD
+        # -----------------------------
+        if user.is_tenant_owner or user.is_tenant_staff:
+            return self._merchant_dashboard(user)
+
+        # -----------------------------
+        # 3️⃣ CUSTOMER DASHBOARD
+        # -----------------------------
+        return self._customer_dashboard(user)
+
+    # =====================================================
+    # SUPER ADMIN DASHBOARD (PUBLIC SCHEMA ONLY)
+    # =====================================================
+    def _super_admin_dashboard(self, user):
+        TenantModel = get_tenant_model()
+        tenants = TenantModel.objects.exclude(schema_name="public")
+
+        total_orders = 0
+        total_stores = 0
+
+        for tenant in tenants:
+            try:
+                with schema_context(tenant.schema_name):
+                    total_orders += Order.objects.filter(is_ordered=True).count()
+                    total_stores += Organization.objects.filter(is_active=True).count()
+            except Exception:
+                continue
+
         data = {
-            "orders_count": orders_count,
-            "user": AccountSerializer(request.user).data,
+            "role": "super_admin",
+            "total_tenants": tenants.count(),
+            "total_orders": total_orders,
+            "total_stores": total_stores, 
+            "user": AccountSerializer(user).data,
         }
+
         return Response(data, status=status.HTTP_200_OK)
+
+    # =====================================================
+    # MERCHANT DASHBOARD (TENANT SCHEMA)
+    # =====================================================
+    def _merchant_dashboard(self, user):
+        orders_qs = Order.objects.filter(is_ordered=True)
+
+        data = {
+            "role": "merchant",
+            "total_orders": orders_qs.count(),
+            "pending_orders": orders_qs.filter(status="Pending").count(),
+            "completed_orders": orders_qs.filter(status="Completed").count(),
+            "user": AccountSerializer(user).data,
+        }
+
+        return Response(data, status=status.HTTP_200_OK)
+
+    # =====================================================
+    # CUSTOMER DASHBOARD (TENANT SCHEMA)
+    # =====================================================
+    def _customer_dashboard(self, user):
+        orders_qs = Order.objects.filter(
+            user=user,
+            is_ordered=True
+        )
+
+        userprofile, _ = UserProfile.objects.get_or_create(user=user)
+
+        data = {
+            "role": "customer",
+            "orders_count": orders_qs.count(),
+            "user": AccountSerializer(user).data,
+            "profile": {
+                "address": userprofile.full_address(),
+                "city": userprofile.city,
+                "country": userprofile.country,
+                "profile_picture": userprofile.profile_picture.url if userprofile.profile_picture else None
+            }
+        }
+
+        return Response(data, status=status.HTTP_200_OK)
+
 
 
 # ---------------------------

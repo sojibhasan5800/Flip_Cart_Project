@@ -20,7 +20,7 @@ const StoreInfo = ({store}) => {
                         }`}
                 >
                     {store.status}
-                </span>
+                </span>a
             </div>
 
             <p className="text-slate-600 my-5 max-w-2xl">{store.description}</p>

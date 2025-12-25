@@ -4,6 +4,8 @@ import Loading from "@/components/Loading"
 import OrdersAreaChart from "@/components/OrdersAreaChart"
 import { CircleDollarSignIcon, ShoppingBasketIcon, StoreIcon, TagsIcon } from "lucide-react"
 import { useEffect, useState } from "react"
+import toast from "react-hot-toast";
+
 
 export default function AdminDashboard() {
 
@@ -26,7 +28,15 @@ export default function AdminDashboard() {
     ]
 
     const fetchDashboardData = async () => {
-        setDashboardData(dummyAdminDashboardData)
+        try{
+            const {data} = await AxiosInstance.get("/api/accounts/dashboard/")
+            setDashboardData(data)
+            console.log("data :", data)
+            
+        }
+        catch(error){
+            toast.error(error?.response?.data?.error || "Error fetching dashboard data")
+        }
         setLoading(false)
     }
 
