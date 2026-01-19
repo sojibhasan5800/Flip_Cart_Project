@@ -1,5 +1,7 @@
 
 # accounts/api/views.py
+from celery import uuid
+from imagekitio import ImageKit
 from rest_framework import status, generics, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -18,7 +20,7 @@ from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, Ou
 from drf_yasg import openapi
 from rest_framework.permissions import AllowAny,IsAuthenticated
 from django.utils import timezone
-from datetime import timedelta
+from datetime import time, timedelta
 import stripe
 from django.conf import settings
 
@@ -28,20 +30,34 @@ from .models import Account, UserProfile
 from orders.models import Order, OrderProduct  # keep parity with your views (requires orders app)
 
 from .serializers import (
-    AccountSerializer,RegistrationSerializer, LoginSerializer, AccountSerializer, UserProfileSerializer
+    AccountSerializer,RegistrationSerializer, LoginSerializer, AccountSerializer, UserDetailSerializer, UserProfileSerializer
 )
 from django.shortcuts import redirect
+# Django Tenants utils
+from django_tenants.utils import schema_context, get_tenant_model
 
 
 
 #------------- previous code ------------------
 
+#-------------all schema ways set view ----------
 
+class PublicUserAPIView(APIView):
+    """
+    Base class for all views operating in the 'public_user' schema.
+    Automatically wraps all requests in schema_context('public_user').
+    """
+    permission_classes = [AllowAny]  # Default
+
+    def dispatch(self, request, *args, **kwargs):
+        print("schema")
+        with schema_context("public_user"):
+            return super().dispatch(request, *args, **kwargs)
 
 # ---------------------------
 # Registration API
 # ---------------------------
-class RegistrationAPIView(generics.CreateAPIView):
+class RegistrationAPIView(PublicUserAPIView,generics.CreateAPIView):
     """
     POST: Register a new user.
     - Validates password confirmation.
@@ -63,6 +79,7 @@ class RegistrationAPIView(generics.CreateAPIView):
         responses={201: openapi.Response('User created', AccountSerializer)}
     )
     def post(self, request, *args, **kwargs):
+        
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
@@ -114,9 +131,8 @@ class RegistrationAPIView(generics.CreateAPIView):
 
 # ---------------------------
 # Login API
-from django_tenants.utils import schema_context
 # ---------------------------
-class LoginAPIView(APIView):
+class LoginAPIView(PublicUserAPIView):
     """
     POST: Authenticate user using email + password.
     - Returns auth token for subsequent authenticated requests.
@@ -133,299 +149,24 @@ class LoginAPIView(APIView):
         responses={200: 'token'}
     )
     def post(self, request):
+      
+        serializer = LoginSerializer(data=request.data)        
+        serializer.is_valid(raise_exception=True)
+        user = serializer.validated_data['user']
+        
+        refresh = RefreshToken.for_user(user)
 
-        with schema_context('public'):  #  IMPORTANT
-            serializer = LoginSerializer(data=request.data)
-            print("Login data received:", request.data)
-            serializer.is_valid(raise_exception=True)
-            user = serializer.validated_data['user']
-            print("Logged in user:", user)
-
-            refresh = RefreshToken.for_user(user)
-
-            return Response({
-                "refresh": str(refresh),
-                "access": str(refresh.access_token),
-                "user": AccountSerializer(user).data
-            }, status=status.HTTP_200_OK)
-   
-
-# ---------------------------
-# Logout API
-# ---------------------------
-class LogoutAPIView(APIView):
-    """
-    POST: Logout user by deleting their token.
-    - Requires authentication.
-    Note:
-    - With TokenAuthentication, logout is token deletion on server.
-    """
-    permission_classes = [permissions.IsAuthenticated]
-
-    @swagger_auto_schema(
-            operation_summary="Logout user",
-            tags=['Accounts'],
-            )
-    def post(self, request):
-        try:
-        # blacklist all refresh tokens for user
-            tokens = OutstandingToken.objects.filter(user=request.user)
-            for token in tokens:
-                BlacklistedToken.objects.get_or_create(token=token)
-        except Exception:
-            pass
-        return Response({"detail": "Logged out."}, status=status.HTTP_200_OK)
-
-
-from django_tenants.utils import schema_context
-from django_tenants.utils import get_tenant_model
-
-# ---------------------------
-# Dashboard API
-# ---------------------------
-
-from django_tenants.utils import get_tenant_model, schema_context
-
-
-
-class DashboardAPIView(APIView):
-    """
-    Role-based Dashboard API
-
-    Roles:
-    1. Super Admin  -> Platform analytics (all tenants summary)
-    2. Merchant     -> Vendor dashboard (tenant specific)
-    3. Customer     -> User orders & profile
-    """
-    permission_classes = [permissions.IsAuthenticated]
-
-    @swagger_auto_schema(
-        operation_summary="Dashboard data based on user role",
-        tags=["Dashboard"]
-    )
-    def get(self, request):
-        user = request.user
-
-        # -----------------------------
-        # 1️⃣ SUPER ADMIN DASHBOARD
-        # -----------------------------
-        if user.is_superadmin:
-            return self._super_admin_dashboard(user)
-
-        # -----------------------------
-        # 2️⃣ MERCHANT DASHBOARD
-        # -----------------------------
-        if user.is_tenant_owner or user.is_tenant_staff:
-            return self._merchant_dashboard(user)
-
-        # -----------------------------
-        # 3️⃣ CUSTOMER DASHBOARD
-        # -----------------------------
-        return self._customer_dashboard(user)
-
-    # =====================================================
-    # SUPER ADMIN DASHBOARD (PUBLIC SCHEMA ONLY)
-    # =====================================================
-    def _super_admin_dashboard(self, user):
-        TenantModel = get_tenant_model()
-        tenants = TenantModel.objects.exclude(schema_name="public")
-
-        total_orders = 0
-        total_stores = 0
-
-        for tenant in tenants:
-            try:
-                with schema_context(tenant.schema_name):
-                    total_orders += Order.objects.filter(is_ordered=True).count()
-                    total_stores += Organization.objects.filter(is_active=True).count()
-            except Exception:
-                continue
-
-        data = {
-            "role": "super_admin",
-            "total_tenants": tenants.count(),
-            "total_orders": total_orders,
-            "total_stores": total_stores, 
-            "user": AccountSerializer(user).data,
-        }
-
-        return Response(data, status=status.HTTP_200_OK)
-
-    # =====================================================
-    # MERCHANT DASHBOARD (TENANT SCHEMA)
-    # =====================================================
-    def _merchant_dashboard(self, user):
-        orders_qs = Order.objects.filter(is_ordered=True)
-
-        data = {
-            "role": "merchant",
-            "total_orders": orders_qs.count(),
-            "pending_orders": orders_qs.filter(status="Pending").count(),
-            "completed_orders": orders_qs.filter(status="Completed").count(),
-            "user": AccountSerializer(user).data,
-        }
-
-        return Response(data, status=status.HTTP_200_OK)
-
-    # =====================================================
-    # CUSTOMER DASHBOARD (TENANT SCHEMA)
-    # =====================================================
-    def _customer_dashboard(self, user):
-        orders_qs = Order.objects.filter(
-            user=user,
-            is_ordered=True
-        )
-
-        userprofile, _ = UserProfile.objects.get_or_create(user=user)
-
-        data = {
-            "role": "customer",
-            "orders_count": orders_qs.count(),
-            "user": AccountSerializer(user).data,
-            "profile": {
-                "address": userprofile.full_address(),
-                "city": userprofile.city,
-                "country": userprofile.country,
-                "profile_picture": userprofile.profile_picture.url if userprofile.profile_picture else None
-            }
-        }
-
-        return Response(data, status=status.HTTP_200_OK)
-
-
-
-# ---------------------------
-# Edit Profile API
-# ---------------------------
-class EditProfileAPIView(APIView):
-    """
-    GET/PUT: Retrieve or update user profile.
-    - Handles both Account basic fields and nested UserProfile.
-    """
-    permission_classes = [permissions.IsAuthenticated]
-
-    @swagger_auto_schema(
-        operation_summary="Retrieve user profile",
-        responses={200: AccountSerializer},
-        tags=['Accounts'],
-    )
-    def get(self, request):
-        userprofile, _ = UserProfile.objects.get_or_create(user=request.user)
-        data = AccountSerializer(request.user).data
-        return Response(data)
-
-    @swagger_auto_schema(
-        request_body=UserProfileSerializer,
-        operation_summary="Update user profile",
-    )
-    def put(self, request):
-        user = request.user
-        user_form_data = {
-            'first_name': request.data.get('first_name', user.first_name),
-            'last_name': request.data.get('last_name', user.last_name),
-            'phone_number': request.data.get('phone_number', user.phone_number),
-        }
-        # Update Account fields
-        Account.objects.filter(pk=user.pk).update(**user_form_data)
-        # Update UserProfile fields
-        user_profile = UserProfile.objects.get_or_create(user=user)[0]
-        profile_serializer = UserProfileSerializer(user_profile, data=request.data, partial=True)
-        profile_serializer.is_valid(raise_exception=True)
-        profile_serializer.save()
-        return Response({"detail": "Profile updated."}, status=status.HTTP_200_OK)
-
-
-# ---------------------------
-# Change Password API
-# ---------------------------
-class ChangePasswordAPIView(APIView):
-    """
-    POST: Allow authenticated users to change password given current password.
-    """
-    permission_classes = [permissions.IsAuthenticated]
-
-    @swagger_auto_schema(
-        operation_summary="Change password",
-        request_body=openapi.Schema(
-            type=openapi.TYPE_OBJECT,
-            properties={
-                'current_password': openapi.Schema(type=openapi.TYPE_STRING),
-                'new_password': openapi.Schema(type=openapi.TYPE_STRING),
-                'confirm_password': openapi.Schema(type=openapi.TYPE_STRING),
-            }
-        ),
-        tags=['Accounts'],
-    )
-    def post(self, request):
-        current_password = request.data.get('current_password')
-        new_password = request.data.get('new_password')
-        confirm_password = request.data.get('confirm_password')
-
-        user = request.user
-        if new_password != confirm_password:
-            return Response({"error": "New passwords do not match."}, status=status.HTTP_400_BAD_REQUEST)
-        if not user.check_password(current_password):
-            return Response({"error": "Current password is incorrect."}, status=status.HTTP_400_BAD_REQUEST)
-        user.set_password(new_password)
-        user.save()
-        return Response({"detail": "Password updated successfully."})
-
-
-# ---------------------------
-# My Orders & Order Detail APIs (parity with MVT)
-# ---------------------------
-class MyOrdersAPIView(APIView):
-    """
-    GET: Return user's completed orders.
-    """
-    permission_classes = [permissions.IsAuthenticated]
-
-    @swagger_auto_schema(operation_summary="List my orders",)
-    def get(self, request):
-        orders = Order.objects.filter(user=request.user, is_ordered=True).order_by('-created_at')
-        data = []
-        for o in orders:
-            data.append({
-                "order_number": o.order_number,
-                "total": getattr(o, "order_total", None),
-                "created_at": o.created_at,
-            })
-        return Response({"orders": data})
-
-
-class OrderDetailAPIView(APIView):
-    """
-    GET: details for a single order (order_id = order_number).
-    Edge cases:
-    - Order not found or not belonging to user => 404/403
-    """
-    permission_classes = [permissions.IsAuthenticated]
-
-    @swagger_auto_schema(operation_summary="Order detail",tags=['Accounts'],)
-    def get(self, request, order_id):
-        order = get_object_or_404(Order, order_number=order_id, user=request.user, is_ordered=True)
-        order_items = OrderProduct.objects.filter(order__order_number=order_id)
-        subtotal = sum(i.product_price * i.quantity for i in order_items)
-        # Minimal serialization to keep parity with MVT view
-        items = [
-            {"product_name": getattr(p, "product", None) and getattr(p.product, "name", None),
-             "quantity": p.quantity,
-             "price": p.product_price}
-            for p in order_items
-        ]
         return Response({
-            "order": {
-                "order_number": order.order_number,
-                "subtotal": subtotal,
-                "items": items,
-            }
-        })
+            "refresh": str(refresh),
+            "access": str(refresh.access_token),
+            "user": AccountSerializer(user).data
+        }, status=status.HTTP_200_OK)
 
 
 # ---------------------------
 # Activation / Password Reset (mirrors original MVT)
 # ---------------------------
-class ActivateAPIView(APIView):
+class ActivateAPIView(PublicUserAPIView):
     """
     GET: Activate user with uidb64 and token (from activation email).
     """
@@ -447,7 +188,7 @@ class ActivateAPIView(APIView):
             return redirect(frontend_url)
         return redirect(f"{settings.FRONTEND_URL}/auth/login?command=invalid")
 
-class ForgotPasswordAPIView(APIView):
+class ForgotPasswordAPIView(PublicUserAPIView):
     """
     POST: Send reset password email.
     """
@@ -504,7 +245,7 @@ class ForgotPasswordAPIView(APIView):
 
 
 
-class ResetPasswordValidateAPIView(APIView):
+class ResetPasswordValidateAPIView(PublicUserAPIView):
     """
     Validate password reset token and user identity.
     """
@@ -548,7 +289,7 @@ class ResetPasswordValidateAPIView(APIView):
             )
 
 
-class ResetPasswordAPIView(APIView):
+class ResetPasswordAPIView(PublicUserAPIView):
     """
     Reset password using session-stored UID after token validation.
     """
@@ -610,7 +351,33 @@ class ResetPasswordAPIView(APIView):
                 {"error": "User not found."},
                 status=status.HTTP_404_NOT_FOUND
             )
-        
+
+# ---------------------------
+# Logout API
+# ---------------------------
+class LogoutAPIView(APIView):
+    """
+    POST: Logout user by deleting their token.
+    - Requires authentication.
+    Note:
+    - With TokenAuthentication, logout is token deletion on server.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    @swagger_auto_schema(
+            operation_summary="Logout user",
+            tags=['Accounts'],
+            )
+    def post(self, request):
+        try:
+        # blacklist all refresh tokens for user
+            tokens = OutstandingToken.objects.filter(user=request.user)
+            for token in tokens:
+                BlacklistedToken.objects.get_or_create(token=token)
+        except Exception:
+            pass
+        return Response({"detail": "Logged out."}, status=status.HTTP_200_OK)
+
 
 class DeleteAccountAPIView(APIView):
     """
@@ -663,4 +430,244 @@ class DeleteAccountAPIView(APIView):
             status=status.HTTP_200_OK
         )
 
+
+# ---------------------------
+# Dashboard API
+# ---------------------------
+
+
+
+class DashboardAPIView(PublicUserAPIView):
+    """
+    Role-based Dashboard API
+    1️⃣ Super Admin -> Platform analytics (all tenants summary, public_user schema)
+    2️⃣ Merchant -> Vendor dashboard (tenant specific)
+    3️⃣ Customer -> User orders & profile (public_user schema)
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    @swagger_auto_schema(
+        operation_summary="Dashboard data based on user role",
+        tags=["Dashboard"]
+    )
+    def get(self, request):
+        user = request.user
+
+        if user.is_superadmin:
+            return self._super_admin_dashboard(user)
+
+        if user.is_tenant_owner or user.is_tenant_staff:
+            return self._merchant_dashboard(user)
+
+        return self._customer_dashboard(user)
+
+    def _super_admin_dashboard(self, user):
+        TenantModel = get_tenant_model()
+        tenants = TenantModel.objects.exclude(schema_name="public")
+
+        total_orders = 0
+        total_stores = 0
+
+        for tenant in tenants:
+            try:
+                with schema_context(tenant.schema_name):
+                    total_orders += Order.objects.filter(is_ordered=True).count()
+                    total_stores += Organization.objects.filter(is_active=True).count()
+            except Exception:
+                continue
+
+        data = {
+            "role": "super_admin",
+            "total_tenants": tenants.count(),
+            "total_orders": total_orders,
+            "total_stores": total_stores,
+            "user": AccountSerializer(user).data,
+        }
+        return Response(data, status=status.HTTP_200_OK)
+
+    def _merchant_dashboard(self, user):
+        with schema_context("public_user"):
+            orders_qs = Order.objects.filter(is_ordered=True)
+            data = {
+                "role": "merchant",
+                "total_orders": orders_qs.count(),
+                "pending_orders": orders_qs.filter(status="Pending").count(),
+                "completed_orders": orders_qs.filter(status="Completed").count(),
+                "user": AccountSerializer(user).data,
+            }
+        return Response(data, status=status.HTTP_200_OK)
+
+    def _customer_dashboard(self, user):
+        with schema_context("public_user"):
+            orders_qs = Order.objects.filter(user=user, is_ordered=True)
+            userprofile, _ = UserProfile.objects.get_or_create(user=user)
+            data = {
+                "role": "customer",
+                "orders_count": orders_qs.count(),
+                "user": AccountSerializer(user).data,
+                "profile": {
+                    "address": userprofile.full_address(),
+                    "city": userprofile.city,
+                    "country": userprofile.country,
+                    "profile_picture": userprofile.profile_picture.url if userprofile.profile_picture else None
+                }
+            }
+        return Response(data, status=status.HTTP_200_OK)
+
+
+# =====================================================
+# Edit Profile API (Public schema aware)
+# =====================================================
+class EditProfileAPIView(PublicUserAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    @swagger_auto_schema(
+        operation_summary="Retrieve user profile",
+        responses={200: AccountSerializer},
+        tags=['Accounts'],
+    )
+    def get(self, request):
+        with schema_context("public_user"):
+            userprofile, _ = UserProfile.objects.get_or_create(user=request.user)
+            data = AccountSerializer(request.user).data
+        return Response(data)
+
+    @swagger_auto_schema(
+        request_body=UserProfileSerializer,
+        operation_summary="Update user profile",
+    )
+    def put(self, request):
+        with schema_context("public_user"):
+            user = request.user
+            Account.objects.filter(pk=user.pk).update(
+                first_name=request.data.get('first_name', user.first_name),
+                last_name=request.data.get('last_name', user.last_name),
+                phone_number=request.data.get('phone_number', user.phone_number),
+            )
+            user_profile = UserProfile.objects.get_or_create(user=user)[0]
+            serializer = UserProfileSerializer(user_profile, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+        return Response({"detail": "Profile updated."}, status=status.HTTP_200_OK)
+
+# =====================================================
+# Change Password API (Public schema aware)
+# =====================================================
+class ChangePasswordAPIView(PublicUserAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    @swagger_auto_schema(
+        operation_summary="Change password",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'current_password': openapi.Schema(type=openapi.TYPE_STRING),
+                'new_password': openapi.Schema(type=openapi.TYPE_STRING),
+                'confirm_password': openapi.Schema(type=openapi.TYPE_STRING),
+            }
+        ),
+        tags=['Accounts'],
+    )
+    def post(self, request):
+        with schema_context("public_user"):
+            user = request.user
+            current_password = request.data.get('current_password')
+            new_password = request.data.get('new_password')
+            confirm_password = request.data.get('confirm_password')
+
+            if new_password != confirm_password:
+                return Response({"error": "New passwords do not match."}, status=status.HTTP_400_BAD_REQUEST)
+            if not user.check_password(current_password):
+                return Response({"error": "Current password is incorrect."}, status=status.HTTP_400_BAD_REQUEST)
+
+            user.set_password(new_password)
+            user.save()
+        return Response({"detail": "Password updated successfully."})
+
+# =====================================================
+# My Orders API (Public schema aware)
+# =====================================================
+class MyOrdersAPIView(PublicUserAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    @swagger_auto_schema(operation_summary="List my orders")
+    def get(self, request):
+        with schema_context("public_user"):
+            orders = Order.objects.filter(user=request.user, is_ordered=True).order_by('-created_at')
+            data = [{
+                "order_number": o.order_number,
+                "total": getattr(o, "order_total", None),
+                "created_at": o.created_at,
+            } for o in orders]
+        return Response({"orders": data})
+
+# =====================================================
+# Order Detail API (Public schema aware)
+# =====================================================
+class OrderDetailAPIView(PublicUserAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    @swagger_auto_schema(operation_summary="Order detail", tags=['Accounts'])
+    def get(self, request, order_id):
+        with schema_context("public_user"):
+            order = get_object_or_404(Order, order_number=order_id, user=request.user, is_ordered=True)
+            order_items = OrderProduct.objects.filter(order__order_number=order_id)
+            subtotal = sum(i.product_price * i.quantity for i in order_items)
+            items = [
+                {
+                    "product_name": getattr(p.product, "name", None) if p.product else None,
+                    "quantity": p.quantity,
+                    "price": p.product_price
+                }
+                for p in order_items
+            ]
+        return Response({
+            "order": {
+                "order_number": order.order_number,
+                "subtotal": subtotal,
+                "items": items,
+            }
+        })
+    
+
+# -------------------------------------
+# User Detail API (Public schema aware)
+#--------------------------------------
+
+class UserDetailAPIView(APIView):
+    """
+    GET:
+    Returns authenticated user's full details
+    (Account + Profile + Roles + Organization)
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+
+        # Ensure profile exists (safe for old users)
+        UserProfile.objects.get_or_create(user=user)
+
+        serializer = UserDetailSerializer(user)
+
+        response = {
+            "success": True,
+            "message": "User details fetched successfully",
+            "data": serializer.data
+        }
+
+        return Response(response, status=status.HTTP_200_OK)
+
+
+
+class ImageKitGetUploadTokenAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        imagekit = ImageKit(
+            private_key=settings.IMAGEKIT_PRIVATE_KEY,
+        )
+        auth_params = imagekit.helper.get_authentication_parameters()
+        auth_params['publicKey'] = settings.IMAGEKIT_PUBLIC_KEY  
+        return Response(auth_params)
 

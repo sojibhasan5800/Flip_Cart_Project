@@ -18,17 +18,11 @@ const AdminLayout = ({ children }) => {
 
     const fetchIsAdmin = async () => {
         try{
-            const {data} = await AxiosInstance.get('/api/admin/check',{
-                headers:{
-                   Authorization: `Bearer ${token}`
-
-                }
-            })
-            console.log("data: ", data)
+            const {data} = await AxiosInstance.get('/api/admin_core/check',)
             setIsAdmin(data.is_public_admin)
-            console.log(data.is_public_admin)
 
         }catch(error){
+            console.log("Error fetching admin status:")
             console.log(error)
         }finally{
             setLoading(false)

@@ -136,3 +136,40 @@ class AccountSerializer(serializers.ModelSerializer):
         model = Account
         fields = ['id', 'first_name', 'last_name', 'email', 'phone_number', 'date_joined', 'userprofile']
         read_only_fields = ['email', 'date_joined', 'id']
+
+
+class UserDetailSerializer(serializers.ModelSerializer):
+    profile = UserProfileSerializer(source='userprofile', read_only=True)
+    organization = serializers.SerializerMethodField()
+    roles = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Account
+        fields = [
+            'id',
+            'first_name',
+            'last_name',
+            'email',
+            'phone_number',
+            'date_joined',
+            'roles',
+            'organization',
+            'profile',
+        ]
+
+    def get_roles(self, obj):
+        return {
+            "is_superadmin": obj.is_superadmin,
+            "is_admin": obj.is_admin,
+            "is_tenant_owner": obj.is_tenant_owner,
+            "is_tenant_staff": obj.is_tenant_staff,
+        }
+
+    def get_organization(self, obj):
+        if not obj.organization:
+            return None
+        return {
+            "id": obj.organization.id,
+            "name": obj.organization.business_name,
+            "is_active": obj.organization.is_active,
+        }

@@ -1,3 +1,46 @@
+from rest_framework import serializers
+from merchant_user.models import Organization
+
+
+class OrganizationCreateSerializer(serializers.ModelSerializer):
+    """
+    Organization(Store) creation serializer
+    Used when a merchant submits store application
+    """
+
+    class Meta:
+        model = Organization
+        fields = [
+            "store_logo",
+            "username",
+            "business_name",
+            "store_description",
+            "business_email",
+            "phone",
+            "address_line1",
+        ]
+
+    def create(self, validated_data):
+        """
+        Create organization in pending/unverified state
+        """
+        print("data", validated_data)
+        organization = Organization.objects.create(
+            **validated_data,
+            is_verified=False,
+            is_active=True,
+            subscription_status="inactive",
+            is_trial=True,
+        )
+        return organization
+
+
+
+
+
+
+
+
 # from rest_framework import serializers
 # from django.contrib.auth.password_validation import validate_password
 # # from .models import Account, UserProfile

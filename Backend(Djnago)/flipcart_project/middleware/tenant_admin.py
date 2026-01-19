@@ -11,7 +11,7 @@ class TenantAdminMiddleware:
 
     def __call__(self, request):
 
-        if not request.path.startswith("/api/admin/check/"):
+        if not request.path.startswith("/api/admin_core/check"):
             return self.get_response(request)
 
         # 🔹 Resolve tenant
@@ -44,12 +44,13 @@ class TenantAdminMiddleware:
             )
 
         # 🔹 Only public schema admin allowed
-        if not tenant or tenant.schema_name != "public":
+
+        if not tenant or tenant.schema_name != "dev_user":
             return JsonResponse(
                 {"detail": "Not public schema", "is_public_admin": False},
                 status=403
             )
-
+       
         # 🔹 Role checks
         if not user.is_authenticated:
             return JsonResponse(

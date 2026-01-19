@@ -4,6 +4,7 @@ from .api_views import (
     RegistrationAPIView, LoginAPIView, LogoutAPIView, DashboardAPIView,
     EditProfileAPIView, ChangePasswordAPIView, MyOrdersAPIView, OrderDetailAPIView,
     ActivateAPIView, ForgotPasswordAPIView, ResetPasswordAPIView,ResetPasswordValidateAPIView,DeleteAccountAPIView,
+    UserDetailAPIView, ImageKitGetUploadTokenAPIView
    
 )
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
@@ -13,6 +14,7 @@ app_name = "accounts_api"
 urlpatterns = [
     path('register/', RegistrationAPIView.as_view(), name='register'),
     path('login/', LoginAPIView.as_view(), name='login'),
+    path('user-detail/', UserDetailAPIView.as_view(), name='user_detail'),
     path('logout/', LogoutAPIView.as_view(), name='logout'),
     path('dashboard/', DashboardAPIView.as_view(), name='dashboard'),
     path('profile/', EditProfileAPIView.as_view(), name='profile'),
@@ -26,6 +28,6 @@ urlpatterns = [
     path('delete-account/', DeleteAccountAPIView.as_view(), name='delete_account'),
     path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),      # login JWT
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),     # refresh JWT
-
+    path('imagekit-token/', ImageKitGetUploadTokenAPIView.as_view(), name='imagekit_token'),
 
 ]

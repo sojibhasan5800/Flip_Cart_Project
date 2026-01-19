@@ -1,3 +1,4 @@
+from typing import Required
 from django.db import models
 import uuid
 from django_tenants.models import TenantMixin, DomainMixin
@@ -9,20 +10,28 @@ class Organization(TenantMixin):
     প্রতিটি ই-কমার্স দোকান/ব্যবসা একটি Organization (Tenant)
     প্রতিটির নিজস্ব isolated database schema থাকবে
     """
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    name = models.CharField(max_length=200, help_text="Organization/Company Name")
+    # id = models.BigAutoField(primary_key=True)        # default auto increment
+    # org_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    username = models.CharField(max_length=100, unique=True)
+    business_name = models.CharField(max_length=200, help_text="Organization/Company Name")
+    store_logo = models.URLField(
+        blank=True,
+        null=True,
+        help_text="ImageKit hosted store logo URL"
+        )
     
     # Tenant specific fields (django-tenants requires these)
-    schema_name = models.CharField(max_length=63, unique=True)
-    name = models.CharField(max_length=100)  # Organization name (duplicate for django-tenants)
+    schema_name = models.CharField(max_length=63, unique=True, blank=True)
+    duplicate_schema_name = models.CharField(max_length=100, blank=True)  # Organization name (duplicate for django-tenants)
     
     # Business Information
     business_email = models.EmailField(unique=True)
     phone = models.CharField(max_length=20)
     website = models.URLField(blank=True)
+    store_description = models.CharField(max_length=500, blank=True)
     
     # Business Details
-    business_type = models.CharField(max_length=100, choices=[
+    business_type = models.CharField(max_length=100, choices=[ 
         ('retail', 'Retail Store'),
         ('wholesale', 'Wholesale Business'),
         ('manufacturer', 'Manufacturer'),
@@ -34,10 +43,10 @@ class Organization(TenantMixin):
     # Address
     address_line1 = models.CharField(max_length=255)
     address_line2 = models.CharField(max_length=255, blank=True)
-    city = models.CharField(max_length=100)
-    state = models.CharField(max_length=100)
-    postal_code = models.CharField(max_length=20)
-    country = models.CharField(max_length=100, default='Bangladesh')
+    city = models.CharField(max_length=100, blank=True, default='Dhaka')
+    state = models.CharField(max_length=100, blank=True, default='Dhaka Division')
+    postal_code = models.CharField(max_length=20, blank=True, default='1206')
+    country = models.CharField(max_length=100, blank=True, default='Bangladesh')
     
     # Subscription & Billing (Stripe)
     subscription_plan = models.CharField(max_length=50, choices=[
@@ -85,7 +94,7 @@ class Organization(TenantMixin):
     
     # Tenant settings (django-tenants)
     auto_create_schema = True
-    auto_drop_schema = True
+    auto_drop_schema = False
     
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
@@ -98,20 +107,23 @@ class Organization(TenantMixin):
         ordering = ['-created_at']
     
     def __str__(self):
-        return f"{self.name} ({self.schema_name})"
+        return f"{self.business_name} ({self.schema_name})"
+
     
     def save(self, *args, **kwargs):
         # Generate schema_name if not provided
         if not self.schema_name:
             self.schema_name = self.generate_schema_name()
         super().save(*args, **kwargs)
+
+    
     
     def generate_schema_name(self):
         """Generate unique schema name"""
         import re
         import time
         # Clean name for schema
-        clean_name = re.sub(r'[^a-z0-9]', '', self.name.lower())
+        clean_name = re.sub(r'[^a-z0-9]', '', self.business_name.lower())
         timestamp = str(int(time.time()))[-6:]
         return f"{clean_name[:40]}_{timestamp}"
     
@@ -195,9 +207,6 @@ class OrganizationDomain(DomainMixin):
         verbose_name_plural = "Organization Domains"
         unique_together = ['tenant', 'domain']
     
-    def __str__(self):
-        return f"{self.domain} -> {self.tenant.name}"
-    
     def save(self, *args, **kwargs):
         # Ensure only one primary domain per tenant
         if self.is_primary:
@@ -206,6 +215,9 @@ class OrganizationDomain(DomainMixin):
                 is_primary=True
             ).exclude(pk=self.pk).update(is_primary=False)
         super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.domain} → {self.tenant.business_name} ({self.tenant.schema_name})"
 
 
 class MerchantUser(models.Model):
@@ -273,7 +285,7 @@ class MerchantUser(models.Model):
         ordering = ['-joined_at']
     
     def __str__(self):
-        return f"{self.user.email} - {self.organization.name} ({self.role})"
+        return f"{self.user.email} - {self.organization.business_name} ({self.role})"
     
     @property
     def full_name(self):

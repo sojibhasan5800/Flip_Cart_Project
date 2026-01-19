@@ -79,6 +79,7 @@ TENANT_APPS = [
     'orders',            # each shop has separate orders
     # 'delivery_system',   # per-tenant delivery_system panel
     'seller_dashboard',  # per-tenant seller panel
+    'admin_core'
     # 'orders_worker',     # per-tenant background order consumer
 ]
 
@@ -264,12 +265,12 @@ REST_FRAMEWORK = {
 # Simple JWT Config
 # -----------------------------
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15),  # short-lived access token
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),  # short-lived access token
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),     # longer-lived refresh token
-    'ROTATE_REFRESH_TOKENS': True,
+    'ROTATE_REFRESH_TOKENS': False,
     'BLACKLIST_AFTER_ROTATION': True,
     'AUTH_HEADER_TYPES': ('Bearer',),               # Authorization: Bearer <token>
-    'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
+    # 'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
 }
 
 # -----------------------------
@@ -336,7 +337,14 @@ STRIPE_ENDPOINT_SECRET = config('STRIPE_ENDPOINT_SECRET')
 #  Base_url Config
 # -----------------------------
 NGROK_URL = 'https://dino-staminal-kamila.ngrok-free.dev'
-CSRF_TRUSTED_ORIGINS = ['https://dino-staminal-kamila.ngrok-free.dev']
+# CSRF_TRUSTED_ORIGINS = ['https://dino-staminal-kamila.ngrok-free.dev']
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:3000",
+    "http://10.237.106.29:3000",
+]
+CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_CREDENTIALS = True
+
 
 
 
@@ -352,9 +360,9 @@ else:
     else:
         BASE_URL= "https://flip-cart-project-1.onrender.com"
 
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",  # React frontend
-]
+# CORS_ALLOWED_ORIGINS = [
+#     "http://localhost:3000",  # React frontend
+# ]
 
 FRONTEND_URL = None
 if  DEPLOYMENT_MODE:

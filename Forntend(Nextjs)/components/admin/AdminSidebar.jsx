@@ -11,10 +11,9 @@ const AdminSidebar = () => {
 
     const pathname = usePathname()
     const {user} = useUser()
-    const profileImage =
-        user?.userprofile?.profile_picture ||
-        assets.user_placeholder   // default image
-
+    const profileImage = user?.profile?.profile_picture || "/assets/gs_logo.jpg"
+    const fullName = user? `${user.first_name} ${user.last_name}`: "Admin"
+    
     const sidebarLinks = [
         { name: 'Dashboard', href: '/admin', icon: HomeIcon },
         { name: 'Stores', href: '/admin/stores', icon: StoreIcon },
@@ -26,7 +25,7 @@ const AdminSidebar = () => {
         <div className="inline-flex h-full flex-col gap-5 border-r border-slate-200 sm:min-w-60">
             <div className="flex flex-col gap-3 justify-center items-center pt-8 max-sm:hidden">
                 <Image className="w-14 h-14 rounded-full" src={profileImage} alt="" width={80} height={80} />
-                <p className="text-slate-700">   Hi, {user ? `${user.first_name} ${user.last_name}` : "Admin"}</p>
+                <p className="text-slate-700">   Hi, {fullName}</p>
             </div>
 
             <div className="max-sm:mt-6">

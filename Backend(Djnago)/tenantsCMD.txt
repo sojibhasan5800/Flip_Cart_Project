@@ -1,5 +1,7 @@
+# Database create in pgadmin 
+
 (accounts models accounts)
-#  (cm)  organization = models.ForeignKey('merchant_user.Organization', on_delete=models.CASCADE, null=True, blank=True,related_name='users')
+#  (commmend)  organization = models.ForeignKey('merchant_user.Organization', on_delete=models.CASCADE, null=True, blank=True,related_name='users')
 
 python manage.py makemigrations accounts
 
@@ -8,7 +10,7 @@ python manage.py makemigrations merchant_user
 python manage.py migrate_schemas --shared
 
 (accounts models accounts)
-(ucm)  organization = models.ForeignKey('merchant_user.Organization', on_delete=models.CASCADE, null=True, blank=True,related_name='users')
+(uncommend)  organization = models.ForeignKey('merchant_user.Organization', on_delete=models.CASCADE, null=True, blank=True,related_name='users')
 python manage.py makemigrations accounts
 python manage.py migrate_schemas --shared
 python manage.py migrate_schemas --tenant
@@ -18,11 +20,97 @@ python manage.py migrate_schemas --tenant
 
 যদি কোনো specific tenant migrate করতে চাও:
 python manage.py migrate_schemas --tenant=tenant_schema_name
+# or
+python manage.py migrate_schemas --schema=public_user
+#---------- if any one app tenants inisde or shared to send tenants ----
+* ----------(Ex : shared_app inside admin_core send to tenats_apps)
 
+স্টেপ ২: মাইগ্রেশন আবার চালাও (এটা না করলে টেবিল তৈরি হবে না)
+Bash# ১. নতুন migration তৈরি (যদি মডেল চেঞ্জ থাকে)
+python manage.py makemigrations admin_core
 
+# ২. public schema আপডেট (admin_core এখন shared না, তাই public-এ টেবিল যাবে না)
+python manage.py migrate_schemas --shared
 
+# ৩. সব tenant/organization-এর schema-এ admin_core_coupon টেবিল তৈরি হবে
+python manage.py migrate_schemas
+
+#--ex:
+if model insidie any field change :
+
+python manage.py makemigrations admin_core
+python manage.py migrate
+
+# ----------------- End migration Step-------------------------
 
 
 # পুরানো মাইগ্রেশন ফাইল ডিলিট করতে পারো যদি প্রজেক্ট নতুন থাকে
 rm -rf accounts/migrations
 rm -rf merchant_user/migrations
+rm -rf admin_core/migrations
+
+
+
+# ------------- Superuser create specific schema --------
+# py manage.py shell :
+
+🔹 STEP-1: Imports
+from merchant_user.models import Organization, OrganizationDomain
+from accounts.models import Account
+from django_tenants.utils import schema_context
+from django.utils import timezone
+from django.contrib.auth.hashers import make_password
+
+🔹 STEP-2: Public schema-এ global superuser
+
+
+    Account.objects.create_superuser(
+        first_name="Admin",
+        last_name="Admin",
+        email="admin@gmail.com",
+        username="globaladmin",
+        password="1234",
+    )
+
+🔹 STEP-3: Tenant (Organization) তৈরি
+tenant, created = Organization.objects.get_or_create(
+    schema_name="dev_user",
+    defaults={
+        "business_name": "Test Shop BD",
+        "username": "testshopbd",
+        "business_email": "test@shopbd.com",
+        "phone": "01712345678",
+        "address_line1": "Dhaka",
+        "duplicate_schema_name": "Test Shop BD",
+        "subscription_plan": "free_trial",
+        "is_trial": True,
+        "trial_ends_at": timezone.now() + timezone.timedelta(days=14),
+        "is_active": True,
+        "is_verified": True,
+    }
+)
+
+🔹 STEP-4: Tenant Domain
+OrganizationDomain.objects.get_or_create(
+    tenant=tenant,
+    domain="127.0.0.1",
+    is_primary=True,
+    defaults={
+        "domain_type": "development",
+        "ssl_status": "active",
+    }
+)
+
+🔹 STEP-5: Tenant schema-এর ভিতরে tenant superuser
+with schema_context(tenant.schema_name):
+    Account.objects.get_or_create(
+        email="admin@gmail.com",
+        defaults={
+            "username": "tenantadmin",
+            "is_staff": True,
+            "is_superuser": True,
+            "password": make_password("1234"),
+        }
+    )
+
+# --------------- end ---------------------------

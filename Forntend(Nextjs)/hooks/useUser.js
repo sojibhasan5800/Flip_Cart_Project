@@ -20,12 +20,14 @@ const useUser = () => {
 
     const fetchUser = async () => {
       try {
-        const res = await AxiosInstance.get("/api/accounts/dashboard/");
-        setUser(res.data.user); // 👈 এখানে user object
+        setLoading(true);
+        const res = await AxiosInstance.get("/api/accounts/user-detail/");
+        setUser(res.data?.data || null);
+        setError(null);
       } catch (err) {
         console.error("User fetch failed:", err);
-        setError(err);
         setUser(null);
+        setError(err);
       } finally {
         setLoading(false);
       }
@@ -36,12 +38,14 @@ const useUser = () => {
 
   return {
     user,
+    isAuthenticated,
     loading,
     error,
-    isAuthenticated,
-    isAdmin: user?.is_admin || false,
-    isSuperAdmin: user?.is_superadmin || false,
-    isTenantOwner: user?.is_tenant_owner || false,
+    //  ROLE MAPPING (THIS IS THE KEY)
+    isAdmin: user?.roles?.is_admin || user?.roles?.is_superadmin || false,
+    isSuperAdmin: user?.roles?.is_superadmin || false,
+    isTenantOwner: user?.roles?.is_tenant_owner || false,
+    isTenantStaff: user?.roles?.is_tenant_staff || false,
   };
 };
 

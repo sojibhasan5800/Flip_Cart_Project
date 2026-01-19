@@ -3,7 +3,7 @@ from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
 from cloudinary.models import CloudinaryField
 from merchant_user.models import Organization
 from django_tenants.utils import get_tenant_model, tenant_context
-
+from django_tenants.utils import schema_context
 
 
 
@@ -21,6 +21,7 @@ class MyAccountManager(BaseUserManager):
 
         if not username:
             raise ValueError('User must have an username')
+        
 
         user = self.model(
             email = self.normalize_email(email),
@@ -36,6 +37,7 @@ class MyAccountManager(BaseUserManager):
         return user
 
     def create_superuser(self, first_name, last_name, email, username, password, phone_number=None):
+        
         user = self.create_user(
             email = self.normalize_email(email),
             username = username,

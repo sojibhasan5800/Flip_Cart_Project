@@ -46,16 +46,22 @@ AxiosInstance.interceptors.response.use(
 
         // 🔁 refresh token API call
         const res = await axios.post(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/accounts/token/refresh/`,
+          `${process.env.NEXT_PUBLIC_API_URL}api/accounts/token/refresh/`,
           {
             refresh: refreshToken,
           }
         );
 
+         // 🔴 CHANGE-2: access token save
         const newAccessToken = res.data.access;
 
         // 🔐 localStorage update
         localStorage.setItem("Token", newAccessToken);
+
+        // 🔴 CHANGE-3: refresh token save (VERY IMPORTANT)
+        if (res.data.refresh) {
+          localStorage.setItem("RefreshToken", res.data.refresh);
+        }
 
         // 🔁 header update
         originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;

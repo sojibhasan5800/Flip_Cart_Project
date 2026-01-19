@@ -36,13 +36,12 @@ from django.conf import settings
 from django.conf.urls.static import static
 from . import views
 from . import api_views
-from . import middlware_views
 from . import api_urls
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', views.home, name='home'),
-    path("api/admin/check/",middlware_views.PublicAdminCheckAPIView.as_view()),
+    
 
     # path('', api_views.HomeProductsAPIView, name='home'),
 
@@ -66,6 +65,7 @@ urlpatterns = [
     path('api/seller/', include('seller_dashboard.api_urls', namespace='seller_dashboard_api')),
     # path('api/delivery/', include('delivery_system.api_urls', namespace='delivery_system_api')),
     path('api/merchant_user/', include('merchant_user.api_urls', namespace='merchant_user_api')),
+    path('api/admin_core/', include('admin_core.api_urls', namespace='admin_core_api')),
 
 
     path('swagger(<format>.json|.yaml)', schema_view.without_ui(cache_timeout=0), name='schema-json'),

@@ -4,25 +4,45 @@ import StoreInfo from "@/components/admin/StoreInfo"
 import Loading from "@/components/Loading"
 import { useEffect, useState } from "react"
 import toast from "react-hot-toast"
+import useUser from "../../../hooks/useUser";
+import AxiosInstance from '../../../api/AxiosInstance'
 
 export default function AdminStores() {
 
+    const {user,isAuthenticated} = useUser()
     const [stores, setStores] = useState([])
     const [loading, setLoading] = useState(true)
 
     const fetchStores = async () => {
-        setStores(storesDummyData)
+        try{
+            const {data} = await AxiosInstance.get("api/admin_core/store-approval/?status=approved")
+            setStores(data.data || [])
+            console.log(data.data)
+            setLoading(false)
+        }catch(error){
+            toast.error(error?.response?.data?.error || "Error fetching stores")
+        }
         setLoading(false)
     }
 
     const toggleIsActive = async (storeId) => {
         // Logic to toggle the status of a store
+        try{
+            console.log("Toggling store status:", storeId)
+            const {data} = await AxiosInstance.patch("api/admin_core/store-approval/", { storeId })
+            await fetchStores()
+            toast.success(data.message)
+        }catch(error){
+            toast.error(error?.response?.data?.error || "Error updating store")
+        }
 
     }
 
     useEffect(() => {
-        fetchStores()
-    }, [])
+        if(isAuthenticated){
+            fetchStores()
+        }
+    }, [isAuthenticated])
 
     return !loading ? (
         <div className="text-slate-500 mb-28">
@@ -33,13 +53,14 @@ export default function AdminStores() {
                     {stores.map((store) => (
                         <div key={store.id} className="bg-white border border-slate-200 rounded-lg shadow-sm p-6 flex max-md:flex-col gap-4 md:items-end max-w-4xl" >
                             {/* Store Info */}
+                            <h1>{store.id}</h1>
                             <StoreInfo store={store} />
 
                             {/* Actions */}
                             <div className="flex items-center gap-3 pt-2 flex-wrap">
                                 <p>Active</p>
                                 <label className="relative inline-flex items-center cursor-pointer text-gray-900">
-                                    <input type="checkbox" className="sr-only peer" onChange={() => toast.promise(toggleIsActive(store.id), { loading: "Updating data..." })} checked={store.isActive} />
+                                    <input type="checkbox" className="sr-only peer" onChange={() => toast.promise(toggleIsActive(store.id), { loading: "Updating data..." })} checked={store.is_verified} />
                                     <div className="w-9 h-5 bg-slate-300 rounded-full peer peer-checked:bg-green-600 transition-colors duration-200"></div>
                                     <span className="dot absolute left-1 top-1 w-3 h-3 bg-white rounded-full transition-transform duration-200 ease-in-out peer-checked:translate-x-4"></span>
                                 </label>

@@ -7,6 +7,8 @@ import Loading from "@/components/Loading"
 import useAuth from '../../../hooks/useAuth'
 import useToken  from "../../../hooks/useToken"
 import AxiosInstance from "../../../api/AxiosInstance"
+import { useImageKitUpload} from "../../../hooks/useImageKitUpload";
+
 import { useRouter } from "next/navigation"
 import { set } from "date-fns"
 
@@ -21,15 +23,17 @@ export default function CreateStore() {
     const [message, setMessage] = useState("")
 
     const [storeInfo, setStoreInfo] = useState({
-        name: "",
+        business_name: "",
         username: "",
-        description: "",
+        store_description: "",
         email: "",
         contact: "",
         address: "",
-        image: ""
+        image: null,
     })
-
+    // Use custom upload hook
+  const { uploadFile, url: imageUrl, loading: uploadLoading, error: uploadError, progress } = useImageKitUpload();
+    // Handler for form input changes
     const onChangeHandler = (e) => {
         setStoreInfo({ ...storeInfo, [e.target.name]: e.target.value })
     }
@@ -38,11 +42,8 @@ export default function CreateStore() {
         // Logic to check if the store is already submitted
         // const token = getToken
         try {
-            const { data } = await AxiosInstance.get("api/merchant_user/merchant/store/create", {
-                headers: {
-                    Authorization: `Bearer ${token}`
-                }
-            });
+            const { data } = await AxiosInstance.get("api/merchant_user/merchant/store/create",);
+            console.log(data.status)
             if (['pending', 'approved', 'rejected'].includes(data.status)) {
                 setStatus(data.status)
                 setAlreadySubmitted(true)
@@ -83,19 +84,23 @@ export default function CreateStore() {
             return
         }
     try {
-        const formData = new FormData();
-        formData.append("name", storeInfo.name);
-        formData.append("username", storeInfo.username);
-        formData.append("description", storeInfo.description);
-        formData.append("email", storeInfo.email);
-        formData.append("contact", storeInfo.contact);
-        formData.append("address", storeInfo.address);
-        formData.append("image", storeInfo.image);
-        const {data} = await AxiosInstance.post("api/merchant_user/merchant/store/create/", formData, {
-            headers: {
-                Authorization: `Bearer ${token}`
+        let storeLogoUrl = '';
+        if (storeInfo.image) {
+                // Upload image using hook
+                storeLogoUrl = await uploadFile(storeInfo.image, { folder: '/stores/', tags: ['logo'] });
+                if (uploadError) throw new Error(uploadError);  // Handle upload error
+                toast.success(`Upload complete: ${progress}% - URL: ${storeLogoUrl}`);
             }
-        });
+
+        const formData = new FormData();
+        formData.append("store_logo", storeLogoUrl);
+        formData.append("username", storeInfo.username);
+        formData.append("business_name", storeInfo.business_name);
+        formData.append("store_description", storeInfo.store_description);
+        formData.append("business_email", storeInfo.email);
+        formData.append("phone", storeInfo.contact);
+        formData.append("address_line1", storeInfo.address);
+        const {data} = await AxiosInstance.post("api/merchant_user/merchant/store/create/", formData,);
         toast.success(data.message || "Store details submitted successfully.")
         await fetchSellerStatus();
         
@@ -140,11 +145,11 @@ export default function CreateStore() {
                         <p>Username</p>
                         <input name="username" onChange={onChangeHandler} value={storeInfo.username} type="text" placeholder="Enter your store username" className="border border-slate-300 outline-slate-400 w-full max-w-lg p-2 rounded" />
 
-                        <p>Name</p>
-                        <input name="name" onChange={onChangeHandler} value={storeInfo.name} type="text" placeholder="Enter your store name" className="border border-slate-300 outline-slate-400 w-full max-w-lg p-2 rounded" />
+                        <p>Business Name</p>
+                        <input name="business_name" onChange={onChangeHandler} value={storeInfo.business_name} type="text" placeholder="Enter your store business_name" className="border border-slate-300 outline-slate-400 w-full max-w-lg p-2 rounded" />
 
-                        <p>Description</p>
-                        <textarea name="description" onChange={onChangeHandler} value={storeInfo.description} rows={5} placeholder="Enter your store description" className="border border-slate-300 outline-slate-400 w-full max-w-lg p-2 rounded resize-none" />
+                        <p>Store Description</p>
+                        <textarea name="store_description" onChange={onChangeHandler} value={storeInfo.store_description} rows={5} placeholder="Enter your store store_description" className="border border-slate-300 outline-slate-400 w-full max-w-lg p-2 rounded resize-none" />
 
                         <p>Email</p>
                         <input name="email" onChange={onChangeHandler} value={storeInfo.email} type="email" placeholder="Enter your store email" className="border border-slate-300 outline-slate-400 w-full max-w-lg p-2 rounded" />

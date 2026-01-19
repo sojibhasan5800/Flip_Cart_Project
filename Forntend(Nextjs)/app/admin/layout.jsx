@@ -11,7 +11,7 @@ import useAuth from "../../hooks/useAuth";
 //     description: "GoCart. - Admin",
 // };
 const checkPublicAdmin = async (token) => {
-    const res = await AxiosInstance.get("/api/admin/check/",{
+    const res = await AxiosInstance.get("/api/admin_core/check/",{
       headers: {
         Authorization: `Bearer ${token}`
       }

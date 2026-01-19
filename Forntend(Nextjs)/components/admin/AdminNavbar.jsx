@@ -6,7 +6,7 @@ import { useState } from "react"
 import useUser from "../../hooks/useUser"
 
 const AdminNavbar = () => {
-    const { user, isAuthenticated, isAdmin, loading } = useUser()
+    const { user, isAuthenticated, loading ,isAdmin} = useUser()
     const [open, setOpen] = useState(false)
     const router = useRouter()
 
