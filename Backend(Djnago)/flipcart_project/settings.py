@@ -108,6 +108,11 @@ TENANT_SUBFOLDER_PREFIX = 'tenants'
 # Or use subdomains:
 TENANT_USES_SUBDOMAINS = True
 SHOW_PUBLIC_IF_NO_TENANT_FOUND = True
+if DEBUG:
+    BASE_ORGANIZATION_DOMAIN = "localhost:8000"
+else:
+    BASE_ORGANIZATION_DOMAIN = "example.com"
+
 
 
 # -----------------------------
@@ -131,15 +136,12 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 
     # Custom Middleware for admin access control
-      'flipcart_project.middleware.tenant_admin.TenantAdminMiddleware',
-    # Tenant Admin Middleware
+    'flipcart_project.app_middleware.admin_core_app.tenant_admin.TenantAdminMiddleware',
+    'flipcart_project.app_middleware.merchant_user_app.productApiview.MerchantProductMiddleware',
+    # 'flipcart_project.app_middleware.merchant_user_app.productApiview.MerchantProductMiddleware',
+    # 'flipcart_project.app_middleware.merchant_user_app.productApiview.MerchantProductMiddleware'
 
-    # 'flipcart_project.middleware.tenant_admin.TenantAdminMiddleware',
 
-    # Other Custom Middlewares (keep these after tenant admin)
-    # 'flipcart_project.middleware.user_activity.UserActivityMiddleware',
-    # 'flipcart_project.middleware.performance.PerformanceMiddleware',
-    # 'flipcart_project.middleware.security.SecurityMiddleware',
 ]
 
 
@@ -265,7 +267,7 @@ REST_FRAMEWORK = {
 # Simple JWT Config
 # -----------------------------
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),  # short-lived access token
+    'ACCESS_TOKEN_LIFETIME': timedelta(days=1),  # short-lived access token
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),     # longer-lived refresh token
     'ROTATE_REFRESH_TOKENS': False,
     'BLACKLIST_AFTER_ROTATION': True,

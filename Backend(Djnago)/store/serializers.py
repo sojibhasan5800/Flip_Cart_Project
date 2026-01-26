@@ -1,36 +1,119 @@
-# # store/api/serializers.py
-# from rest_framework import serializers
-# from .models import Product, ReviewRating, ProductGallery, Variation
+# store/api/serializers.py
+from rest_framework import serializers
+from store.models import Product,ProductGallery
+from category.models import Category
+from django.utils.text import slugify
 
-# class ProductSerializer(serializers.ModelSerializer):
-#     average_rating = serializers.FloatField(source='averageReview', read_only=True)
-#     review_count = serializers.IntegerField(source='countReview', read_only=True)
+class ProductSerializer(serializers.ModelSerializer):
+    main_image_url = serializers.URLField(write_only=True, required=True)   # from frontend
+    gallery_image_urls = serializers.ListField(                             # from frontend
+        child=serializers.URLField(), write_only=True, required=False, default=[]
+    )
 
-#     class Meta:
-#         model = Product
-#         fields = [
-#             'id', 'product_name', 'slug', 'description', 'price', 'images',
-#             'stock', 'is_available', 'category', 'created_date', 'modified_date',
-#             'average_rating', 'review_count'
-#         ]
-#         read_only_fields = ['id', 'is_available', 'average_rating', 'review_count']
+    class Meta:
+        model = Product
+        fields = [
+            'product_name', 'slug', 'description', 'price', 'stock', 'is_available',
+            'category', 'organization',
+            'main_image_url', 'gallery_image_urls'   # write-only
+        ]
+        read_only_fields = ['organization', 'slug']
 
-# class ReviewRatingSerializer(serializers.ModelSerializer):
-#     user_name = serializers.CharField(source='user.get_full_name', read_only=True)
+    def create(self, validated_data):
+        # Pop extra fields
+        main_image_url = validated_data.pop('main_image_url')
+        gallery_urls = validated_data.pop('gallery_image_urls', [])
+
+        # Set main image URL
+        validated_data['images'] = main_image_url
+
+        product = Product.objects.create(**validated_data)
+
+        # Create gallery entries
+        for url in gallery_urls:
+            ProductGallery.objects.create(product=product, images=url)
+
+        return product
     
-#     class Meta:
-#         model = ReviewRating
-#         fields = ['id', 'product', 'user', 'user_name', 'subject', 'review', 'rating', 'status', 'created_at', 'updated_at']
-#         read_only_fields = ['id', 'user_name', 'created_at', 'updated_at']
+class ProductCreateSerializer(serializers.ModelSerializer):
+    main_image_url = serializers.URLField(write_only=True)
+    gallery_image_urls = serializers.ListField(
+        child=serializers.URLField(), write_only=True, required=False, default=[]
+    )
+    category = serializers.CharField(write_only=True)
 
-# class ProductGallerySerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = ProductGallery
-#         fields = ['id', 'product', 'image']
-#         read_only_fields = ['id']
+    class Meta:
+        model = Product
+        fields = [
+            "product_name", "description", "mrp", "price", "category",
+            "main_image_url", "gallery_image_urls"
+        ]
 
-# class VariationSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = Variation
-#         fields = ['id', 'product', 'variation_category', 'variation_value', 'is_active']
-#         read_only_fields = ['id']
+    def validate(self, data):
+        if data["price"] >= data["mrp"]:
+            raise serializers.ValidationError("Offer price must be less than MRP")
+        return data
+
+    def create(self, validated_data):
+        organization = self.context["organization"]
+
+        main_image_url = validated_data.pop("main_image_url")
+        gallery_urls = validated_data.pop("gallery_image_urls", [])
+
+        # category handle
+        category_name = validated_data.pop("category")
+        category, _ = Category.objects.get_or_create(
+            category_name=category_name,
+            defaults={"slug": slugify(category_name)}
+        )
+
+        product = Product.objects.create(
+            **validated_data,
+            category=category,
+            organization=organization,
+            images=main_image_url,
+            stock=0  # default stock
+        )
+
+        for url in gallery_urls:
+            ProductGallery.objects.create(product=product, images=url)
+
+        return product
+
+class ProductListSerializer(serializers.ModelSerializer):
+    category = serializers.CharField(source="category.category_name")
+
+    class Meta:
+        model = Product
+        fields = [
+            "id",
+            "product_name",
+            "slug",
+            "price",
+            "mrp",
+            "images",
+            "stock",
+            "is_available",
+            "description",
+            "category",
+            "created_date",
+        ]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

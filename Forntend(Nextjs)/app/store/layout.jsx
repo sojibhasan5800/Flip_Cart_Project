@@ -1,17 +1,29 @@
+"use client";
+
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import StoreLayout from "@/components/store/StoreLayout";
+import useUser from "../../hooks/useUser";
 
-export const metadata = {
-    title: "GoCart. - Store Dashboard",
-    description: "GoCart. - Store Dashboard",
-};
+export default function StoreRootLayout({ children }) {
+  const { isAuthenticated, loading } = useUser();
+  const router = useRouter();
 
-export default function RootAdminLayout({ children }) {
+  useEffect(() => {
+    if (!loading && !isAuthenticated) {
+      router.replace("/auth/login");
+    }
+  }, [isAuthenticated, loading, router]);
 
+  if (loading) {
     return (
-        <>
-            <StoreLayout>
-                {children}
-            </StoreLayout>
-        </>
+      <div className="min-h-screen flex items-center justify-center">
+        <p>Checking authentication...</p>
+      </div>
     );
+  }
+
+  if (!isAuthenticated) return null;
+
+  return <StoreLayout>{children}</StoreLayout>;
 }

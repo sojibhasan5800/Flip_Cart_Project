@@ -20,6 +20,7 @@ python manage.py migrate_schemas --tenant
 
 যদি কোনো specific tenant migrate করতে চাও:
 python manage.py migrate_schemas --tenant=tenant_schema_name
+ex:  python manage.py migrate_schemas --tenant=all_shop_schema
 # or
 python manage.py migrate_schemas --schema=public_user
 #---------- if any one app tenants inisde or shared to send tenants ----

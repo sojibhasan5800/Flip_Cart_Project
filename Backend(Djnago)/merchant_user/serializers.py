@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from merchant_user.models import Organization
+from store.models import ReviewRating
 
 
 class OrganizationCreateSerializer(serializers.ModelSerializer):
@@ -36,185 +37,52 @@ class OrganizationCreateSerializer(serializers.ModelSerializer):
 
 
 
+class BasicStoreInfoSerializer(serializers.ModelSerializer):
+    """
+    Minimal store information shown in seller dashboard / navbar
+    """
+    class Meta:
+        model = Organization
+        fields = [
+            'id',
+            'username',
+            'business_name',
+            'store_logo',
+            'store_description',
+            'business_email',
+            'phone',
+            'is_verified',
+            'is_active',
+            'subscription_status',
+            'is_trial',
+            'days_remaining_in_trial',   # if you want to show trial countdown
+        ]
+        read_only_fields = fields
 
 
+class ReviewUserSerializer(serializers.Serializer):
+    name = serializers.CharField(source='user.full_name')
+    image = serializers.CharField(source='user.profile_picture.url', allow_null=True)
 
 
-
-# from rest_framework import serializers
-# from django.contrib.auth.password_validation import validate_password
-# # from .models import Account, UserProfile
-# from accounts.models import Account, UserProfile
-# from merchant_user.models import Organization,StoreProfile
-# from accounts.serializers import RegistrationSerializer, AccountSerializer,UserProfileSerializer
-# import re
+class ReviewProductSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    name = serializers.CharField(source='product_name')
+    category = serializers.CharField(source='category.category_name')
 
 
-# class MerchantRegistrationSerializer(serializers.Serializer):
-#     """Serializer for merchant registration with business details"""
-    
-#     # Business information
-#     business_name = serializers.CharField(max_length=100, write_only=True)
-#     subdomain = serializers.CharField(max_length=50, write_only=True)
-    
-#     # Personal information
-#     first_name = serializers.CharField(max_length=50)
-#     last_name = serializers.CharField(max_length=50)
-#     email = serializers.EmailField()
-#     phone = serializers.CharField(max_length=20)
-#     password = serializers.CharField(write_only=True, min_length=8, style={'input_type': 'password'})
-#     confirm_password = serializers.CharField(write_only=True, style={'input_type': 'password'})
-    
-#     def validate_subdomain(self, value):
-#         """Validate subdomain format and availability"""
-#         value = value.lower().strip()
-        
-#         # Check format (alphanumeric and hyphens only)
-#         if not re.match(r'^[a-z0-9]([a-z0-9-]*[a-z0-9])?$', value):
-#             raise serializers.ValidationError(
-#                 'Subdomain can only contain lowercase letters, numbers, and hyphens. Cannot start or end with hyphen.'
-#             )
-        
-#         # Check reserved subdomains
-#         reserved = ['www', 'admin', 'api', 'blog', 'support', 'help', 'mail', 'ftp', 'cpanel', 'webmail']
-#         if value in reserved:
-#             raise serializers.ValidationError('This subdomain is reserved. Please choose another one.')
-        
-#         # Check length
-#         if len(value) < 3:
-#             raise serializers.ValidationError('Subdomain must be at least 3 characters long.')
-#         if len(value) > 50:
-#             raise serializers.ValidationError('Subdomain cannot exceed 50 characters.')
-        
-#         # Check availability
-#         if Organization.objects.filter(subdomain=value).exists():
-#             raise serializers.ValidationError('This subdomain is already taken. Please choose another one.')
-        
-#         return value
-    
-#     def validate_email(self, value):
-#         """Validate email uniqueness"""
-#         if Account.objects.filter(email=value).exists():
-#             raise serializers.ValidationError('This email is already registered.')
-#         return value
-    
-#     def validate_password(self, value):
-#         """Validate password strength"""
-#         validate_password(value)
-#         return value
-    
-#     def validate(self, data):
-#         """Cross-field validation"""
-#         if data['password'] != data['confirm_password']:
-#             raise serializers.ValidationError({
-#                 'confirm_password': 'Passwords do not match.'
-#             })
-#         return data
+class ReviewSerializer(serializers.ModelSerializer):
+    user = ReviewUserSerializer(read_only=True)
+    product = ReviewProductSerializer(read_only=True)
+    createdAt = serializers.DateTimeField(source='created_at', read_only=True)
 
-# class MerchantUserRegistrationSerializer(RegistrationSerializer):
-#     """
-#     Merchant registration serializer
-#     Only adds tenant to user creation, no duplication of logic
-#     """
-#     def create(self, validated_data):
-#         # get tenant from context
-#         organization = self.context.get("organization", None)
-        
-#         # save user using the parent serializer's create logic
-#         # temporarily store tenant, then assign it after user creation
-#         user = super().create(validated_data)  # call parent RegistrationSerializer.create()
-
-#         # assign tenant
-#         if organization:
-#             user.organization = organization
-#         user.is_tenant_owner = True
-#         user.is_active = True
-#         user.is_tenant_staff = True
-#         user.save()
-
-#         # create profile (if not already)
-#         UserProfile.objects.get_or_create(user=user)
-
-#         return user
-
-# class TenantSerializer(serializers.ModelSerializer):
-#     """Serializer for Tenant model"""
-    
-#     class Meta:
-#         model = Organization
-#         fields = [
-#             'id', 'name', 'subdomain', 'email', 'phone', 
-#             'is_active', 'is_trial', 'trial_ends_at', 'created_at'
-#         ]
-#         read_only_fields = ['id', 'created_at']
-
-# class TenantAccountSerializer(AccountSerializer):
-#     """
-#     Account serializer with tenant info and roles
-#     Inherits from AccountSerializer to avoid duplication
-#     """
-#     organization = TenantSerializer(read_only=True)
-
-#     class Meta(AccountSerializer.Meta):
-#         # extend base fields
-#         fields = AccountSerializer.Meta.fields + [
-#             'is_tenant_owner',
-#             'is_tenant_staff',
-#             'last_login',
-#             'organization',
-#         ]
-#         read_only_fields = AccountSerializer.Meta.read_only_fields + ['last_login']
+    class Meta:
+        model = ReviewRating
+        fields = ['id', 'user', 'product', 'rating', 'review', 'createdAt', 'subject']
 
 
-# # merchant-specific serializer
-# class MerchantUserProfileSerializer(UserProfileSerializer):
-
-#     """
-#     Inherits from UserProfileSerializer
-#     Adds is_merchant_user field
-#     """
-#     is_merchant_user = serializers.SerializerMethodField()
-#     organization = TenantSerializer(read_only=True)
-
-#     class Meta(UserProfileSerializer.Meta):
-#         # extend fields from base
-#         fields = UserProfileSerializer.Meta.fields + ['is_merchant_user','tennant']
-#         read_only_fields = ['id', 'date_joined', 'organization']
-
-#     def get_is_merchant_user(self, obj):
-#         # obj is UserProfile instance; check if related user has tenant
-#         return obj.user.tenant is not None
-    
-# class SubscriptionSerializer(serializers.Serializer):
-#     """Serializer for subscription information"""
-#     status = serializers.CharField(read_only=True)
-#     trial_ends_at = serializers.DateTimeField(read_only=True)
-#     is_paid = serializers.BooleanField(read_only=True)
-#     stripe_customer_id = serializers.CharField(read_only=True)
-#     stripe_subscription_id = serializers.CharField(read_only=True)
-#     plan_name = serializers.CharField(read_only=True)
-    
-#     def to_representation(self, instance):
-#         data = super().to_representation(instance)
-#         if isinstance(instance, Organization):
-#             data.update({
-#                 'status': 'trial' if instance.is_trial else 'active',
-#                 'trial_ends_at': instance.trial_ends_at,
-#                 'is_paid': instance.is_paid,
-#                 'stripe_customer_id': instance.stripe_customer_id,
-#                 'stripe_subscription_id': instance.stripe_subscription_id,
-#                 'plan_name': 'Basic Plan'  # You can make this dynamic
-#             })
-#         return data
-
-# class StoreCreateSerializer(serializers.Serializer):
-#   class Meta:
-#         model = StoreProfile
-#         fields = [
-#             "username", "store_name","description", "address", "logo_url", "owner_email", "owner_contact"
-#         ]
-
-# class StoreStatusSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = StoreProfile
-#         fields = ["status", "name", "username"]
+class SellerDashboardSerializer(serializers.Serializer):
+    totalProducts = serializers.IntegerField()
+    totalEarnings = serializers.DecimalField(max_digits=12, decimal_places=2)
+    totalOrders = serializers.IntegerField()
+    ratings = ReviewSerializer(many=True)

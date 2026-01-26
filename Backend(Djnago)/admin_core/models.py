@@ -38,7 +38,7 @@ class Coupon(models.Model):
     # Tenant relation
     organization = models.ForeignKey(
         'merchant_user.Organization', 
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
         related_name='coupons',
         null = True, blank=True
     )

@@ -144,12 +144,15 @@ class Organization(TenantMixin):
     
     @property
     def store_url(self):
-        """Get store URL"""
+        """Get store URL safely, with default to https if USE_SSL not set"""
         primary_domain = self.domains.filter(is_primary=True).first()
         if primary_domain:
-            protocol = 'https' if settings.USE_SSL else 'http'
+            # settings এ USE_SSL থাকলে তা ব্যবহার করবে, না থাকলে True ধরে নেবে
+            use_ssl = getattr(settings, "USE_SSL", True)
+            protocol = 'https' if use_ssl else 'http'
             return f"{protocol}://{primary_domain.domain}"
         return None
+
     
     def has_delivery_integration(self):
         """Check if organization has delivery integration"""
@@ -240,7 +243,7 @@ class MerchantUser(models.Model):
         related_name='merchant_users'
     )
     
-    user = models.OneToOneField(
+    user = models.ForeignKey(
         'accounts.Account',
         on_delete=models.CASCADE,
         related_name='merchant_profile'

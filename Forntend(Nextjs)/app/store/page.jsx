@@ -1,10 +1,12 @@
 'use client'
-import { dummyStoreDashboardData } from "@/assets/assets"
 import Loading from "@/components/Loading"
 import { CircleDollarSignIcon, ShoppingBasketIcon, StarIcon, TagsIcon } from "lucide-react"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
+import toast from "react-hot-toast"
+import AxiosInstance from "../../api/AxiosInstance" 
+
 
 export default function Dashboard() {
 
@@ -28,7 +30,14 @@ export default function Dashboard() {
     ]
 
     const fetchDashboardData = async () => {
-        setDashboardData(dummyStoreDashboardData)
+        try{
+            const {data} = await AxiosInstance.get("api/merchant_user/seller-store-dashboard/",{ useTenant: true })
+            setDashboardData(data.dashboardData)
+            
+        }
+        catch(error){
+            toast.error(error?.response?.data?.error || "Error fetching dashboard data")
+        }
         setLoading(false)
     }
 

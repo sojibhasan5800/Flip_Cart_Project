@@ -1,13 +1,12 @@
 
 
 'use client'
-import { dummyAdminDashboardData } from "@/assets/assets"
 import Loading from "@/components/Loading"
 import OrdersAreaChart from "@/components/OrdersAreaChart"
 import { CircleDollarSignIcon, ShoppingBasketIcon, StoreIcon, TagsIcon } from "lucide-react"
 import { useEffect, useState } from "react"
 import toast from "react-hot-toast";
-import AxiosInstance from "../../api/AxiosInstance"
+import AxiosInstance from "../../api/AxiosInstance" 
 
 export default function AdminDashboard() {
 
@@ -31,20 +30,18 @@ export default function AdminDashboard() {
 
     const fetchDashboardData = async () => {
         try{
-            const {data} = await AxiosInstance.get("/api/admin_core/dashboard/super-admin/")
+        const {data} = await AxiosInstance.get("api/admin_core/dashboard/super-admin/",{ useTenant: true })
             setDashboardData({
             products: data.cards.products,
             revenue: data.cards.revenue,
             orders: data.cards.orders,
             stores: data.cards.stores,
-            allOrders: data.allOrders ?? [],
+            allOrders: data.allOrders,
         })
-            console.log("data :", data)
             
         }
         catch(error){
             toast.error(error?.response?.data?.error || "Error fetching dashboard data")
-            console.log("Error fetching dashboard data:", error)
         }
         setLoading(false)
     }

@@ -1,7 +1,6 @@
 from django.db import models
 from django.urls import reverse
 from django.db.models import Avg, Count
-from cloudinary.models import CloudinaryField
 from django.conf import settings
 from django_redis import get_redis_connection
 import json
@@ -18,13 +17,13 @@ class Product(models.Model):
     slug            = models.SlugField(max_length=200)
     description     = models.TextField(max_length=500, blank=True)
     price           = models.IntegerField()
-    # images          = models.URLField(blank=True, null=True)
-    images          = CloudinaryField('image', blank=True) 
+    mrp             = models.IntegerField(null=True, blank=True, help_text="Maximum Retail Price")
+    images          = models.URLField(max_length=1000, blank=True, null=True, help_text="ImageKit hosted product image URL")
     stock           = models.IntegerField()
     is_available    = models.BooleanField(default=True)
     category        = models.ForeignKey("category.Category", on_delete=models.CASCADE)
     # Tenant isolation
-    # organization  = models.ForeignKey("merchant_user.Organization", on_delete=models.CASCADE, related_name='products')
+    organization  = models.ForeignKey("merchant_user.Organization", on_delete=models.SET_NULL,null=True, related_name='products')
     # organization    = models.ForeignKey("merchant_user.Organization", on_delete=models.SET_NULL, null=True, related_name='products')
     #  NEW: Add delivery tenant link for delivery system
     # delivery_tenant = models.ForeignKey(
@@ -51,13 +50,11 @@ class Product(models.Model):
     def save(self, *args, **kwargs):
     # if stock 0 then is_available False 
         # Auto-set delivery_tenant from organization
-        if self.organization and self.organization.delivery_tenant and not self.delivery_tenant:
-            self.delivery_tenant = self.organization.delivery_tenant
+        # if self.organization and self.organization.delivery_tenant and not self.delivery_tenant:
+        #     self.delivery_tenant = self.organization.delivery_tenant
 
         if self.stock == 0:
             self.is_available = False
-        else:
-            self.is_available = True
         super(Product, self).save(*args, **kwargs)
 
     def get_url(self):
@@ -151,8 +148,7 @@ class ReviewRating(models.Model):
 
 class ProductGallery(models.Model):
     product = models.ForeignKey(Product, default=None, on_delete=models.CASCADE)
-    image =  CloudinaryField('image', blank=True)  
-    # image =   models.URLField()
+    images          = models.URLField(max_length=1000, blank=True, null=True, help_text="ImageKit hosted product image URL") 
 
     def __str__(self):
         return self.product.product_name
