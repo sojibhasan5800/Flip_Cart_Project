@@ -3,6 +3,7 @@
 'use client'
 import Loading from "@/components/Loading"
 import OrdersAreaChart from "@/components/OrdersAreaChart"
+import DashboardSchedulerToggle from "@/components/admin/DashboardSchedulerToggle"
 import { CircleDollarSignIcon, ShoppingBasketIcon, StoreIcon, TagsIcon } from "lucide-react"
 import { useEffect, useState } from "react"
 import toast from "react-hot-toast";
@@ -53,8 +54,27 @@ export default function AdminDashboard() {
     if (loading) return <Loading />
 
     return (
-        <div className="text-slate-500">
-            <h1 className="text-2xl">Admin <span className="text-slate-800 font-medium">Dashboard</span></h1>
+        <div className="text-slate-500 space-y-10">
+           <div>
+        <h1 className="text-2xl font-semibold text-slate-800">
+          Admin <span className="text-slate-600">Dashboard</span>
+        </h1>
+        <p className="text-slate-500 mt-1">Platform overview & real-time controls</p>
+      </div>
+        <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-6">
+            <h2 className="text-lg font-medium text-slate-800 mb-4 flex items-center gap-2">
+            <span className="w-3 h-3 rounded-full bg-green-500 inline-block"></span>
+            Real-time Dashboard Updates
+            </h2>
+            
+            {/* Toggle কম্পোনেন্ট */}
+            <DashboardSchedulerToggle />
+            
+            <p className="text-sm text-slate-500 mt-3">
+            Controls automatic stats push for online merchants every 1 minute.
+            Turning this off will pause all real-time updates to reduce server load.
+            </p>
+        </div>
 
             {/* Cards */}
             <div className="flex flex-wrap gap-5 my-10 mt-4">

@@ -6,3 +6,12 @@ entery tenant_databse --> SET search_path TO schmea_name;
 
 
 
+redis-cli দিয়ে graceful shutdown (সবচেয়ে ভালো)
+নতুন একটা cmd খোলো এবং টাইপ করো:
+redis-cli
+SHUTDOWN
+
+# celery -A flipcart_project beat -l info
+# celery -A flipcart_project worker --pool=solo -l info
+
+

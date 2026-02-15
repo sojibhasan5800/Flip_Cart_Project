@@ -100,6 +100,7 @@ class Organization(TenantMixin):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     onboarded_at = models.DateTimeField(null=True, blank=True)
+    last_dashboard_activity = models.DateTimeField(null=True, blank=True)
     
     class Meta:
         verbose_name = "Organization"

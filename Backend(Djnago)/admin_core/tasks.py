@@ -3,6 +3,8 @@ from celery import shared_task
 from django.utils import timezone
 from django.db import transaction
 from django.core.cache import cache
+from django_redis import get_redis_connection
+
 import logging
 from .models import Coupon
 from datetime import timedelta
@@ -99,3 +101,60 @@ def cleanup_old_coupons():
     
     logger.info(f"Cleaned up {deleted_count} old expired coupons")
     return {"cleaned_up": deleted_count}
+
+
+class RedisOrgCounter:
+    ORG_COUNT_KEY = "active_verified_org_count"
+
+    def __init__(self, redis_alias="default", ttl=3600):
+        self.redis_alias = redis_alias
+        self.ttl = ttl
+        self.redis = get_redis_connection(redis_alias)
+
+    def initialize_count(self):
+        """
+        প্রথমবার Redis এ set করার জন্য, DB থেকে load
+        """
+        from merchant_user.models import Organization
+        try:
+            count = Organization.objects.filter(is_verified=True, is_active=True).count()
+            self.redis.set(self.ORG_COUNT_KEY, count, ex=self.ttl)  # TTL 1 hour
+            logger.info(f"Org count initialized in Redis: {count}")
+            return count
+        except Exception as e:
+            logger.error(f"Failed to initialize org count: {e}")
+            return 0
+
+    def increment(self):
+        """
+        এক organization approve হলে count +1
+        """
+        try:
+            self.redis.incr(self.ORG_COUNT_KEY)
+            logger.info("Org count incremented in Redis")
+        except Exception as e:
+            logger.error(f"Failed to increment org count: {e}")
+
+    def decrement(self):
+        """
+        এক organization reject/delete হলে count -1
+        """
+        try:
+            self.redis.decr(self.ORG_COUNT_KEY)
+            logger.info("Org count decremented in Redis")
+        except Exception as e:
+            logger.error(f"Failed to decrement org count: {e}")
+
+    def get_count(self):
+        """
+        Cached org count fetch
+        """
+        try:
+            count = self.redis.get(self.ORG_COUNT_KEY)
+            if count is None:
+                return self.initialize_count()
+            return int(count)
+        except Exception as e:
+            logger.error(f"Failed to get org count: {e}")
+            return 0
+

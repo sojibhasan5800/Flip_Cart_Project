@@ -20,6 +20,12 @@ from .models import Coupon
 from .serializers import CouponSerializer, OrganizationApprovalSerializer
 from .permissions import IsTenantAdmin, IsSuperAdmin
 from .filters import CouponFilter
+from .tasks import RedisOrgCounter
+
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework.permissions import IsAdminUser
+from django_celery_beat.models import PeriodicTask
 
 import logging
 
@@ -112,6 +118,8 @@ class AdminStoreApprovalAPIView(PublicSchemaAPIView):
     PATCH /toggle-active/ → Toggle verification status
     """
     permission_classes = [IsSuperAdmin]
+    # RedisOrgCounter instance
+    org_counter = RedisOrgCounter()
 
     @swagger_auto_schema(
         operation_summary="List pending or approved stores",
@@ -193,6 +201,8 @@ class AdminStoreApprovalAPIView(PublicSchemaAPIView):
         organization.is_trial = True
         organization.onboarded_at = timezone.now()
         organization.save()
+        #  Redis increment
+        self.org_counter.increment()
 
         return Response({
             "message": "Store approved successfully",
@@ -259,6 +269,8 @@ class AdminStoreApprovalAPIView(PublicSchemaAPIView):
                         DELETE FROM merchant_user_organization 
                         WHERE id = %s
                     """, [organization.id])
+                #  Redis decrement
+                self.org_counter.decrement()
 
 
             return Response({
@@ -517,5 +529,76 @@ class CouponStatsAPIView(APIView):
         return Response(stats)
 
 
+# admin_core/api_views/schedule_control.py
+
+class ToggleScheduleAPIView(APIView):
+    # permission_classes = [IsAdminUser]
+
+    def post(self, request):
+        task_name = request.data.get("task_name")
+        action = request.data.get("action")  # "on" | "off"
+
+        if not task_name or action not in ["on", "off"]:
+            return Response(
+                {"error": "task_name and valid action required"},
+                status=400
+            )
+
+        try:
+            task = PeriodicTask.objects.get(name=task_name)
+        except PeriodicTask.DoesNotExist:
+            return Response({"error": "Task not found"}, status=404)
+
+        # toggle
+        task.enabled = True if action == "on" else False
+        task.save(update_fields=["enabled"])
+
+        return Response({
+            "task": task.name,
+            "enabled": task.enabled,
+            "message": f"Schedule turned {action.upper()}"
+        })
+
+
+class DashboardSchedulerControlAPIView(APIView):
+    # permission_classes = [IsAdminUser]
+
+    def get(self, request):
+        """Current status of the dashboard scheduler"""
+        task = PeriodicTask.objects.filter(
+            name='update-active-merchant-dashboards-every-minute'
+        ).first()
+
+        if not task:
+            return Response({"error": "Scheduler not found"}, status=404)
+
+        return Response({
+            "name": task.name,
+            "enabled": task.enabled,
+            "last_run_at": task.last_run_at.isoformat() if task.last_run_at else None,
+            "total_run_count": task.total_run_count,
+        })
+
+    def post(self, request):
+        """Turn on / off the scheduler"""
+        action = request.data.get("action")  # "enable" or "disable"
+
+        if action not in ["enable", "disable"]:
+            return Response({"error": "action must be 'enable' or 'disable'"}, status=400)
+
+        task = PeriodicTask.objects.filter(
+            name='update-active-merchant-dashboards-every-minute'
+        ).first()
+
+        if not task:
+            return Response({"error": "Scheduler not found"}, status=404)
+
+        task.enabled = (action == "enable")
+        task.save()
+
+        return Response({
+            "message": f"Scheduler {action}d successfully",
+            "enabled": task.enabled
+        })
 
 

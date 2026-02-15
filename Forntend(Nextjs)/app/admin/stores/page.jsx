@@ -13,6 +13,7 @@ export default function AdminStores() {
     const [stores, setStores] = useState([])
     const [loading, setLoading] = useState(true)
 
+
     const fetchStores = async () => {
         try{
             const {data} = await AxiosInstance.get("api/admin_core/store-approval/?status=approved")

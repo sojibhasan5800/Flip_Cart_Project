@@ -39,19 +39,19 @@ from . import api_views
 from . import api_urls
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
-    path('', views.home, name='home'),
+    # path('admin/', admin.site.urls),
+    # path('', views.home, name='home'),
     
 
-    # path('', api_views.HomeProductsAPIView, name='home'),
+    # # path('', api_views.HomeProductsAPIView, name='home'),
 
-    # path('home_api_load_products/', views.home, name='home_api_load_products'),
-    path('store/', include('store.urls')),
-    path('carts/', include('carts.urls')),
-    path('accounts/', include('accounts.urls')),
-    path('orders/', include('orders.urls')),
-    path('category/', include('category.urls')),
-    path('seller_dashboard/', include('seller_dashboard.urls')),
+    # # path('home_api_load_products/', views.home, name='home_api_load_products'),
+    # path('store/', include('store.urls')),
+    # path('carts/', include('carts.urls')),
+    # path('accounts/', include('accounts.urls')),
+    # path('orders/', include('orders.urls')),
+    # path('category/', include('category.urls')),
+    # path('seller_dashboard/', include('seller_dashboard.urls')),
 
     # # path('swagger<format>/', schema_view.without_ui(cache_timeout=0), name='schema-json'),
     
@@ -66,6 +66,7 @@ urlpatterns = [
     # path('api/delivery/', include('delivery_system.api_urls', namespace='delivery_system_api')),
     path('api/merchant_user/', include('merchant_user.api_urls', namespace='merchant_user_api')),
     path('api/admin_core/', include('admin_core.api_urls', namespace='admin_core_api')),
+    path('api/public_data/', include('public_data.api_urls', namespace='public_data_api')),
 
 
     path('swagger(<format>.json|.yaml)', schema_view.without_ui(cache_timeout=0), name='schema-json'),

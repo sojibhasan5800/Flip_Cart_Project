@@ -24,7 +24,6 @@ class Product(models.Model):
     category        = models.ForeignKey("category.Category", on_delete=models.CASCADE)
     # Tenant isolation
     organization  = models.ForeignKey("merchant_user.Organization", on_delete=models.SET_NULL,null=True, related_name='products')
-    # organization    = models.ForeignKey("merchant_user.Organization", on_delete=models.SET_NULL, null=True, related_name='products')
     #  NEW: Add delivery tenant link for delivery system
     # delivery_tenant = models.ForeignKey(
     #     "delivery_system.DeliveryTenant", 
@@ -37,15 +36,27 @@ class Product(models.Model):
     created_date    = models.DateTimeField(auto_now_add=True)
     modified_date   = models.DateTimeField(auto_now=True)
     # objects = get_organization_aware_manager(models.Manager)()
-    
-    # class Meta:
-    #     unique_together = ['organization', 'slug']  # Slug unique per tenant
-    #     indexes = [
-    #         models.Index(fields=['organization', 'is_available']),
-    #         models.Index(fields=['organization', 'category']),
-    #         models.Index(fields=['delivery_tenant', 'is_available']),
-    #         models.Index(fields=['delivery_tenant', 'category']),
-    #     ]
+    class Meta:
+        unique_together = ['organization', 'slug']  # Slug unique per tenant
+        indexes = [
+            # 1. Tenant + availability → most frequent
+            models.Index(fields=['organization', 'is_available', 'price']),
+
+            # 2. Tenant + category → category listing
+            models.Index(fields=['organization', 'category']),
+
+            # 3. Delivery tenant + availability
+            # models.Index(fields=['delivery_tenant', 'is_available', 'price']),
+
+            # 4. Delivery tenant + category
+            # models.Index(fields=['delivery_tenant', 'category']),
+
+            # 5. Latest products → sort by created_date
+            models.Index(fields=['organization', '-created_date']),
+
+            # 6. Price-only queries → low cost, fast range search
+            models.Index(fields=['price']),
+        ]
 
     def save(self, *args, **kwargs):
     # if stock 0 then is_available False 

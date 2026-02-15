@@ -8,6 +8,8 @@ from .api_views import (
     PublicAdminCheckAPIView,
     SuperAdminDashboardAPIView,
     AdminStoreApprovalAPIView,
+    ToggleScheduleAPIView,
+    DashboardSchedulerControlAPIView
 )
 
 # Application namespace – used in reverse() calls: reverse('admin_core_api:coupon-list-create')
@@ -48,4 +50,6 @@ urlpatterns = [
     # GET    → coupon usage statistics (most used, expired, etc.)
     # Previously fixed URL – kept for backward compatibility / frontend
     path('coupons/stats/', CouponStatsAPIView.as_view(), name='coupon-stats'),
+    path("schedule/toggle/", ToggleScheduleAPIView.as_view()),
+    path('dashboard-scheduler/control/', DashboardSchedulerControlAPIView.as_view(), name='dashboard-scheduler-control'),
 ]

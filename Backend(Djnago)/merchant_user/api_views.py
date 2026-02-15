@@ -1,4 +1,7 @@
 
+import base64
+import json
+from django.conf import settings
 from httpcore import request
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -8,6 +11,8 @@ from django.utils import timezone
 from drf_yasg.utils import swagger_auto_schema
 from django.db.models import Q
 from rest_framework.exceptions import ValidationError, PermissionDenied
+from redis.exceptions import ConnectionError as RedisConnectionError
+from django_redis.exceptions import ConnectionInterrupted
 
 from merchant_user.models import Organization, MerchantUser
 from store.serializers import ProductCreateSerializer,ProductListSerializer
@@ -18,10 +23,17 @@ from django_tenants.utils import schema_context
 from django.db import connection, transaction
 from django.db.models import Sum, Count
 from datetime import timedelta
+from elasticsearch_dsl import Search
+
+from django_redis import get_redis_connection
 from store.models import Product,ReviewRating
 from orders.models import Order, OrderProduct
 from store.models import Product, ProductGallery
 from store.serializers import ProductSerializer  
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 
 
@@ -315,72 +327,149 @@ class SellerStoreDashboardAPIView(APIView):
             }
 
         return Response(data, status=status.HTTP_200_OK)
-   
-
 
 class MerchantProductAPIView(APIView):
-    # permission_classes = [IsMerchantUser]
-
+    page_size = 10  # Default page size
 
     def get(self, request):
+
         organization = getattr(request, "organization", None)
         if not organization:
             raise ValidationError("organization_id is required")
-        
 
-        
-        products = (
-            Product.objects
-            .select_related("category")
-            .order_by("-created_date")
-        )
+        products = []
+        source = "none"
+        next_cursor = None
 
-        # Basic pagination (real-world: use Pagination class from DRF)
-        page = request.query_params.get('page', 1)
-        page_size = request.query_params.get('page_size', 10)
-        start = (int(page) - 1) * int(page_size)
-        end = start + int(page_size)
-        paginated_products = products[start:end]
+        # Redis connection try block
+        try:
+            redis = get_redis_connection("default")
+            org_key = f"tenant:{organization.id}:latest_products"
+            hash_key = f"tenant:{organization.id}:product:data"
 
-        serializer = ProductListSerializer(paginated_products, many=True)
+            # Cursor decode
+            cursor = request.query_params.get("cursor")
+            last_ts = None
+            last_id = None
+
+            if cursor:
+                try:
+                    decoded = json.loads(base64.b64decode(cursor).decode())
+                    last_ts = decoded.get("last_ts")
+                    last_id = decoded.get("last_id")
+                    source = decoded.get("source", "redis")
+                except Exception:
+                    return Response({"error": "Invalid cursor"}, status=400)
+
+            # STEP 1: Redis fetch (primary & fast path)
+            raw_ids = redis.zrevrange(org_key, 0, 999)  # max 1000 latest
+
+            for pid in raw_ids:
+                raw = redis.hget(hash_key, pid)
+                if not raw:
+                    continue
+
+                try:
+                    item = json.loads(raw.decode())
+                except json.JSONDecodeError:
+                    continue
+
+                if not item.get("is_available", True):
+                    continue
+
+                # Cursor filtering
+                if last_ts:
+                    if item["created_date"] > last_ts:
+                        continue
+                    if item["created_date"] == last_ts and item["id"] >= last_id:
+                        continue
+
+                products.append(item)
+                if len(products) >= self.page_size:
+                    break
+
+            source = "redis"
+
+        except (RedisConnectionError, ConnectionInterrupted, Exception) as redis_err:
+            # Redis fail/down → empty data return (no ES fallback)
+            logger.warning(f"Redis unavailable for org {organization.id}: {redis_err}")
+            products = []  # খালি ডাটা
+            source = "none"
+
+        # STEP 2: ES fallback শুধু Redis successful + ডাটা কম হলে
+        # তোমার নতুন রুল: Redis fail হলে ES ব্যবহার করবে না
+        if len(products) < self.page_size and source == "redis":  # Redis success + data কম
+            if not getattr(settings, 'ELASTICSEARCH_OFFLINE', True):
+                try:
+                    s = Search(using="default", index="products").filter(
+                        "term", is_available=True
+                    ).filter(
+                        "term", organization_id=organization.id
+                    )
+
+                    if last_ts:
+                        s = s.query(
+                            "bool",
+                            should=[
+                                {"range": {"created_date": {"lt": last_ts}}},
+                                {
+                                    "bool": {
+                                        "must": [
+                                            {"term": {"created_date": last_ts}},
+                                            {"range": {"id": {"lt": last_id}}},
+                                        ]
+                                    }
+                                },
+                            ],
+                            minimum_should_match=1,
+                        )
+
+                    s = s.sort("-created_date", "-id")[:self.page_size - len(products)]
+                    response = s.execute()
+
+                    es_products = [hit.to_dict() for hit in response]
+                    products.extend(es_products)
+
+                    source = "es" if es_products else "redis"
+
+                except Exception as es_err:
+                    logger.error(f"ES fallback failed for org {organization.id}: {es_err}")
+                    # ES fail হলেও Redis-এর ডাটা দিয়ে চলবে (no crash)
+
+        # Next cursor
+        if products:
+            last_item = products[-1]
+            cursor_data = {
+                "source": source,
+                "last_ts": last_item["created_date"],
+                "last_id": last_item["id"],
+            }
+            next_cursor = base64.b64encode(json.dumps(cursor_data).encode()).decode()
+
         return Response({
-            "data": serializer.data,
-            "count": products.count(),
-            "page": int(page),
-            "page_size": int(page_size)
-        }, status=status.HTTP_200_OK)
-        
+            "data": products,          # Redis down → []
+            "next_cursor": next_cursor,
+            "source": source,          # frontend debug-এর জন্য
+        }, status=200)
 
     def post(self, request):
         organization = getattr(request, "organization", None)
         if not organization:
             raise ValidationError("organization_id is required")
         
-
         with transaction.atomic():
-            # Serializer init
             serializer = ProductCreateSerializer(
                 data=request.data,
                 context={"organization": organization}
             )
-
-            # Validate
             serializer.is_valid(raise_exception=True)
+            product = serializer.save()
 
-            # Save product
-            serializer.save()
-
-            #  You can do more DB operations here safely
-
-        # 3️ Return response
-        return Response(
-            {
-                "message": "Product added successfully",
-                "data": serializer.data
-            },
-            status=status.HTTP_201_CREATED
-        )
-
+        return Response({
+            "message": "Product added successfully",
+            "data": serializer.data
+        }, status=201)
+    
 class ToggleStockAPIView(APIView):
     def patch(self, request, pk):
         try:
