@@ -11,6 +11,7 @@ from asgiref.sync import async_to_sync
 
 from django_redis import get_redis_connection
 from django_tenants.utils import schema_context
+from admin_core.models import DashboardGlobalSettings
 
 
 logger = logging.getLogger(__name__)
@@ -21,6 +22,9 @@ def update_active_merchant_dashboards():
     প্রতি ১ মিনিটে চলবে (Celery Beat)
     শুধু active merchants (গত ২ মিনিটে dashboard-এ ছিল) এর জন্য
     """
+    if not DashboardGlobalSettings.is_enabled():
+        logger.info("Dashboard scheduler is globally disabled — skipping")
+        return
     cutoff_time = timezone.now() - timedelta(minutes=2)
 
     TenantModel = get_tenant_model()

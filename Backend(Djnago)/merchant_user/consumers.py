@@ -10,8 +10,15 @@ class MerchantDashboardConsumer(AsyncWebsocketConsumer):
         self.org_id = int(self.scope["url_route"]["kwargs"]["org_id"])
         self.group_name = f"merchant_{self.org_id}"
 
+        # নিজের personal group-এ যোগ
         await self.channel_layer.group_add(
             self.group_name,
+            self.channel_name
+        )
+
+        # সব মার্চেন্টের জন্য global group-এ যোগ (settings broadcast-এর জন্য)
+        await self.channel_layer.group_add(
+            "global_merchant_dashboard",
             self.channel_name
         )
 
@@ -33,11 +40,23 @@ class MerchantDashboardConsumer(AsyncWebsocketConsumer):
             self.group_name,
             self.channel_name
         )
+        # global group থেকেও discard
+        await self.channel_layer.group_discard(
+            "global_merchant_dashboard",
+            self.channel_name
+        )
 
 
     async def dashboard_update(self, event):
         await self.send(text_data=json.dumps({
             "type": "dashboard_update",
+            "data": event["data"]
+        }))
+
+    # নতুন handler: scheduler settings broadcast এর জন্য
+    async def scheduler_settings_update(self, event):
+        await self.send(text_data=json.dumps({
+            "type": "scheduler_settings",
             "data": event["data"]
         }))
 

@@ -2,10 +2,8 @@
 from django.db import models
 from django.utils import timezone
 from django.core.exceptions import ValidationError
-from django.db.models.signals import post_save
-from django.dispatch import receiver
 import uuid
-from datetime import datetime, timedelta
+from datetime import  timedelta
 
 class Coupon(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -111,39 +109,31 @@ class Coupon(models.Model):
                 pass
 
 
+class DashboardGlobalSettings(models.Model):
+    key = models.CharField(max_length=100, unique=True)
+    value = models.JSONField(default=dict)  # flexible
 
-@receiver(post_save, sender=Coupon)
-def manage_coupon_expiry_task(sender, instance, created, **kwargs):
-    if created:
-        if instance.is_active and instance.valid_to > timezone.now():
-            instance.schedule_expiry_task()
-    else:
-        # update হলে reschedule
-        if instance.celery_task_id and instance.valid_to > timezone.now():
-            instance.cancel_scheduled_task()
-            instance.schedule_expiry_task()
+    class Meta:
+        verbose_name_plural = "Global Settings"
 
+    @classmethod
+    def get_dashboard_scheduler_settings(cls):
+        obj, _ = cls.objects.get_or_create(key="dashboard_scheduler")
+        return obj
 
+    @classmethod
+    def is_enabled(cls):
+        settings = cls.get_dashboard_scheduler_settings()
+        return settings.value.get("enabled", True)
 
-# Signal to schedule task on coupon creation
-# @receiver(post_save, sender=Coupon)
-# def schedule_coupon_expiry(sender, instance, created, **kwargs):
-#     """
-#     Signal to automatically schedule expiry task when coupon is created
-#     """
-#     if created and instance.is_active:
-#         # Only schedule if coupon is active and valid_to is in future
-#         if instance.valid_to > timezone.now():
-#             instance.schedule_expiry_task()
-#             print(f"Scheduled expiry task for coupon {instance.code} at {instance.valid_to}")
+    @classmethod
+    def get_interval_minutes(cls):
+        settings = cls.get_dashboard_scheduler_settings()
+        return settings.value.get("interval_minutes", 1)
 
-# # Signal to handle coupon updates
-# @receiver(post_save, sender=Coupon)
-# def handle_coupon_update(sender, instance, **kwargs):
-#     """
-#     Reschedule task if expiry time changes
-#     """
-#     if instance.celery_task_id and instance.valid_to > timezone.now():
-#         # Cancel old task and schedule new one
-#         instance.cancel_scheduled_task()
-#         instance.schedule_expiry_task()
+    @classmethod
+    def get_resume_at(cls):
+        settings = cls.get_dashboard_scheduler_settings()
+        resume_str = settings.value.get("resume_at")
+        return timezone.datetime.fromisoformat(resume_str) if resume_str else None
+
