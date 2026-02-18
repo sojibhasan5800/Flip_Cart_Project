@@ -41,17 +41,36 @@ export default function DashboardLive({ orgId, onUpdate }) {
           onUpdate(msg.data)
         }
         if (msg.type === 'scheduler_settings' && msg.data) {
-          setSettings(msg.data)
-          toast.info("Dashboard settings updated by admin", { duration: 2000 })
-          // Resume_at থেকে countdown calculate
-          if (msg.data.resume_at) {
-            const resumeTime = new Date(msg.data.resume_at)
-            const now = new Date()
-            const diffSeconds = Math.floor((resumeTime - now) / 1000)
-            setCountdown(diffSeconds > 0 ? diffSeconds : 0)
-          } else {
-            setCountdown(null)
-          }
+
+            setSettings(prev => ({
+              ...prev,
+              enabled: msg.data.enabled,
+              interval_minutes: msg.data.interval_minutes,
+              resume_at: msg.data.resume_at
+            }))
+
+            toast.info("Dashboard settings updated by admin", { duration: 2000 })
+
+            if (msg.data.resume_at) {
+              const resumeTime = new Date(msg.data.resume_at)
+              const now = new Date()
+              const diffSeconds = Math.floor((resumeTime - now) / 1000)
+              setCountdown(diffSeconds > 0 ? diffSeconds : 0)
+            } else {
+              setCountdown(null)
+            }
+
+          // setSettings(msg.data)
+          // toast.info("Dashboard settings updated by admin", { duration: 2000 })
+          // // Resume_at থেকে countdown calculate
+          // if (msg.data.resume_at) {
+          //   const resumeTime = new Date(msg.data.resume_at)
+          //   const now = new Date()
+          //   const diffSeconds = Math.floor((resumeTime - now) / 1000)
+          //   setCountdown(diffSeconds > 0 ? diffSeconds : 0)
+          // } else {
+          //   setCountdown(null)
+          // }
         }
       } catch (err) {
         console.error("WebSocket message parse error:", err)
@@ -93,19 +112,32 @@ export default function DashboardLive({ orgId, onUpdate }) {
 
   // Next update countdown যদি enabled থাকে
   useEffect(() => {
-    if (settings.enabled && countdown === null) {
-      setCountdown(settings.interval_minutes * 60)  // initial to next update
-      const interval = setInterval(() => {
-        setCountdown(c => (c > 0 ? c - 1 : settings.interval_minutes * 60))
-      }, 1000)
-      return () => clearInterval(interval)
-    }
+
+    if (!settings.enabled) return
+
+    // 🆕 Always reset when interval changes
+    setCountdown(settings.interval_minutes * 60)
+
+    const intervalId = setInterval(() => {
+      setCountdown(prev => {
+
+        if (prev <= 1) {
+          return settings.interval_minutes * 60
+        }
+
+        return prev - 1
+      })
+    }, 1000)
+
+    return () => clearInterval(intervalId)
+
   }, [settings.enabled, settings.interval_minutes])
 
   return (
     <div className="mb-4">
       {settings.enabled ? (
         <div className="flex items-center gap-2 text-sm text-green-600">
+          <h2>Minutes: {settings.interval_minutes}</h2>
           <span>✅ Live updates every {settings.interval_minutes} min</span>
           <button className="bg-blue-100 px-2 py-1 rounded" title="Next update time">
             Next in: {Math.floor(countdown / 60)}:{(countdown % 60).toString().padStart(2, '0')}

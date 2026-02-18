@@ -15,7 +15,7 @@ export default function DashboardSchedulerControl() {
 
   const fetchSettings = async () => {
     try {
-      const { data } = await AxiosInstance.get('/api/admin_core/dashboard-scheduler/control/')
+      const { data } = await AxiosInstance.get('/api/system_management/dashboard-scheduler/control/')
       setSettings({
         enabled: data.enabled,
         intervalMinutes: data.interval_minutes,
@@ -31,7 +31,7 @@ export default function DashboardSchedulerControl() {
   const updateSettings = async (payload) => {
     try {
       setLoading(true)
-      const { data } = await AxiosInstance.post('/api/admin_core/dashboard-scheduler/control/', payload)
+      const { data } = await AxiosInstance.post('/api/system_management/dashboard-scheduler/control/', payload)
       setSettings({
         enabled: data.enabled,
         intervalMinutes: data.interval_minutes,

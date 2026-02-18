@@ -40,6 +40,7 @@ SHARED_APPS = [
     'django_elasticsearch_dsl_drf',
     'admin_thumbnails',
     'public_data',
+    'system_management',
 ]
 
 TENANT_APPS = [
