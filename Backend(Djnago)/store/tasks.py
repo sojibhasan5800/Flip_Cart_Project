@@ -152,7 +152,7 @@ def _sync_product_to_redis(redis_client: Redis, product: Product):
         "organization_id": product.organization_id,
         "product_name": product.product_name,
         "price": float(product.price),
-        "average_rating": float(getattr(product, 'average_rating', 0)),
+        "average_rating": float(product.average_rating or 0),
         "image": product.images,
         "created_date": product.created_date.isoformat() if product.created_date else None,
     }
