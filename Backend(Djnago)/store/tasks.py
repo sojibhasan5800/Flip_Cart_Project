@@ -89,7 +89,7 @@ def sync_product_everywhere(self, product_id: int,schema_name):
                         'category__id', 'category__category_name',
                         'organization__id', 'organization__username',
                         'organization__business_name', 'organization__store_logo',
-                        'organization__store_url'
+                        # 'organization__store_url'
                     )
                     .get(id=product_id)
                 )
