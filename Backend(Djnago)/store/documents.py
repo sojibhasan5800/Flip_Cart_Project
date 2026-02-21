@@ -33,6 +33,7 @@ class ProductFeedDocument(Document):
             'created_date',
             'is_available'
         ]
+    
 
 @registry.register_document
 class ProductSearchDocument(Document):

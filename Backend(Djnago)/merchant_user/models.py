@@ -1,6 +1,5 @@
-from typing import Required
+
 from django.db import models
-import uuid
 from django_tenants.models import TenantMixin, DomainMixin
 from django.conf import settings
 from django.utils import timezone

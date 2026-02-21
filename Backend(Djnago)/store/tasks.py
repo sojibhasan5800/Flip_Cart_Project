@@ -15,7 +15,8 @@ from redis.exceptions import LockError,ConnectionError
 
 from .documents import ProductFeedDocument, ProductSearchDocument
 from .models import Product, ProductGallery, Variation
-from .serializers import ProductDetailSerializer, ProductHomeSerializer
+from django_tenants.utils import schema_context
+from .serializers import ProductDetailSerializer
 from django_elasticsearch_dsl.registries import registry
 
 logger = get_task_logger(__name__)
@@ -29,7 +30,7 @@ logger = get_task_logger(__name__)
     max_retries=5,
     rate_limit='10/m',           # প্রতি মিনিটে সর্বোচ্চ ১০টা task
 )
-def sync_product_everywhere(self, product_id: int):
+def sync_product_everywhere(self, product_id: int,schema_name):
     """
     Industry-grade product sync task
     - Redis distributed lock → no race conditions
@@ -64,44 +65,45 @@ def sync_product_everywhere(self, product_id: int):
     with Lock(redis_client, lock_key, timeout=90, blocking_timeout=15) as lock:
         try:
             logger.info(f"Starting sync for product {product_id} (task_id: {self.request.id})")
+            with schema_context(schema_name):
 
-            product = (
-                Product.objects
-                .select_related('organization', 'category')
-                .prefetch_related(
-                    Prefetch(
-                        'variation_set',
-                        queryset=Variation.objects.filter(is_active=True).only(
-                            'id', 'variation_category', 'variation_value'
+                product = (
+                    Product.objects
+                    .select_related('organization', 'category')
+                    .prefetch_related(
+                        Prefetch(
+                            'variation_set',
+                            queryset=Variation.objects.filter(is_active=True).only(
+                                'id', 'variation_category', 'variation_value'
+                            )
+                        ),
+                        Prefetch(
+                            'productgallery_set',
+                            queryset=ProductGallery.objects.only('id', 'images')
                         )
-                    ),
-                    Prefetch(
-                        'productgallery_set',
-                        queryset=ProductGallery.objects.only('id', 'images')
                     )
+                    .annotate(average_rating=Avg('reviewrating__rating'))
+                    .only(
+                        'id', 'product_name', 'slug', 'price', 'mrp', 'images',
+                        'stock', 'is_available', 'description', 'created_date',
+                        'category__id', 'category__category_name',
+                        'organization__id', 'organization__username',
+                        'organization__business_name', 'organization__store_logo',
+                        'organization__store_url'
+                    )
+                    .get(id=product_id)
                 )
-                .annotate(average_rating=Avg('reviewrating__rating'))
-                .only(
-                    'id', 'product_name', 'slug', 'price', 'mrp', 'images',
-                    'stock', 'is_available', 'description', 'created_date',
-                    'category__id', 'category__category_name',
-                    'organization__id', 'organization__username',
-                    'organization__business_name', 'organization__store_logo',
-                    'organization__store_url'
-                )
-                .get(id=product_id)
-            )
 
             # Elasticsearch sync (conditional)
-            if not getattr(settings, 'ELASTICSEARCH_OFFLINE', True):
-                try:
-                    _sync_product_to_elasticsearch(product)
-                except Exception as es_err:
-                    logger.error(
-                        f"ES sync failed for product {product_id}",
-                        exc_info=True,
-                        extra={"task_id": self.request.id}
-                    )
+            # if not getattr(settings, 'ELASTICSEARCH_OFFLINE', True):
+            #     try:
+            #         _sync_product_to_elasticsearch(product)
+            #     except Exception as es_err:
+            #         logger.error(
+            #             f"ES sync failed for product {product_id}",
+            #             exc_info=True,
+            #             extra={"task_id": self.request.id}
+            #         )
                     # Continue — Redis sync must happen
 
             # Redis sync — atomic
@@ -126,15 +128,15 @@ def sync_product_everywhere(self, product_id: int):
             raise self.retry(exc=exc)
 
 
-def _sync_product_to_elasticsearch(product: Product):
-    """Update relevant ES indices"""
-    for doc_class in registry.get_documents(models=[Product]):
-        try:
-            # partial update if possible
-            doc_class().update(product, action='index', refresh='wait_for')
-            logger.debug(f"ES index '{doc_class.Index.name}' updated for {product.id}")
-        except Exception as e:
-            logger.error(f"ES update failed for index '{doc_class.Index.name}': {e}")
+# def _sync_product_to_elasticsearch(product: Product):
+#     """Update relevant ES indices"""
+#     for doc_class in registry.get_documents(models=[Product]):
+#         try:
+#             # partial update if possible
+#             doc_class().update(product, action='index', refresh='wait_for')
+#             logger.debug(f"ES index '{doc_class.Index.name}' updated for {product.id}")
+#         except Exception as e:
+#             logger.error(f"ES update failed for index '{doc_class.Index.name}': {e}")
 
 
 def _sync_product_to_redis(redis_client: Redis, product: Product):

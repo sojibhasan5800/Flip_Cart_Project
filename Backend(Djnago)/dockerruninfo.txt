@@ -1,0 +1,23 @@
+প্রথমবার বা requirements/Dockerfile চেঞ্জ হলে:
+fast image build to docker ==  docker-compose build --no-cache
+
+docker-compose up -d
+মডেল/ডাটাবেস চেঞ্জ হলে;
+docker-compose exec django python manage.py makemigrations
+docker-compose exec django python manage.py migrate
+
+সবকিছু রিস্টার্ট করতে চাইলে (কোনো সমস্যা হলে):
+docker-compose down
+docker-compose up --build
+
+সার্চ ইনডেক্স রিবিল্ড করুন: যদি Elasticsearch ব্যবহার হয় – 
+docker-compose run django python manage.py search_index --rebuild -f
+
+ডাটাবেস ক্লিন করে নতুন করে শুরু করুন:
+docker-compose down -v
+
+পুরোনো কন্টেইনারগুলো বন্ধ + রিমুভ করুন:
+docker-compose down
+
+নতুন করে সব চালু করুন
+docker-compose up -d

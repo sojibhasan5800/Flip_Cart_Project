@@ -1,4 +1,5 @@
 # store/api/serializers.py
+from itertools import product
 import json
 from rest_framework import serializers
 from store.models import Product,ProductGallery
@@ -69,13 +70,13 @@ class ProductCreateSerializer(serializers.ModelSerializer):
             defaults={"slug": slugify(category_name)}
         )
 
-        product = Product.objects.create(
-            **validated_data,
-            category=category,
-            organization=organization,
-            images=main_image_url,
-            stock=0  # default stock
+        product = Product(
+        **validated_data,
+        category=category,
+        organization=organization,
+        images=main_image_url,
         )
+        product.save()   # <-- এটা খুব জরুরি
 
         for url in gallery_urls:
             ProductGallery.objects.create(product=product, images=url)

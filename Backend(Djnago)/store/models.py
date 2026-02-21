@@ -4,6 +4,8 @@ from django.db.models import Avg, Count
 from django.conf import settings
 from django_redis import get_redis_connection
 import json
+from django.utils.text import slugify
+
 from django.db.models import F, Value, CharField
 from django.db.models.functions import Concat
 # from merchant_user.context import OrganizationContext, get_organization_aware_manager
@@ -19,7 +21,7 @@ class Product(models.Model):
     price           = models.IntegerField()
     mrp             = models.IntegerField(null=True, blank=True, help_text="Maximum Retail Price")
     images          = models.URLField(max_length=1000, blank=True, null=True, help_text="ImageKit hosted product image URL")
-    stock           = models.IntegerField()
+    stock           = models.IntegerField(default=1)
     is_available    = models.BooleanField(default=True)
     category        = models.ForeignKey("category.Category", on_delete=models.CASCADE)
     # Tenant isolation
@@ -62,7 +64,20 @@ class Product(models.Model):
     # if stock 0 then is_available False 
         # Auto-set delivery_tenant from organization
         # if self.organization and self.organization.delivery_tenant and not self.delivery_tenant:
-        #     self.delivery_tenant = self.organization.delivery_tenant
+        #     self.delivery_tenant = self.organization.
+        if not self.slug:
+            base_slug = slugify(self.product_name)
+            slug = base_slug
+            counter = 1
+
+            while Product.objects.filter(
+                organization=self.organization,
+                slug=slug
+                ).exclude(pk=self.pk).exists():
+                slug = f"{base_slug}-{counter}"
+                counter += 1
+            print(f"Generated slug: {slug} for product: {self.product_name}")
+            self.slug = slug
 
         if self.stock == 0:
             self.is_available = False

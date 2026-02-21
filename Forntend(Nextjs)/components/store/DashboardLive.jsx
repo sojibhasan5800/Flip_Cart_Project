@@ -133,22 +133,90 @@ export default function DashboardLive({ orgId, onUpdate }) {
 
   }, [settings.enabled, settings.interval_minutes])
 
-  return (
-    <div className="mb-4">
-      {settings.enabled ? (
-        <div className="flex items-center gap-2 text-sm text-green-600">
-          <h2>Minutes: {settings.interval_minutes}</h2>
-          <span>✅ Live updates every {settings.interval_minutes} min</span>
-          <button className="bg-blue-100 px-2 py-1 rounded" title="Next update time">
-            Next in: {Math.floor(countdown / 60)}:{(countdown % 60).toString().padStart(2, '0')}
-          </button>
+return (
+  <div className="mb-6">
+    {settings.enabled ? (
+      <div className="bg-white shadow-md rounded-xl p-5 border border-green-200">
+
+        {/* Header */}
+        <div className="flex justify-between items-center mb-3">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-800">
+              Dashboard Scheduler
+            </h2>
+            <p className="text-sm text-gray-500">
+              Automatic live update configuration
+            </p>
+          </div>
+
+          <span className="bg-green-100 text-green-700 text-xs font-medium px-3 py-1 rounded-full">
+            ● Active
+          </span>
         </div>
-      ) : (
-        <div className="bg-yellow-100 border border-yellow-300 rounded p-3 text-sm">
-          <p className="font-medium text-yellow-800">Automatic updates paused by admin</p>
-          <p>Resuming in: {Math.floor(countdown / 60)} min {(countdown % 60).toString().padStart(2, '0')} sec</p>
+
+        {/* Interval Info */}
+        <div className="flex items-center justify-between bg-green-50 p-4 rounded-lg">
+
+          <div>
+            <p className="text-sm text-gray-600">Update Interval</p>
+            <h3 className="text-xl font-bold text-green-700">
+              {settings.interval_minutes} Minute
+              {settings.interval_minutes > 1 && "s"}
+            </h3>
+          </div>
+
+          {/* Countdown */}
+          <div className="text-right">
+            <p className="text-sm text-gray-600">Next Update In</p>
+            <div className="text-2xl font-mono font-bold text-blue-600">
+              {Math.floor(countdown / 60)}:
+              {(countdown % 60).toString().padStart(2, '0')}
+            </div>
+          </div>
+
         </div>
-      )}
-    </div>
-  )
+      </div>
+    ) : (
+      <div className="bg-white shadow-md rounded-xl p-5 border border-yellow-300">
+
+        {/* Header */}
+        <div className="flex justify-between items-center mb-3">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-800">
+              Dashboard Scheduler
+            </h2>
+            <p className="text-sm text-gray-500">
+              Automatic live update configuration
+            </p>
+          </div>
+
+          <span className="bg-yellow-100 text-yellow-700 text-xs font-medium px-3 py-1 rounded-full">
+            ● Paused
+          </span>
+        </div>
+
+        {/* Pause Info */}
+        <div className="bg-yellow-50 p-4 rounded-lg">
+
+          <p className="text-yellow-800 font-medium mb-2">
+            Automatic updates are temporarily disabled by admin.
+          </p>
+
+          <div className="flex justify-between items-center">
+            <p className="text-sm text-gray-600">
+              Resuming In
+            </p>
+
+            <div className="text-xl font-mono font-bold text-red-600">
+              {Math.floor(countdown / 60)} min{" "}
+              {(countdown % 60).toString().padStart(2, '0')} sec
+            </div>
+          </div>
+
+        </div>
+      </div>
+    )}
+  </div>
+)
+
 }

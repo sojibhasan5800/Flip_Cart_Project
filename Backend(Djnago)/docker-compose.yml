@@ -14,15 +14,8 @@ services:
       - redis
       - db
       - elasticsearch
-    environment:
-      - DJANGO_SETTINGS_MODULE=flipcart_project.settings
-      - POSTGRES_DB=flipcart_db
-      - POSTGRES_USER=flipcart_user
-      - POSTGRES_PASSWORD=flipcart_pass
-      - POSTGRES_HOST=db
-      - POSTGRES_PORT=5432
-      - ELASTICSEARCH_URL=http://elasticsearch:9200
-
+    env_file:
+      - .env
   db:
     image: postgres:15
     container_name: postgres_db
@@ -32,7 +25,7 @@ services:
       - POSTGRES_USER=flipcart_user
       - POSTGRES_PASSWORD=flipcart_pass
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
   redis:

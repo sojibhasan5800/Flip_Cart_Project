@@ -1,7 +1,6 @@
 # seller_dashboard/tasks.py
 from celery import shared_task
 from django.utils import timezone
-from django.db import connection,models
 from django_tenants.utils import get_tenant_model
 from datetime import timedelta
 import json
@@ -11,7 +10,7 @@ from asgiref.sync import async_to_sync
 
 from django_redis import get_redis_connection
 from django_tenants.utils import schema_context
-from admin_core.models import DashboardGlobalSettings
+from system_management.models import DashboardGlobalSettings
 
 
 logger = logging.getLogger(__name__)

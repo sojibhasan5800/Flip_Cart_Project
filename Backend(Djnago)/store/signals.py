@@ -14,7 +14,7 @@ def product_saved(sender, instance, **kwargs):
 
     → Single entry point
     """
-    sync_product_everywhere.delay(instance.id)
+    sync_product_everywhere.delay(instance.id,instance.organization.schema_name)
 
 
 @receiver(post_delete, sender=Product)

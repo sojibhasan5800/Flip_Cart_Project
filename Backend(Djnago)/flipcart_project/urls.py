@@ -34,9 +34,7 @@ from django.contrib import admin
 from django.urls import path,include
 from django.conf import settings
 from django.conf.urls.static import static
-from . import views
-from . import api_views
-from . import api_urls
+
 
 urlpatterns = [
     # path('admin/', admin.site.urls),
@@ -46,7 +44,7 @@ urlpatterns = [
     # # path('', api_views.HomeProductsAPIView, name='home'),
 
     # # path('home_api_load_products/', views.home, name='home_api_load_products'),
-    # path('store/', include('store.urls')),
+    path('check/', include('store.urls')),
     # path('carts/', include('carts.urls')),
     # path('accounts/', include('accounts.urls')),
     # path('orders/', include('orders.urls')),

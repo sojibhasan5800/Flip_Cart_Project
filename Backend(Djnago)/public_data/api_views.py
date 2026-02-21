@@ -7,6 +7,7 @@ from rest_framework.pagination import CursorPagination
 from rest_framework import status
 from django_redis import get_redis_connection
 from admin_core.tasks import RedisOrgCounter
+from flipcart_project import settings
 from store.serializers import ProductListSerializer
 from elasticsearch_dsl import Search
 
@@ -54,8 +55,13 @@ class HomeProductsAPIView(APIView):
 
             #  RULE 1: Large scale → ES ONLY
             if org_count > 100:
-                products = self.get_from_elasticsearch(decoded_cursor)
-                source = "es"
+                pass  # ES-only mode
+
+                # if not getattr(settings, "ELASTICSEARCH_OFFLINE", False):
+                #     products = self.get_from_elasticsearch(decoded_cursor)
+                #     source = "es"
+                # else:
+                #     products = []  # Local এ ES নেই
 
             else:
                 #  Small scale → Redis first
@@ -125,33 +131,33 @@ class HomeProductsAPIView(APIView):
 
     # ======================================================
     # 🔹 Elasticsearch (all older products)
-    # ======================================================
-    def get_from_elasticsearch(self, cursor):
-        s = Search(using="default", index="products_feed").filter(
-            "term", is_available=True
-        )
+    # # ======================================================
+    # def get_from_elasticsearch(self, cursor):
+    #     s = Search(using="default", index="products_feed").filter(
+    #         "term", is_available=True
+    #     )
 
-        if cursor:
-            s = s.query(
-                "bool",
-                should=[
-                    {"range": {"created_date": {"lt": cursor["last_date"]}}},
-                    {
-                        "bool": {
-                            "must": [
-                                {"term": {"created_date": cursor["last_date"]}},
-                                {"range": {"id": {"lt": cursor.get("last_id", 0)}}},
-                            ]
-                        }
-                    },
-                ],
-                minimum_should_match=1,
-            )
+    #     if cursor:
+    #         s = s.query(
+    #             "bool",
+    #             should=[
+    #                 {"range": {"created_date": {"lt": cursor["last_date"]}}},
+    #                 {
+    #                     "bool": {
+    #                         "must": [
+    #                             {"term": {"created_date": cursor["last_date"]}},
+    #                             {"range": {"id": {"lt": cursor.get("last_id", 0)}}},
+    #                         ]
+    #                     }
+    #                 },
+    #             ],
+    #             minimum_should_match=1,
+    #         )
 
-        s = s.sort("-created_date", "-id")[:10]
-        response = s.execute()
+    #     s = s.sort("-created_date", "-id")[:10]
+    #     response = s.execute()
 
-        return [hit.to_dict() for hit in response]
+    #     return [hit.to_dict() for hit in response]
 
     # ======================================================
     # 🔹 Cursor generator
