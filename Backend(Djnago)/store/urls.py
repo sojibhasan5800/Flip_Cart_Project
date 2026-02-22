@@ -7,6 +7,6 @@ from . import views
 
 
 urlpatterns = [
-   path('', views.store, name='store'),
+   # path('', views.store, name='store'),
 
 ]

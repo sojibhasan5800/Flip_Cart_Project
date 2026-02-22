@@ -24,6 +24,29 @@ class GlobalLatestProductPagination(CursorPagination):
     page_size = 4
     cursor_query_param = "cursor"
 
+class LatestProductsAPIView(APIView):
+    """
+    Return latest 4 products globally or per tenant
+    """
+
+    def get(self, request):
+        # Determine tenant schema
+       
+        redis_client = get_redis_connection("default")
+
+        # Fetch latest 4 products from Redis global cache
+        latest_keys = redis_client.zrevrange("global:latest_products", 0, 3)  # top 4
+        product_hash = "global:product:data"
+        products = []
+
+        for key in latest_keys:
+            raw = redis_client.hget(product_hash, key)
+            if raw:
+                product = json.loads(raw)
+                products.append(product)
+
+        return Response(products)
+
 
 class HomeProductsAPIView(APIView):
     pagination_class = GlobalLatestProductPagination

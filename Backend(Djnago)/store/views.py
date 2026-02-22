@@ -33,8 +33,8 @@ from django.shortcuts import render, get_object_or_404, redirect
 # from .documents import ProductDocument
 # from rest_framework.views import APIView
 
-def store(request, category_slug=None):
-    return render(request, 'base.html')
+# def store(request, category_slug=None):
+#     return render(request, 'base.html')
 
 
 # def product_detail(request, category_slug, product_slug):
