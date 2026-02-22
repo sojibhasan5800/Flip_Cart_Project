@@ -145,31 +145,31 @@ class ReviewRating(models.Model):
     class Meta:
         ordering = ['-rating', '-updated_at']
 
-    def save(self, *args, **kwargs):
-        super().save(*args, **kwargs)
-        # Update Redis cache on every save
-        cache = get_redis_connection("default")
+    # def save(self, *args, **kwargs):
+    #     super().save(*args, **kwargs)
+    #     # Update Redis cache on every save
+    #     cache = get_redis_connection("default")
 
-        # Annotate database query to get full_name from first_name + last_name
+    #     # Annotate database query to get full_name from first_name + last_name
 
-        reviews_qs = list(self.product.reviewrating_set.annotate(
-            full_name=Concat(F('user__first_name'), Value(' '), F('user__last_name'), output_field=CharField())
-        ).values(
-            'full_name', 'rating', 'subject', 'review', 'updated_at'
-        ).order_by('-rating', '-updated_at'))
+    #     reviews_qs = list(self.product.reviewrating_set.annotate(
+    #         full_name=Concat(F('user__first_name'), Value(' '), F('user__last_name'), output_field=CharField())
+    #     ).values(
+    #         'full_name', 'rating', 'subject', 'review', 'updated_at'
+    #     ).order_by('-rating', '-updated_at'))
 
-        reviews = []
-        for r in reviews_qs:
-            reviews.append({
-                'full_name': r['full_name'],
-                'rating': r['rating'],
-                'subject': r['subject'],
-                'review': r['review'],
-                # Convert datetime to string
-                'updated_at': r['updated_at'].strftime('%Y-%m-%d %H:%M:%S')
-            })
+    #     reviews = []
+    #     for r in reviews_qs:
+    #         reviews.append({
+    #             'full_name': r['full_name'],
+    #             'rating': r['rating'],
+    #             'subject': r['subject'],
+    #             'review': r['review'],
+    #             # Convert datetime to string
+    #             'updated_at': r['updated_at'].strftime('%Y-%m-%d %H:%M:%S')
+    #         })
 
-        cache.set(f'product_reviews:{self.product.id}', json.dumps(reviews), ex=3600)
+    #     cache.set(f'product_reviews:{self.product.id}', json.dumps(reviews), ex=3600)
 
 
 class ProductGallery(models.Model):

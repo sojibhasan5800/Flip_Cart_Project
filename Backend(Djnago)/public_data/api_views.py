@@ -7,9 +7,15 @@ from rest_framework.pagination import CursorPagination
 from rest_framework import status
 from django_redis import get_redis_connection
 from admin_core.tasks import RedisOrgCounter
+from django_tenants.utils import schema_context
+from django_redis import get_redis_connection
+from django.db.models import Count, Prefetch, Q
 from flipcart_project import settings
 from store.serializers import ProductListSerializer
 from elasticsearch_dsl import Search
+from store.models import Product, Variation, ProductGallery
+from store.serializers import ProductDetailSerializer
+from store.utils import get_reviews_page
 
 logger = logging.getLogger(__name__)
 
@@ -170,3 +176,75 @@ class HomeProductsAPIView(APIView):
             "last_id": last_org_product["id"],
         }
         return base64.b64encode(json.dumps(data).encode()).decode()
+    
+
+class ProductDetailView(APIView):
+    """
+    SaaS-aware Product Detail View
+    """
+    def get(self, request, product_id):
+        # tenant schema name, example from subdomain or request
+        schema_name = request.tenant.schema_name if hasattr(request, "tenant") else "public"
+        redis_client = get_redis_connection("default")
+
+        with schema_context(schema_name):
+            # Fetch product
+            product = Product.objects.select_related(
+                'category', 'organization'
+            ).prefetch_related(
+                Prefetch('variation_set', queryset=Variation.objects.filter(is_active=True)),
+                Prefetch('productgallery_set', queryset=ProductGallery.objects.only('id', 'images'))
+            ).annotate(
+                gallery_count=Count('productgallery'),
+                review_count=Count('reviewrating', filter=Q(reviewrating__status=True))
+            ).get(id=product_id)
+
+            # Redis key must include tenant
+            cache_key = f"{schema_name}:product_latest_reviews:{product.id}"
+            latest_reviews = []
+
+            cached = redis_client.get(cache_key)
+            if cached:
+                latest_reviews = json.loads(cached)
+            else:
+                reviews_qs = product.reviewrating_set.filter(status=True).select_related('user').order_by('-created_at')[:5]
+                for r in reviews_qs:
+                    latest_reviews.append({
+                        'full_name': f"{getattr(r.user, 'first_name', '')} {getattr(r.user, 'last_name', '')}".strip() or "Anonymous",
+                        'rating': r.rating,
+                        'subject': r.subject,
+                        'review': r.review,
+                        'updated_at': r.updated_at.strftime('%Y-%m-%d %H:%M:%S'),
+                    })
+                redis_client.set(cache_key, json.dumps(latest_reviews), ex=300)
+
+            serializer = ProductDetailSerializer(
+                product,
+                context={'reviews': latest_reviews}
+            )
+
+        return Response(serializer.data)
+
+
+class ProductReviewsView(APIView):
+    """
+    SaaS-aware, cursor-based paginated reviews
+    """
+    def get(self, request, product_id):
+        limit = int(request.GET.get("limit", 20))
+        cursor = request.GET.get("cursor")
+        cursor = float(cursor) if cursor else None
+
+        schema_name = request.tenant.schema_name if hasattr(request, "tenant") else "public"
+
+        with schema_context(schema_name):
+            # Redis key includes tenant
+            redis_key = f"{schema_name}:product:{product_id}:reviews"
+            reviews, next_cursor = get_reviews_page(product_id, limit=limit, cursor=cursor, redis_key=redis_key)
+
+        return Response({
+            "results": reviews,
+            "next_cursor": next_cursor,
+            "has_more": bool(next_cursor)
+        })
+

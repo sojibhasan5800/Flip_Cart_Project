@@ -124,7 +124,7 @@ class ProductDetailSerializer(serializers.ModelSerializer):
     organization = serializers.SerializerMethodField()
     variations = serializers.SerializerMethodField()
     galleries = serializers.SerializerMethodField()
-    gallery_count = serializers.SerializerMethodField()
+    gallery_count = serializers.IntegerField()
     reviews = serializers.SerializerMethodField()
 
     class Meta:
@@ -166,12 +166,15 @@ class ProductDetailSerializer(serializers.ModelSerializer):
     def get_gallery_count(self, obj):
         return getattr(obj, 'gallery_count', 0)
 
+    # def get_reviews(self, obj):
+    #     redis = get_redis_connection("default")
+    #     cached = redis.get(f'product_reviews:{obj.id}')
+    #     if cached:
+    #         return json.loads(cached)
+    #     return []
     def get_reviews(self, obj):
-        redis = get_redis_connection("default")
-        cached = redis.get(f'product_reviews:{obj.id}')
-        if cached:
-            return json.loads(cached)
-        return []
+        return self.context.get("reviews", [])
+
 
 
 

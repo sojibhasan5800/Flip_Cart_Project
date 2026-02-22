@@ -7,12 +7,14 @@ from celery import shared_task
 from celery.utils.log import get_task_logger
 from django.conf import settings
 from django.core.serializers.json import DjangoJSONEncoder
-from django.db.models import Avg, Prefetch
+from django.db.models import Avg, Count, FloatField, IntegerField, Prefetch
 from django_redis import get_redis_connection
 from redis import Redis
 from redis.lock import Lock
 from redis.exceptions import LockError,ConnectionError
+from django.db.models.functions import Coalesce
 
+from store.utils import get_reviews_page
 from .documents import ProductFeedDocument, ProductSearchDocument
 from .models import Product, ProductGallery, Variation
 from django_tenants.utils import schema_context
@@ -82,7 +84,10 @@ def sync_product_everywhere(self, product_id: int,schema_name):
                             queryset=ProductGallery.objects.only('id', 'images')
                         )
                     )
-                    .annotate(average_rating=Avg('reviewrating__rating'))
+                    .annotate(
+                        average_rating=Avg('reviewrating__rating', output_field=FloatField()),  # 🔹 specify FloatField
+                        gallery_count=Count('productgallery', output_field=IntegerField()) 
+                    )
                     .only(
                         'id', 'product_name', 'slug', 'price', 'mrp', 'images',
                         'stock', 'is_available', 'description', 'created_date',
@@ -107,7 +112,7 @@ def sync_product_everywhere(self, product_id: int,schema_name):
                     # Continue — Redis sync must happen
 
             # Redis sync — atomic
-            _sync_product_to_redis(redis_client, product)
+                _sync_product_to_redis(redis_client, product)
 
             logger.info(f"Product {product_id} synced successfully")
 
@@ -145,7 +150,7 @@ def _sync_product_to_redis(redis_client: Redis, product: Product):
         _remove_product_from_redis(redis_client, product)
         return
 
-    encoder = DjangoJSONEncoder()
+    encoder_cls  = DjangoJSONEncoder
 
     home_data = {
         "id": product.id,
@@ -157,7 +162,12 @@ def _sync_product_to_redis(redis_client: Redis, product: Product):
         "created_date": product.created_date.isoformat() if product.created_date else None,
     }
 
-    detail_data = ProductDetailSerializer(product).data
+     # 🔹 NEW: get first page reviews
+    reviews, next_cursor = get_reviews_page(product.id, limit=20)
+    detail_data = ProductDetailSerializer(
+        product,
+        context={"reviews": reviews}
+    ).data
 
     org_id = product.organization_id
     product_id = product.id
@@ -172,8 +182,8 @@ def _sync_product_to_redis(redis_client: Redis, product: Product):
 
     pipe.zadd(tenant_latest, {product_id: -created_ts})
     pipe.zremrangebyrank(tenant_latest, 1000, -1)
-    pipe.hset(tenant_hash, product_id, json.dumps(home_data, cls=encoder))
-    pipe.hset(tenant_detail, product_id, json.dumps(detail_data, cls=encoder))
+    pipe.hset(tenant_hash, product_id, json.dumps(home_data, cls=encoder_cls))
+    pipe.hset(tenant_detail, product_id, json.dumps(detail_data, cls=encoder_cls))
 
     # Global caches
     global_member = f"{org_id}:{product_id}"
@@ -183,8 +193,8 @@ def _sync_product_to_redis(redis_client: Redis, product: Product):
 
     pipe.zadd(global_latest, {global_member: -created_ts})
     pipe.zremrangebyrank(global_latest, 5000, -1)
-    pipe.hset(global_hash, global_member, json.dumps(home_data, cls=encoder))
-    pipe.hset(global_detail, global_member, json.dumps(detail_data, cls=encoder))
+    pipe.hset(global_hash, global_member, json.dumps(home_data, cls=encoder_cls))
+    pipe.hset(global_detail, global_member, json.dumps(detail_data, cls=encoder_cls))
 
     pipe.execute()
 
