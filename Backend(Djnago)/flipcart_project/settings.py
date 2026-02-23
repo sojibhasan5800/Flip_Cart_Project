@@ -269,6 +269,15 @@ cloudinary.config(
     api_secret=CLOUDINARY_STORAGE['API_SECRET']
 )
 
+# bKash config (add to your settings)
+BKASH_BASE_URL = 'https://checkout.sandbox.bka.sh/v1.2.0-beta'  # Sandbox, production-এ চেঞ্জ করুন
+BKASH_APP_KEY = config('BKASH_APP_KEY')
+BKASH_APP_SECRET = config('BKASH_APP_SECRET')
+BKASH_USERNAME = config('BKASH_USERNAME')
+BKASH_PASSWORD = config('BKASH_PASSWORD')
+BKASH_SUCCESS_CALLBACK = 'https://your-domain.com/api/payments/bkash/success/'  # Your frontend or backend URL
+BKASH_FAIL_CALLBACK = 'https://your-domain.com/api/payments/bkash/fail/'
+BKASH_CANCEL_CALLBACK = 'https://your-domain.com/api/payments/bkash/cancel/'
 
 # Stripe Plans
 STRIPE_PLANS = {
