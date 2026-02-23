@@ -66,6 +66,7 @@ urlpatterns = [
     path('api/admin_core/', include('admin_core.api_urls', namespace='admin_core_api')),
     path('api/public_data/', include('public_data.api_urls', namespace='public_data_api')),
     path('api/system_management/', include('system_management.api_urls', namespace='system_management_api')),
+    path('api/billing/', include('billing.api_urls', namespace='billing_api')),
 
 
     path('swagger(<format>.json|.yaml)', schema_view.without_ui(cache_timeout=0), name='schema-json'),

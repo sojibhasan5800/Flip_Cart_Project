@@ -41,7 +41,7 @@ SHARED_APPS = [
     'admin_thumbnails',
     'public_data',
     'system_management', 
-    # 'billing', 
+    'billing', 
     # 'core_notifications',
 ]
 
