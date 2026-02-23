@@ -24,6 +24,7 @@ class Product(models.Model):
     stock           = models.IntegerField(default=1)
     is_available    = models.BooleanField(default=True)
     category        = models.ForeignKey("category.Category", on_delete=models.CASCADE)
+    store_url       = models.URLField(max_length=1000, blank=False, null=False,editable=False,help_text="URL to the product page on the merchant's website")
     # Tenant isolation
     organization  = models.ForeignKey("merchant_user.Organization", on_delete=models.SET_NULL,null=True, related_name='products')
     #  NEW: Add delivery tenant link for delivery system
@@ -81,6 +82,13 @@ class Product(models.Model):
 
         if self.stock == 0:
             self.is_available = False
+
+        if self.organization and self.organization.store_url:
+            # organization.store_url ইতিমধ্যে https://domain.com ফরম্যাটে আছে
+            self.store_url = f"{self.organization.store_url.rstrip('/')}"
+        else:
+            # যদি organization না থাকে বা store_url না থাকে (edge case)
+            self.store_url = f"https://example.com/product"  # fallback, পরে চেঞ্জ করতে পারো
         super(Product, self).save(*args, **kwargs)
 
     def get_url(self):

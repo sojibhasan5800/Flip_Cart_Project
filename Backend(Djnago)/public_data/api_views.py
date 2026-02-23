@@ -1,6 +1,7 @@
 import base64
 import json
 import logging
+from django.shortcuts import get_object_or_404
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.pagination import CursorPagination
@@ -21,7 +22,9 @@ logger = logging.getLogger(__name__)
 
 
 class GlobalLatestProductPagination(CursorPagination):
-    page_size = 4
+    page_size = 12
+    page_size_query_param = 'page_size'   # frontend থেকে ?page_size=20 পাঠালে কাজ করবে
+    max_page_size = 40
     cursor_query_param = "cursor"
 
 class LatestProductsAPIView(APIView):
@@ -97,9 +100,9 @@ class HomeProductsAPIView(APIView):
                 products = self.get_from_redis(redis_conn, decoded_cursor)
 
                 #  Redis exhausted → fallback to ES
-                if len(products) < page_size:
-                    products = self.get_from_elasticsearch(decoded_cursor)
-                    source = "es"
+                # if len(products) < page_size:
+                #     products = self.get_from_elasticsearch(decoded_cursor)
+                #     source = "es"
 
             # --------------------------------------------------
             # 4️ Pagination slice
@@ -135,29 +138,51 @@ class HomeProductsAPIView(APIView):
         global_key = "global:latest_products"
         hash_key = "global:product:data"
 
+        # Decode Redis ZSET members from bytes to string
         member_keys = redis_conn.zrevrange(global_key, 0, 49)
+        member_keys = [key.decode('utf-8') if isinstance(key, bytes) else key for key in member_keys]
 
         products = []
-        for member_key in member_keys:
-            raw = redis_conn.hget(hash_key, member_key)
-            if not raw:
-                continue
+        skip_until_passed = False
 
-            product = json.loads(raw)
+        if cursor:
+            last_date = cursor["last_date"]
+            last_member = cursor["last_member"]
 
-            if cursor:
-                if product["created_date"] > cursor["last_date"]:
-                    continue
-                if (
-                    product["created_date"] == cursor["last_date"]
-                    and member_key >= cursor["last_member"]
-                ):
+            for member_key in member_keys:
+                raw = redis_conn.hget(hash_key, member_key)
+                if not raw:
                     continue
 
-            products.append(product)
+                product = json.loads(raw)
+
+                # First, skip all products that are newer than last_date
+                if product["created_date"] > last_date:
+                    continue
+
+                # If created_date is equal, skip products up to last_member
+                if product["created_date"] == last_date:
+                    if member_key <= last_member:  # ← use <= for correct string comparison
+                        continue
+                    else:
+                        skip_until_passed = True
+
+                # Add product only after skip condition is passed
+                if skip_until_passed or product["created_date"] < last_date:
+                    products.append(product)
+
+                # Optional: stop early if more than required items are collected
+                if len(products) >= self.pagination_class.page_size * 2:
+                    break
+
+        else:
+            # If no cursor is provided, return the first page
+            for member_key in member_keys:
+                raw = redis_conn.hget(hash_key, member_key)
+                if raw:
+                    products.append(json.loads(raw))
 
         return products
-
     # ======================================================
     # 🔹 Elasticsearch (all older products)
     # # ======================================================
@@ -199,55 +224,100 @@ class HomeProductsAPIView(APIView):
             "last_id": last_org_product["id"],
         }
         return base64.b64encode(json.dumps(data).encode()).decode()
-    
 
 class ProductDetailView(APIView):
     """
-    SaaS-aware Product Detail View
+    SaaS-aware Product Detail View (SAFE & OPTIMIZED)
     """
+
     def get(self, request, product_id):
-        # tenant schema name, example from subdomain or request
-        schema_name = request.tenant.schema_name if hasattr(request, "tenant") else "public"
+
+        # 1️⃣ Detect tenant safely
+        if not hasattr(request, "tenant"):
+            return Response(
+                {"detail": "Tenant not found"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        tenant = request.tenant
+        schema_name = tenant.schema_name
         redis_client = get_redis_connection("default")
 
-        with schema_context(schema_name):
-            # Fetch product
-            product = Product.objects.select_related(
-                'category', 'organization'
-            ).prefetch_related(
-                Prefetch('variation_set', queryset=Variation.objects.filter(is_active=True)),
-                Prefetch('productgallery_set', queryset=ProductGallery.objects.only('id', 'images'))
-            ).annotate(
-                gallery_count=Count('productgallery'),
-                review_count=Count('reviewrating', filter=Q(reviewrating__status=True))
-            ).get(id=product_id)
+        # 2️⃣ Check store status
+        if not tenant.is_active:
+            return Response(
+                {"detail": "Store is inactive"},
+                status=status.HTTP_403_FORBIDDEN
+            )
 
-            # Redis key must include tenant
-            cache_key = f"{schema_name}:product_latest_reviews:{product.id}"
+        with schema_context(schema_name):
+
+            # 3️⃣ Fetch product (tenant-safe)
+            product = get_object_or_404(
+                Product.objects.select_related(
+                    'category', 'organization'
+                ).prefetch_related(
+                    Prefetch(
+                        'variation_set',
+                        queryset=Variation.objects.filter(is_active=True)
+                    ),
+                    Prefetch(
+                        'productgallery_set',
+                        queryset=ProductGallery.objects.only('id', 'images')
+                    )
+                ).annotate(
+                    gallery_count=Count('productgallery', distinct=True),
+                    review_count=Count(
+                        'reviewrating',
+                        distinct=True,
+                        filter=Q(reviewrating__status=True)
+                    )
+                ),
+                id=product_id,
+                organization=tenant   # 🔒 IMPORTANT: tenant isolation
+            )
+
+            # 4️⃣ Redis cache (tenant-aware)
+            cache_key = f"{schema_name}:product:{product.id}:latest_reviews:v1"
             latest_reviews = []
 
             cached = redis_client.get(cache_key)
             if cached:
                 latest_reviews = json.loads(cached)
             else:
-                reviews_qs = product.reviewrating_set.filter(status=True).select_related('user').order_by('-created_at')[:5]
+                reviews_qs = (
+                    product.reviewrating_set
+                    .filter(status=True)
+                    .select_related('user')
+                    .order_by('-created_at')[:5]
+                )
+
                 for r in reviews_qs:
                     latest_reviews.append({
-                        'full_name': f"{getattr(r.user, 'first_name', '')} {getattr(r.user, 'last_name', '')}".strip() or "Anonymous",
-                        'rating': r.rating,
-                        'subject': r.subject,
-                        'review': r.review,
-                        'updated_at': r.updated_at.strftime('%Y-%m-%d %H:%M:%S'),
+                        "full_name": (
+                            f"{getattr(r.user, 'first_name', '')} "
+                            f"{getattr(r.user, 'last_name', '')}"
+                        ).strip() or "Anonymous",
+                        "rating": r.rating,
+                        "subject": r.subject,
+                        "review": r.review,
+                        "updated_at": r.updated_at.strftime('%Y-%m-%d %H:%M:%S'),
                     })
-                redis_client.set(cache_key, json.dumps(latest_reviews), ex=300)
 
+                redis_client.set(
+                    cache_key,
+                    json.dumps(latest_reviews),
+                    ex=300  # 5 minutes
+                )
+
+            # 5️⃣ Serialize response
             serializer = ProductDetailSerializer(
                 product,
-                context={'reviews': latest_reviews}
+                context={"reviews": latest_reviews}
             )
 
-        return Response(serializer.data)
-
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        
 
 class ProductReviewsView(APIView):
     """
