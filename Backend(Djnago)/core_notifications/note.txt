@@ -1,0 +1,11 @@
+Case 1️⃣: Store-specific notifications (Recommended)
+
+Example:
+
+“New order received”
+
+“Product stock low”
+
+“Payment received”
+
+“Customer review added”

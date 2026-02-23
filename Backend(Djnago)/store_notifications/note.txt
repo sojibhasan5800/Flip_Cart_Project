@@ -1,0 +1,9 @@
+Case 2️⃣: Platform-wide notifications
+
+Example:
+
+“Your subscription expired”
+
+“Platform maintenance notice”
+
+👉 তাহলে notifications → SHARED_APPS

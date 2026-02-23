@@ -1,0 +1,9 @@
+Subscription plans (Basic, Pro, Enterprise)
+
+Merchant subscription tracking
+
+Stripe subscription lifecycle
+
+Invoice generation
+
+Plan upgrade / downgrade 

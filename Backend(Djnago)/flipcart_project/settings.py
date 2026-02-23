@@ -40,7 +40,9 @@ SHARED_APPS = [
     # 'django_elasticsearch_dsl_drf',
     'admin_thumbnails',
     'public_data',
-    'system_management',
+    'system_management', 
+    # 'billing', 
+    # 'core_notifications',
 ]
 
 TENANT_APPS = [
@@ -50,6 +52,11 @@ TENANT_APPS = [
     'orders',
     # 'seller_dashboard',
     'admin_core',
+    # 'orders_management',
+    # 'transactions',
+    # 'payments',        # Order payment gateway
+    # 'store_notifications',   # Store notifications
+    # 'analytics',
 ]
 
 INSTALLED_APPS = list(SHARED_APPS) + [app for app in TENANT_APPS if app not in SHARED_APPS]

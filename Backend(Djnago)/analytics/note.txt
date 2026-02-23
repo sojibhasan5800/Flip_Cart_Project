@@ -1,0 +1,13 @@
+🎯 First: analytics/ App কি দরকার?
+
+তুমি যেহেতু:
+
+Real-time dashboard বানাচ্ছো
+
+Redis caching ব্যবহার করছো
+
+Merchant specific analytics দেখাচ্ছো
+
+👉 তাহলে analytics অবশ্যই TENANT_APPS এ যাবে।
+
+কারণ analytics data merchant-specific।

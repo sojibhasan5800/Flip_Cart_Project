@@ -38,7 +38,7 @@ class LatestProductsAPIView(APIView):
         redis_client = get_redis_connection("default")
 
         # Fetch latest 4 products from Redis global cache
-        latest_keys = redis_client.zrevrange("global:latest_products", 0, 3)  # top 4
+        latest_keys = redis_client.zrange("global:latest_products", 0, 3)  # top 4
         product_hash = "global:product:data"
         products = []
 
@@ -139,7 +139,7 @@ class HomeProductsAPIView(APIView):
         hash_key = "global:product:data"
 
         # Decode Redis ZSET members from bytes to string
-        member_keys = redis_conn.zrevrange(global_key, 0, 49)
+        member_keys = redis_conn.zrange(global_key, 0, 49)
         member_keys = [key.decode('utf-8') if isinstance(key, bytes) else key for key in member_keys]
 
         products = []

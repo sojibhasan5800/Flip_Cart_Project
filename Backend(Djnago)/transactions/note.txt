@@ -1,0 +1,11 @@
+All financial transaction records
+
+Wallet balance
+
+Order payments
+
+Refund history
+
+Payout history
+
+Accounting-friendly logs

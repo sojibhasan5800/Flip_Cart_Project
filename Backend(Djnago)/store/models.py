@@ -24,6 +24,7 @@ class Product(models.Model):
     stock           = models.IntegerField(default=1)
     is_available    = models.BooleanField(default=True)
     category        = models.ForeignKey("category.Category", on_delete=models.CASCADE)
+    is_boosted      = models.BooleanField(default=False)
     store_url       = models.URLField(max_length=1000, blank=False, null=False,editable=False,help_text="URL to the product page on the merchant's website")
     # Tenant isolation
     organization  = models.ForeignKey("merchant_user.Organization", on_delete=models.SET_NULL,null=True, related_name='products')
