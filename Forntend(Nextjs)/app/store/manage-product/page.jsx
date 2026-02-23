@@ -9,24 +9,24 @@ import AxiosInstance from '../../../api/AxiosInstance'
 import { loadStripe } from '@stripe/stripe-js'
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js'
 
-// Stripe publishable key (public)
+// Stripe publishable key
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
 
 export default function StoreManageProducts() {
-    const currency = process.env.NEXT_PUBLIC_CURRENCY_SYMBOL || '$'
+    const currency = process.env.NEXT_PUBLIC_CURRENCY_SYMBOL || '৳'
     const [loading, setLoading] = useState(true)
     const [products, setProducts] = useState([])
     const [pendingToggle, setPendingToggle] = useState(null)
-    const [pendingBoost, setPendingBoost] = useState(null)          // নতুন: boosting pending state
-    const [subscriptionInfo, setSubscriptionInfo] = useState(null)  // নতুন: limit info
+    const [pendingBoost, setPendingBoost] = useState(null)
+    const [subscriptionInfo, setSubscriptionInfo] = useState(null)
     const [showPaymentModal, setShowPaymentModal] = useState(false)
     const [selectedProduct, setSelectedProduct] = useState(null)
     const { user } = useUser()
 
-    // Fetch products + subscription boost limit info
+    // Fetch products + active boosting subscription info
     const fetchProductsAndSubscription = async () => {
         try {
-            // 1. Products fetch
+            // 1. Products
             const prodRes = await AxiosInstance.get(
                 "/api/merchant_user/merchant-products/",
                 {
@@ -40,15 +40,27 @@ export default function StoreManageProducts() {
                 )
             )
 
-            // 2. Subscription & boost limit fetch (নতুন API – backend-এ তৈরি করতে হবে)
-            const subRes = await AxiosInstance.get(
-                "/api/billing/current-subscription-info/",
-                { useTenant: true }
+            // 2. Active subscriptions (বুস্টিং প্ল্যান খুঁজব)
+            const subRes = await AxiosInstance.get("/api/billing/subscriptions/", { useTenant: true })
+            const activeBoostSub = subRes.data.find(
+                sub => sub.status === 'active' && sub.plan?.plan_type === 'boosting'
             )
-            setSubscriptionInfo(subRes.data)  // { max_boosted: 5, current_boosted: 2, can_boost_more: true, plan_name: "Pro" }
+
+            if (activeBoostSub) {
+                setSubscriptionInfo({
+                    plan_name: activeBoostSub.plan.name,
+                    max_boosted: activeBoostSub.plan.max_boosted_products || 0,
+                    current_boosted: activeBoostSub.boosted_products_count || 0,
+                    can_boost_more: activeBoostSub.boosted_products_count < (activeBoostSub.plan.max_boosted_products || 0),
+                    subscription_id: activeBoostSub.id  // পেমেন্টের জন্য দরকার
+                })
+            } else {
+                setSubscriptionInfo(null)
+            }
 
         } catch (error) {
-            toast.error(error?.response?.data?.error || "Failed to load data")
+            console.error(error)
+            toast.error("Failed to load products or subscription info")
         } finally {
             setLoading(false)
         }
@@ -61,15 +73,13 @@ export default function StoreManageProducts() {
     }, [user])
 
     const toggleStock = async (productId) => {
+        // ... আপনার আগের লজিক একই রাখুন (এখানে পরিবর্তন নেই) ...
         setPendingToggle(productId)
         try {
             const { data } = await AxiosInstance.patch(
                 `/api/merchant_user/products/toggle-stock/${productId}/`,
                 null,
-                {
-                    useTenant: true,
-                    params: { organization_id: localStorage.getItem("ACTIVE_ORG_ID") }
-                }
+                { useTenant: true }
             )
             setProducts(prev =>
                 prev.map(p =>
@@ -78,18 +88,20 @@ export default function StoreManageProducts() {
             )
             toast.success("Stock status updated")
         } catch (error) {
-            toast.error(error?.response?.data?.error || "Failed to toggle stock")
+            toast.error("Failed to toggle stock")
         } finally {
             setPendingToggle(null)
         }
     }
 
-    // Boost button click → check limit & open payment modal
     const handleBoostClick = (product) => {
-        if (!subscriptionInfo?.can_boost_more) {
-            toast.error("Boost limit reached. Please upgrade your plan.")
-            // Optional: redirect to plans page
-            // router.push('/dashboard/plans')
+        if (!subscriptionInfo) {
+            toast.error("You need an active boosting plan. Please purchase one from Plans page.")
+            // Optional: router.push('/dashboard/billing/plans')
+            return
+        }
+        if (!subscriptionInfo.can_boost_more) {
+            toast.error("Boost limit reached for your current plan. Upgrade your plan.")
             return
         }
 
@@ -97,17 +109,15 @@ export default function StoreManageProducts() {
         setShowPaymentModal(true)
     }
 
-    // Payment success callback (parent থেকে child-এ পাঠানো হবে)
     const handlePaymentSuccess = (boostedProductId) => {
         setProducts(prev =>
             prev.map(p =>
                 p.id === boostedProductId
-                    ? { ...p, is_boosted: true, boost_remaining_days: 30 } // backend থেকে আসা মান দিয়ে আপডেট করা উচিত
+                    ? { ...p, is_boosted: true, boost_remaining_days: 30 }
                     : p
             )
         )
-        // Refresh subscription info
-        fetchProductsAndSubscription()
+        fetchProductsAndSubscription() // Refresh limit
         toast.success("Product boosted successfully!")
         setShowPaymentModal(false)
     }
@@ -120,17 +130,22 @@ export default function StoreManageProducts() {
                 Manage <span className="text-slate-800 font-medium">Products</span>
             </h1>
 
-            {/* Subscription status banner */}
-            {subscriptionInfo && (
+            {subscriptionInfo ? (
                 <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
                     <p className="text-blue-800">
-                        <strong>{subscriptionInfo.plan_name || "Current Plan"}</strong> • 
-                        Boost slots used: {subscriptionInfo.current_boosted} / {subscriptionInfo.max_boosted}
+                        <strong>{subscriptionInfo.plan_name}</strong> Plan • 
+                        Boost slots: {subscriptionInfo.current_boosted} / {subscriptionInfo.max_boosted}
                         {subscriptionInfo.can_boost_more ? (
-                            <span className="ml-2 text-green-600 font-medium">• Available</span>
+                            <span className="ml-2 text-green-600 font-medium"> • Available</span>
                         ) : (
-                            <span className="ml-2 text-red-600 font-medium">• Limit reached – upgrade plan</span>
+                            <span className="ml-2 text-red-600 font-medium"> • Limit reached</span>
                         )}
+                    </p>
+                </div>
+            ) : (
+                <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <p className="text-yellow-800">
+                        No active boosting plan. <a href="/dashboard/billing/plans" className="underline font-medium">Purchase a plan</a> to boost products.
                     </p>
                 </div>
             )}
@@ -144,7 +159,7 @@ export default function StoreManageProducts() {
                         <th className="px-4 py-3">Price</th>
                         <th className="px-4 py-3">Stock</th>
                         <th className="px-4 py-3">Status</th>
-                        <th className="px-4 py-3">Boost</th> {/* নতুন কলাম */}
+                        <th className="px-4 py-3">Boost</th>
                     </tr>
                 </thead>
 
@@ -153,7 +168,6 @@ export default function StoreManageProducts() {
                         const isOutOfStock = product.stock === 0
                         const isAvailable = product.is_available
                         const isPending = pendingToggle === product.id
-                        const isBoostPending = pendingBoost === product.id
                         const isBoosted = product.is_boosted
 
                         return (
@@ -183,6 +197,7 @@ export default function StoreManageProducts() {
                                     {product.stock}
                                 </td>
                                 <td className="px-4 py-3 text-center">
+                                    {/* Toggle switch – আপনার আগের কোড */}
                                     <label className="relative inline-flex items-center cursor-pointer">
                                         <input
                                             type="checkbox"
@@ -210,7 +225,6 @@ export default function StoreManageProducts() {
                                     </label>
                                 </td>
 
-                                {/* Boost Column */}
                                 <td className="px-4 py-3 text-center">
                                     {isBoosted ? (
                                         <div className="text-green-600 font-medium">
@@ -224,14 +238,13 @@ export default function StoreManageProducts() {
                                     ) : (
                                         <button
                                             onClick={() => handleBoostClick(product)}
-                                            disabled={isBoostPending || !subscriptionInfo?.can_boost_more}
+                                            disabled={pendingBoost === product.id || !subscriptionInfo?.can_boost_more}
                                             className={`px-3 py-1.5 text-sm font-medium rounded-md transition
                                                 ${subscriptionInfo?.can_boost_more 
                                                     ? "bg-indigo-600 hover:bg-indigo-700 text-white" 
-                                                    : "bg-gray-400 cursor-not-allowed text-gray-700"}
-                                                ${isBoostPending ? "opacity-50" : ""}`}
+                                                    : "bg-gray-400 cursor-not-allowed text-gray-700"}`}
                                         >
-                                            {isBoostPending ? "Boosting..." : "Boost"}
+                                            {pendingBoost === product.id ? "Boosting..." : "Boost"}
                                         </button>
                                     )}
                                 </td>
@@ -241,10 +254,10 @@ export default function StoreManageProducts() {
                 </tbody>
             </table>
 
-            {/* Payment Modal */}
             {showPaymentModal && selectedProduct && (
                 <PaymentModal
                     product={selectedProduct}
+                    subscriptionId={subscriptionInfo?.subscription_id}
                     onClose={() => setShowPaymentModal(false)}
                     onSuccess={handlePaymentSuccess}
                 />
@@ -253,8 +266,8 @@ export default function StoreManageProducts() {
     )
 }
 
-// নতুন Payment Modal Component
-function PaymentModal({ product, onClose, onSuccess }) {
+// Payment Modal
+function PaymentModal({ product, subscriptionId, onClose, onSuccess }) {
     const [gateway, setGateway] = useState('stripe')
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState(null)
@@ -267,15 +280,17 @@ function PaymentModal({ product, onClose, onSuccess }) {
         setError(null)
 
         try {
-            // Backend-এ Payment Intent / bKash session ক্রিয়েট
+            const payload = {
+                gateway,
+                amount: 500, // Boost price – আপনি চাইলে ডায়নামিক করুন (plan থেকে আনুন)
+                currency: gateway === 'bkash' ? 'BDT' : 'USD',
+                boost_product_id: product.id,
+                organization_subscription: subscriptionId  // বিলিং-এ লিঙ্ক করার জন্য
+            }
+
             const res = await AxiosInstance.post(
                 '/api/payments/create-intent/',
-                {
-                    gateway,
-                    amount: 500, // Boost price – আপনার লজিক অনুযায়ী ডায়নামিক করুন
-                    currency: gateway === 'bkash' ? 'BDT' : 'USD',
-                    boost_product_id: product.id  // backend-এ link করার জন্য
-                },
+                payload,
                 { useTenant: true }
             )
 
@@ -285,7 +300,7 @@ function PaymentModal({ product, onClose, onSuccess }) {
                 const { error: stripeErr } = await stripe.confirmCardPayment(client_secret, {
                     payment_method: {
                         card: elements.getElement(CardElement),
-                        billing_details: { name: product.product_name + " boost" }
+                        billing_details: { name: `Boost ${product.product_name}` }
                     }
                 })
 
@@ -294,16 +309,15 @@ function PaymentModal({ product, onClose, onSuccess }) {
                     return
                 }
 
-                // সাকসেস – backend-এ confirm করা যেতে পারে (webhook দিয়েও হয়)
                 onSuccess(product.id)
 
             } else if (gateway === 'bkash') {
                 const { bkash_url } = res.data
-                window.location.href = bkash_url  // bKash payment page-এ রিডাইরেক্ট
+                window.location.href = bkash_url  // bKash পেমেন্ট পেজে যাবে
             }
 
         } catch (err) {
-            setError(err?.response?.data?.error || "Payment initiation failed")
+            setError(err?.response?.data?.error || "Payment failed")
         } finally {
             setLoading(false)
         }
@@ -313,18 +327,18 @@ function PaymentModal({ product, onClose, onSuccess }) {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg p-6 w-full max-w-md">
                 <h2 className="text-xl font-semibold mb-4">
-                    Boost Product: {product.product_name}
+                    Boost: {product.product_name}
                 </h2>
 
                 <form onSubmit={handleBoostPayment}>
                     <div className="mb-4">
-                        <label className="block text-sm font-medium mb-1">Payment Method</label>
+                        <label className="block text-sm font-medium mb-1">Pay with</label>
                         <select
                             value={gateway}
                             onChange={e => setGateway(e.target.value)}
                             className="w-full border rounded px-3 py-2"
                         >
-                            <option value="stripe">Credit/Debit Card (Stripe)</option>
+                            <option value="stripe">Card (Stripe)</option>
                             <option value="bkash">bKash</option>
                         </select>
                     </div>
@@ -348,8 +362,7 @@ function PaymentModal({ product, onClose, onSuccess }) {
                         <button
                             type="submit"
                             disabled={loading}
-                            className={`px-5 py-2 rounded text-white font-medium
-                                ${loading ? "bg-indigo-400" : "bg-indigo-600 hover:bg-indigo-700"}`}
+                            className={`px-5 py-2 rounded text-white font-medium ${loading ? "bg-indigo-400" : "bg-indigo-600 hover:bg-indigo-700"}`}
                         >
                             {loading ? "Processing..." : `Boost for ${currency}500`}
                         </button>
