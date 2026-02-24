@@ -68,6 +68,15 @@ class AdminSubscriptionPlanDetailAPIView(APIView):
         plan = get_object_or_404(SubscriptionPlan, pk=pk)
         plan.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+    
+
+class AdminOrganizationSubscriptionListAPIView(APIView):
+    permission_classes = [IsAdminUserOnly]
+
+    def get(self, request):
+        qs = OrganizationSubscription.objects.select_related('organization', 'plan')
+        serializer = OrganizationSubscriptionSerializer(qs, many=True)
+        return Response(serializer.data)
 
 
 
