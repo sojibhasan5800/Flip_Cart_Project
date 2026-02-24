@@ -100,6 +100,18 @@ class AdminOrganizationSubscriptionDetailAPIView(APIView):
 
         serializer = OrganizationSubscriptionSerializer(sub)
         return Response(serializer.data)
+    
+
+class AdminProductBoostListAPIView(APIView):
+    permission_classes = [IsAdminUserOnly]
+
+    def get(self, request):
+        boosts = ProductBoostSubscription.objects.select_related(
+            'organization_subscription'
+        )
+        serializer = ProductBoostSubscriptionSerializer(boosts, many=True)
+        return Response(serializer.data)
+    
 
 
 
