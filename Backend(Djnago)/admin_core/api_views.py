@@ -16,6 +16,7 @@ from django_tenants.utils import get_tenant_model, schema_context
 
 from orders.models import Order
 from merchant_user.models import Organization, MerchantUser
+from accounts.models import Account
 from .models import Coupon
 from .serializers import CouponSerializer, OrganizationApprovalSerializer
 from .permissions import IsTenantAdmin, IsSuperAdmin
@@ -189,11 +190,13 @@ class AdminStoreApprovalAPIView(PublicSchemaAPIView):
     )
     def post(self, request):
         org_id = request.data.get("storeId")
+        user_id = request.user.id
 
         if not org_id:
             return Response({"error": "storeId is required"}, status=400)
 
         organization = get_object_or_404(Organization, id=org_id)
+        account = get_object_or_404(Account,id=user_id)
 
         if organization.is_verified:
             return Response({"error": "Store is already approved"}, status=400)
@@ -203,6 +206,8 @@ class AdminStoreApprovalAPIView(PublicSchemaAPIView):
         organization.is_trial = True
         organization.onboarded_at = timezone.now()
         organization.save()
+        account.is_tenant = True
+        account.save(update_fields=["is_tenant"])
         #  Redis increment
         self.org_counter.increment()
 
@@ -271,6 +276,11 @@ class AdminStoreApprovalAPIView(PublicSchemaAPIView):
                         DELETE FROM merchant_user_organization 
                         WHERE id = %s
                     """, [organization.id])
+                user_id = request.user.id
+                account = get_object_or_404(Account,id=user_id)
+                account.is_tenant = False
+                account.save(update_fields=["is_tenant"])
+                
                 #  Redis decrement
                 self.org_counter.decrement()
 

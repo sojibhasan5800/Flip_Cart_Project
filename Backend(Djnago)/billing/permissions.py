@@ -20,6 +20,7 @@ class AdminGetMerchantGetAdminPostOnly(BasePermission):
         user = request.user
 
         if not user or not user.is_authenticated:
+            print("User is not authenticated")
             return False
 
         # POST → ONLY ADMIN
@@ -31,6 +32,7 @@ class AdminGetMerchantGetAdminPostOnly(BasePermission):
             return (
                 user.is_superadmin is True
                 or user.is_staff is True
+                or user.is_tenant is True
             )
 
         return False
