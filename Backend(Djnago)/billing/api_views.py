@@ -133,6 +133,22 @@ class AdminInvoiceListAPIView(APIView):
 
 
 
+class AdminInvoiceDetailAPIView(APIView):
+    permission_classes = [IsAdminUserOnly]
+
+    def patch(self, request, pk):
+        invoice = get_object_or_404(Invoice, pk=pk)
+        status_value = request.data.get("status")
+
+        if status_value == "paid":
+            invoice.status = "paid"
+            invoice.paid_at = timezone.now()
+        elif status_value in ["pending", "failed"]:
+            invoice.status = status_value
+
+        invoice.save()
+        serializer = InvoiceSerializer(invoice)
+        return Response(serializer.data)
 
 
 
