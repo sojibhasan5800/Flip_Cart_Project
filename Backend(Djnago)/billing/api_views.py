@@ -111,6 +111,16 @@ class AdminProductBoostListAPIView(APIView):
         )
         serializer = ProductBoostSubscriptionSerializer(boosts, many=True)
         return Response(serializer.data)
+
+class AdminProductBoostDetailAPIView(APIView):
+    permission_classes = [IsAdminUserOnly]
+
+    def patch(self, request, pk):
+        boost = get_object_or_404(ProductBoostSubscription, pk=pk)
+        boost.is_active = False
+        boost.save()
+        serializer = ProductBoostSubscriptionSerializer(boost)
+        return Response(serializer.data)
     
 
 
