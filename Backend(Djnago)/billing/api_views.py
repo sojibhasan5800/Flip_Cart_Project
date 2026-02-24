@@ -79,6 +79,28 @@ class AdminOrganizationSubscriptionListAPIView(APIView):
         return Response(serializer.data)
 
 
+class AdminOrganizationSubscriptionDetailAPIView(APIView):
+    permission_classes = [IsAdminUserOnly]
+
+    def get(self, request, pk):
+        sub = get_object_or_404(OrganizationSubscription, pk=pk)
+        serializer = OrganizationSubscriptionSerializer(sub)
+        return Response(serializer.data)
+
+    def patch(self, request, pk):
+        """
+        Admin can change status: active / cancelled / expired
+        """
+        sub = get_object_or_404(OrganizationSubscription, pk=pk)
+        status_value = request.data.get("status")
+
+        if status_value:
+            sub.status = status_value
+            sub.save()
+
+        serializer = OrganizationSubscriptionSerializer(sub)
+        return Response(serializer.data)
+
 
 
 
