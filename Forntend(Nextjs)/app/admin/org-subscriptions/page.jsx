@@ -11,7 +11,7 @@ const OrgSubscriptionsPage = () => {
 
   const fetchSubscriptions = async () => {
     try {
-      const res = await axios.get('/admin/org-subscriptions/')
+      const res = await axios.get('api/billing/org-subscriptions/')
       setSubscriptions(res.data)
     } catch (err) {
       console.error(err)
@@ -27,7 +27,7 @@ const OrgSubscriptionsPage = () => {
   const handleStatusChange = async (id, status) => {
     if (!confirm(`Are you sure to set status as ${status}?`)) return
     try {
-      const res = await axios.patch(`/admin/org-subscriptions/${id}/`, { status })
+      const res = await axios.patch(`api/billing/org-subscriptions/${id}/`, { status })
       setSubscriptions(subscriptions.map(sub => sub.id === id ? res.data : sub))
     } catch (err) {
       console.error(err)

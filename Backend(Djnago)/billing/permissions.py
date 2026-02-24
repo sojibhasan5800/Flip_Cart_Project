@@ -8,3 +8,29 @@ class IsAdminUserOnly(BasePermission):
             and request.user.is_authenticated
             and request.user.is_staff
         )
+
+
+class AdminGetMerchantGetAdminPostOnly(BasePermission):
+    """
+    GET  -> IsAdminUserOnly OR IsMerchantUserOnly
+    POST -> IsAdminUserOnly
+    """
+
+    def has_permission(self, request, view):
+        user = request.user
+
+        if not user or not user.is_authenticated:
+            return False
+
+        # POST → ONLY ADMIN
+        if request.method == "POST":
+            return user.is_superadmin is True
+
+        # GET → ADMIN OR MERCHANT
+        if request.method == "GET":
+            return (
+                user.is_superadmin is True
+                or user.is_staff is True
+            )
+
+        return False

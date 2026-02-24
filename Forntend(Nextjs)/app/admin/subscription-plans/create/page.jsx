@@ -32,7 +32,7 @@ const SubscriptionPlanForm = () => {
   const handleSubmit = async e => {
     e.preventDefault()
     try {
-      await axios.post('/admin/plans/', form)
+      await axios.post('api/billing/plans/', form)
       router.push('/admin/subscription-plans')
     } catch (err) {
       console.error(err)

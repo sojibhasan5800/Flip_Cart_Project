@@ -12,7 +12,7 @@ const SubscriptionPlansPage = () => {
 
   const fetchPlans = async () => {
     try {
-      const res = await axios.get('/admin/plans/')
+      const res = await axios.get('api/billing/plans/')
       setPlans(res.data)
     } catch (err) {
       console.error(err)
@@ -28,7 +28,7 @@ const SubscriptionPlansPage = () => {
   const handleDelete = async (id) => {
     if (!confirm('Are you sure to delete this plan?')) return
     try {
-      await axios.delete(`/admin/plans/${id}/`)
+      await axios.delete(`api/billing/plans/${id}/`)
       setPlans(plans.filter(plan => plan.id !== id))
     } catch (err) {
       console.error(err)

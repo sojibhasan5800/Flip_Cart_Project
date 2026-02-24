@@ -14,7 +14,7 @@ from django.conf import settings
 import stripe
 from django.utils import timezone
 from store.models import Product
-from .permissions import IsAdminUserOnly
+from .permissions import AdminGetMerchantGetAdminPostOnly,IsAdminUserOnly
 from .models import (
     SubscriptionPlan,
     OrganizationSubscription,
@@ -33,11 +33,12 @@ stripe.api_key = settings.STRIPE_SECRET_KEY
 
 
 class AdminSubscriptionPlanListCreateAPIView(APIView):
-    permission_classes = [IsAdminUserOnly]
+    permission_classes = [AdminGetMerchantGetAdminPostOnly]
 
     def get(self, request):
         plans = SubscriptionPlan.objects.all()
         serializer = SubscriptionPlanSerializer(plans, many=True)
+        print(serializer.data)
         return Response(serializer.data)
 
     def post(self, request):
