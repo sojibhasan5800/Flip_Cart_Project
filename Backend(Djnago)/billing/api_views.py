@@ -228,3 +228,68 @@ class ProductBoostSubscriptionListCreateAPIView(APIView):
             return Response({"error": str(e.user_message or str(e))}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             return Response({"error": "Failed to create boost"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
+# ... existing imports ...
+
+# from payments.models import PaymentTransaction
+# from payments.tasks import verify_payment
+
+# ... existing views ...
+
+# # New: Plan Purchase View (integrate with payments app)
+# class SubscriptionPlanPurchaseAPIView(APIView):
+#     permission_classes = [IsAuthenticated]
+
+#     def post(self, request):
+#         org = request.user.merchant_profile.first().organization
+#         plan_slug = request.data.get('plan_slug')
+#         gateway = request.data.get('gateway')
+#         stripe_token = request.data.get('stripe_token') if gateway == 'stripe' else None
+
+#         plan = get_object_or_404(SubscriptionPlan, slug=plan_slug)
+
+#         # Create payment transaction via payments app
+#         trans = PaymentTransaction.objects.create(
+#             organization=org,
+#             amount=plan.price,
+#             currency=plan.currency,
+#             gateway=gateway,
+#             metadata={'plan_id': plan.id, 'type': 'subscription_purchase'}
+#         )
+
+#         try:
+#             if gateway == 'stripe':
+#                 intent = stripe.PaymentIntent.create(
+#                     amount=int(plan.price * 100),
+#                     currency=plan.currency.lower(),
+#                     description=f"Purchase {plan.name} Plan",
+#                     customer=org.stripe_customer_id,
+#                 )
+#                 trans.gateway_transaction_id = intent.id
+#                 trans.save()
+#                 return Response({"client_secret": intent.client_secret})  # Frontend confirm
+
+#             elif gateway == 'bkash':
+#                 # bKash session create (from payments/views.py logic, reuse or call)
+#                 # ... similar to payments CreatePaymentIntent ...
+#                 # Return bkash_url
+
+#         except Exception as e:
+#             trans.status = 'failed'
+#             trans.save()
+#             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+# # Update webhook in payments to handle plan purchase
+# # In payments/views.py PaymentWebhook: add logic for 'type': 'subscription_purchase'
+# if trans.metadata.get('type') == 'subscription_purchase':
+#     plan = SubscriptionPlan.objects.get(id=trans.metadata['plan_id'])
+#     sub = OrganizationSubscription.objects.create(
+#         organization=trans.organization,
+#         plan=plan,
+#         stripe_subscription_id=trans.gateway_transaction_id if trans.gateway == 'stripe' else '',
+#     )
+#     # Invoice create, etc.
+
+# ... rest existing ...

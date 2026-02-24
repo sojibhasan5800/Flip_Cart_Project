@@ -54,7 +54,7 @@ TENANT_APPS = [
     'admin_core',
     # 'orders_management',
     # 'transactions',
-    # 'payments',        # Order payment gateway
+    'payments',        # Order payment gateway
     # 'store_notifications',   # Store notifications
     # 'analytics',
 ]
@@ -279,41 +279,4 @@ BKASH_SUCCESS_CALLBACK = 'https://your-domain.com/api/payments/bkash/success/'  
 BKASH_FAIL_CALLBACK = 'https://your-domain.com/api/payments/bkash/fail/'
 BKASH_CANCEL_CALLBACK = 'https://your-domain.com/api/payments/bkash/cancel/'
 
-# Stripe Plans
-STRIPE_PLANS = {
-    'basic': {
-        'name': 'Basic Plan',
-        'price': 1999,
-        'price_id': 'price_1PQAb2SAy6gqZ2y1X8X8X8X8',
-        'features': ['Up to 100 products', 'Basic analytics', 'Email support', 'Standard delivery options']
-    },
-    'premium': {
-        'name': 'Premium Plan',
-        'price': 4999,
-        'price_id': 'price_1PQAb2SAy6gqZ2y1X8X8X8X9',
-        'features': ['Unlimited products', 'Advanced analytics', 'Priority support', 'Custom delivery options', 'API access']
-    },
-    'enterprise': {
-        'name': 'Enterprise Plan',
-        'price': 9999,
-        'price_id': 'price_1PQAb2SAy6gqZ2y1X8X8X8X0',
-        'features': ['Unlimited products', 'Real-time analytics', '24/7 phone support', 'Custom integrations', 'Dedicated account manager']
-    }
-}
-
-# Prevent global tasks from copying to all tenants
-# TENANT_CELERY_BEAT_COPY_GLOBAL_TASKS = False
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+#

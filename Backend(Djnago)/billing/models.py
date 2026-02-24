@@ -3,7 +3,7 @@ from django.db import models
 from django.utils import timezone
 from django.conf import settings
 from merchant_user.models import Organization
-from store.models import Product
+# from store.models import Product
 import uuid
 from django.core.validators import MinValueValidator
 
@@ -129,7 +129,7 @@ class ProductBoostSubscription(models.Model):
         (3, 'VIP'),
     ]
     
-    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='boosts')
+    # product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='boosts')
     organization_subscription = models.ForeignKey(OrganizationSubscription, on_delete=models.CASCADE, related_name='product_boosts')
     boost_start_date = models.DateTimeField(default=timezone.now)
     boost_end_date = models.DateTimeField()
@@ -155,6 +155,7 @@ class ProductBoostSubscription(models.Model):
         # Update org sub count
         self.organization_subscription.boosted_products_count = self.organization_subscription.product_boosts.filter(is_active=True).count()
         self.organization_subscription.save()
+
 
 class Invoice(models.Model):
     """

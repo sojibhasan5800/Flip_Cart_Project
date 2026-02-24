@@ -145,7 +145,7 @@ export default function StoreManageProducts() {
             ) : (
                 <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
                     <p className="text-yellow-800">
-                        No active boosting plan. <a href="/dashboard/billing/plans" className="underline font-medium">Purchase a plan</a> to boost products.
+                        No active boosting plan. <a href="/billing/plans" className="underline font-medium">Purchase a plan</a> to boost products.
                     </p>
                 </div>
             )}
