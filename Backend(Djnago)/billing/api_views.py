@@ -123,6 +123,13 @@ class AdminProductBoostDetailAPIView(APIView):
         return Response(serializer.data)
     
 
+class AdminInvoiceListAPIView(APIView):
+    permission_classes = [IsAdminUserOnly]
+
+    def get(self, request):
+        invoices = Invoice.objects.select_related('organization')
+        serializer = InvoiceSerializer(invoices, many=True)
+        return Response(serializer.data)
 
 
 
