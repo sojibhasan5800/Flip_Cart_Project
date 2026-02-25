@@ -31,8 +31,8 @@ class AdminGetMerchantGetAdminPostOnly(BasePermission):
         if request.method == "GET":
             return (
                 user.is_superadmin is True
-                or user.is_staff is True
-                or user.is_tenant is True
+                or user.is_tenant_owner is True
+                or user.is_tenant_staff is True
             )
 
         return False

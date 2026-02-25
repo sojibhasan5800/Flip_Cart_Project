@@ -206,8 +206,8 @@ class AdminStoreApprovalAPIView(PublicSchemaAPIView):
         organization.is_trial = True
         organization.onboarded_at = timezone.now()
         organization.save()
-        account.is_tenant = True
-        account.save(update_fields=["is_tenant"])
+        account.is_tenant_owner = True
+        account.save(update_fields=["is_tenant_owner"])
         #  Redis increment
         self.org_counter.increment()
 
@@ -278,8 +278,8 @@ class AdminStoreApprovalAPIView(PublicSchemaAPIView):
                     """, [organization.id])
                 user_id = request.user.id
                 account = get_object_or_404(Account,id=user_id)
-                account.is_tenant = False
-                account.save(update_fields=["is_tenant"])
+                account.is_tenant_owner = False
+                account.save(update_fields=["is_tenant_owner"])
                 
                 #  Redis decrement
                 self.org_counter.decrement()

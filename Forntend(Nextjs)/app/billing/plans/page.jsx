@@ -4,12 +4,13 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'react-hot-toast'
 import AxiosInstance from '@/api/AxiosInstance'
-import { loadStripe } from '@stripe/stripe-js'
-import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js'
+// import { loadStripe } from '@stripe/stripe-js'
+// import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js'
 import Loading from '@/components/Loading'
+import PaymentMethodModal from '@/components/billing/PaymentMethodModal'
 
 // Stripe
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
+// const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
 
 export default function BillingPlansPage() {
     const [loading, setLoading] = useState(true)
@@ -82,121 +83,14 @@ export default function BillingPlansPage() {
                 ))}
             </div>
 
+                {/* ✅ NEW PAYMENT METHOD SELECTION MODAL */}
             {showPaymentModal && selectedPlan && (
-                <PaymentModal 
-                    plan={selectedPlan} 
-                    onClose={() => setShowPaymentModal(false)} 
-                    onSuccess={handlePaymentSuccess} 
+                <PaymentMethodModal
+                    plan={selectedPlan}
+                    onClose={() => setShowPaymentModal(false)}
                 />
             )}
         </div>
     )
 }
 
-// Payment Modal (A to Z payment processing)
-function PaymentModal({ plan, onClose, onSuccess }) {
-    const [gateway, setGateway] = useState('stripe')
-    const [loading, setLoading] = useState(false)
-    const [error, setError] = useState(null)
-    const stripe = useStripe()
-    const elements = useElements()
-
-    const handlePlanPayment = async (e) => {
-        e.preventDefault()
-        setLoading(true)
-        setError(null)
-
-        try {
-            const payload = {
-                gateway,
-                amount: plan.price,
-                currency: gateway === 'bkash' ? 'BDT' : plan.currency,
-                plan_slug: plan.slug  // Backend to link plan
-            }
-
-            const res = await AxiosInstance.post(
-                '/api/billing/plans/purchase/',
-                payload,
-                { useTenant: true }
-            )
-
-            if (gateway === 'stripe') {
-                const { client_secret } = res.data
-                const { error: stripeErr } = await stripe.confirmCardPayment(client_secret, {
-                    payment_method: {
-                        card: elements.getElement(CardElement),
-                        billing_details: { name: `Purchase ${plan.name}` }
-                    }
-                })
-
-                if (stripeErr) {
-                    setError(stripeErr.message)
-                    return
-                }
-
-                onSuccess(plan.id)
-
-            } else if (gateway === 'bkash') {
-                const { bkash_url } = res.data
-                window.location.href = bkash_url
-            }
-
-        } catch (err) {
-            setError(err?.response?.data?.error || "Payment failed. Try again.")
-        } finally {
-            setLoading(false)
-        }
-    }
-
-    return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-xl p-8 w-full max-w-lg shadow-2xl">
-                <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Purchase {plan.name} Plan</h2>
-
-                <form onSubmit={handlePlanPayment}>
-                    <div className="mb-6">
-                        <label className="block text-sm font-medium mb-2 text-gray-700">Payment Method</label>
-                        <select
-                            value={gateway}
-                            onChange={e => setGateway(e.target.value)}
-                            className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:border-indigo-500"
-                        >
-                            <option value="stripe">Credit/Debit Card (Stripe)</option>
-                            <option value="bkash">bKash Mobile Wallet</option>
-                        </select>
-                    </div>
-
-                    {gateway === 'stripe' && (
-                        <div className="mb-6 p-4 border border-gray-300 rounded-lg bg-gray-50">
-                            <label className="block text-sm font-medium mb-2 text-gray-700">Card Details</label>
-                            <CardElement options={{ style: { base: { fontSize: '16px', color: '#424770', '::placeholder': { color: '#aab7c4' } } } }} />
-                        </div>
-                    )}
-
-                    <div className="text-center mb-6">
-                        <p className="text-xl font-semibold text-indigo-600">${plan.price} / {plan.billing_cycle}</p>
-                    </div>
-
-                    {error && <p className="text-red-500 mb-4 text-center text-sm">{error}</p>}
-
-                    <div className="flex justify-between gap-4">
-                        <button
-                            type="button"
-                            onClick={onClose}
-                            className="flex-1 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 transition font-medium"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="submit"
-                            disabled={loading}
-                            className={`flex-1 py-3 rounded-lg text-white font-medium transition ${loading ? 'bg-indigo-400' : 'bg-indigo-600 hover:bg-indigo-700'}`}
-                        >
-                            {loading ? 'Processing...' : 'Pay Now'}
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    )
-}
