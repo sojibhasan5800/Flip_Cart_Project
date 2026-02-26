@@ -22,6 +22,7 @@ class PurchasePlanView(APIView):
     def post(self, request):
         gateway = request.data.get("gateway")
         plan_slug = request.data.get("plan_slug")
+        print("request_id", request.user.id)
 
         plan = SubscriptionPlan.objects.get(slug=plan_slug)
         
@@ -39,8 +40,8 @@ class PurchasePlanView(APIView):
                     },
                     "quantity": 1,
                 }],
-                success_url=f"{settings.FRONTEND_URL}/billing/success?session_id={{CHECKOUT_SESSION_ID}}",
-                cancel_url=f"{settings.FRONTEND_URL}/billing/cancel",
+                success_url=f"{settings.FRONTEND_URL}/billing/plans/stripe_success?session_id={{CHECKOUT_SESSION_ID}}",
+                cancel_url=f"{settings.FRONTEND_URL}/billing/plans/stripe_cancel",
                 metadata={
                     "plan_id": plan.id,
                     "user_id": request.user.id,

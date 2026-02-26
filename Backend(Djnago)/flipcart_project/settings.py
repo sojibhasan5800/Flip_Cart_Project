@@ -282,6 +282,9 @@ BKASH_CANCEL_CALLBACK = 'https://your-domain.com/api/payments/bkash/cancel/'
 # Stripe config (add to your settings)
 STRIPE_SECRET_KEY = config('STRIPE_SECRET_KEY')
 STRIPE_PUBLISHABLE_KEY = config('STRIPE_PUBLISHABLE_KEY')
+STRIPE_WEBHOOK_SECRET_TEST = config("STRIPE_WEBHOOK_SECRET_TEST")
+STRIPE_WEBHOOK_SECRET_LIVE = config("STRIPE_WEBHOOK_SECRET_LIVE")
+STRIPE_ENV = config("STRIPE_ENV", "test")
 
 #SSLCommerz config
 SSLCZ_STORE_ID = config('SSLCZ_STORE_ID')
