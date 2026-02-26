@@ -25,7 +25,7 @@ class OrganizationCreateSerializer(serializers.ModelSerializer):
         """
         Create organization in pending/unverified state
         """
-        print("data", validated_data)
+        user = self.context["user"]
         organization = Organization.objects.create(
             **validated_data,
             is_verified=False,
@@ -33,6 +33,8 @@ class OrganizationCreateSerializer(serializers.ModelSerializer):
             subscription_status="inactive",
             is_trial=True,
         )
+        user.organization = organization
+        user.save(update_fields=["organization"])
         return organization
 
 

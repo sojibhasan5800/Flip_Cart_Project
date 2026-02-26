@@ -8,10 +8,56 @@ import stripe
 import requests  # For bKash API
 from django.utils import timezone
 from .models import PaymentTransaction
-from billing.models import OrganizationSubscription
+from billing.models import OrganizationSubscription,SubscriptionPlan
 from .serializers import PaymentTransactionSerializer
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
+
+
+
+
+class PurchasePlanView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        gateway = request.data.get("gateway")
+        plan_slug = request.data.get("plan_slug")
+
+        plan = SubscriptionPlan.objects.get(slug=plan_slug)
+        
+        if gateway == "stripe":
+            session = stripe.checkout.Session.create(
+                mode="payment",
+                payment_method_types=["card"],
+                line_items=[{
+                    "price_data": {
+                        "currency": plan.currency.lower(),
+                        "unit_amount": int(plan.price * 100),
+                        "product_data": {
+                            "name": plan.name,
+                        },
+                    },
+                    "quantity": 1,
+                }],
+                success_url=f"{settings.FRONTEND_URL}/billing/success?session_id={{CHECKOUT_SESSION_ID}}",
+                cancel_url=f"{settings.FRONTEND_URL}/billing/cancel",
+                metadata={
+                    "plan_id": plan.id,
+                    "user_id": request.user.id,
+                    "org_id": request.user.organization.id,
+                }
+            )
+
+            return Response({
+                "redirect_url": session.url
+            })
+
+        if gateway == "sslcommerz":
+            return self.sslcommerz_payment(plan, request)
+
+        return Response({"error": "Invalid gateway"}, status=400)
+
+
 
 class CreatePaymentIntent(APIView):
     permission_classes = [IsAuthenticated]

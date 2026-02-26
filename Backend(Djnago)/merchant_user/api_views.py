@@ -101,7 +101,7 @@ class MerchantStoreCreateAPIView(APIView):
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-        serializer = OrganizationCreateSerializer(data=request.data)
+        serializer = OrganizationCreateSerializer(data=request.data, context={"user": user})
         serializer.is_valid(raise_exception=True)
 
         with schema_context("public"), transaction.atomic():

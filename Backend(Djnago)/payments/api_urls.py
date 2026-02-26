@@ -1,8 +1,10 @@
+from celery import app
 from django.urls import path
-from .views import CreatePaymentIntent, PaymentWebhook, RefundPayment
-
+from .api_views import CreatePaymentIntent, PaymentWebhook, RefundPayment, PurchasePlanView
+app_name = 'payments_api'
 urlpatterns = [
     path('create-intent/', CreatePaymentIntent.as_view(), name='create-payment-intent'),
     path('webhook/', PaymentWebhook.as_view(), name='payment-webhook'),
     path('refund/<int:trans_id>/', RefundPayment.as_view(), name='refund-payment'),
+    path('plans/purchase-plan/', PurchasePlanView.as_view(), name='purchase-plan'),
 ]

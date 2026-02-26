@@ -279,4 +279,11 @@ BKASH_SUCCESS_CALLBACK = 'https://your-domain.com/api/payments/bkash/success/'  
 BKASH_FAIL_CALLBACK = 'https://your-domain.com/api/payments/bkash/fail/'
 BKASH_CANCEL_CALLBACK = 'https://your-domain.com/api/payments/bkash/cancel/'
 
-#
+# Stripe config (add to your settings)
+STRIPE_SECRET_KEY = config('STRIPE_SECRET_KEY')
+STRIPE_PUBLISHABLE_KEY = config('STRIPE_PUBLISHABLE_KEY')
+
+#SSLCommerz config
+SSLCZ_STORE_ID = config('SSLCZ_STORE_ID')
+SSLCZ_STORE_PASS = config('SSLCZ_STORE_PASS')
+SSLCZ_IS_SANDBOX = config('SSLCZ_IS_SANDBOX', default=True, cast=bool)  
