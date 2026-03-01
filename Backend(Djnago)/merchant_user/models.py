@@ -61,12 +61,12 @@ class Organization(TenantMixin):
         ('inactive', 'Inactive'),
         ('suspended', 'Suspended'),
         ('cancelled', 'Cancelled'),
-    ], default='active')
+    ], default='inactive')
     
     stripe_customer_id = models.CharField(max_length=100, blank=True)
     stripe_subscription_id = models.CharField(max_length=100, blank=True)
-    current_period_start = models.DateTimeField(null=True, blank=True)
-    current_period_end = models.DateTimeField(null=True, blank=True)
+    subscription_current_period_start = models.DateTimeField(null=True, blank=True)
+    subscription_current_period_end = models.DateTimeField(null=True, blank=True)
     
     # Trial Information
     is_trial = models.BooleanField(default=True)

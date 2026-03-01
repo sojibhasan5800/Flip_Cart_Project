@@ -43,6 +43,7 @@ export default function Dashboard() {
         try{
             const {data} = await AxiosInstance.get("api/merchant_user/seller-store-dashboard/",{ useTenant: true })
             setDashboardData(data.dashboardData)
+            console.log("Fetched dashboard data:", data.dashboardData)
             
         }
         catch(error){

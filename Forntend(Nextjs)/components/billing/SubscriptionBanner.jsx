@@ -16,11 +16,13 @@ export default function SubscriptionBanner({
   const trialEnd = trialEndsAt ? new Date(trialEndsAt) : null
   const daysLeft = trialEnd ? differenceInDays(trialEnd, today) : 0
 
-  // 🔴 Trial expired
+  //  Trial expired
   if (!isTrial || daysLeft < 0) {
     return (
+      
       <div className="mb-6 rounded-xl border border-red-300 bg-red-50 p-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
+          <h1>{trialEndsAt}</h1>
           <h3 className="text-red-700 font-semibold text-lg">
             Free trial expired
           </h3>

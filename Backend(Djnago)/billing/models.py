@@ -72,11 +72,12 @@ class OrganizationSubscription(models.Model):
     
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name='subscriptions')
     plan = models.ForeignKey(SubscriptionPlan, on_delete=models.PROTECT, related_name='org_subscriptions')
-    start_date = models.DateTimeField(default=timezone.now)
-    end_date = models.DateTimeField(null=True, blank=True)
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active')
+    start_date = models.DateTimeField(default=timezone.now,db_index=True)
+    end_date = models.DateTimeField(null=True, blank=True,db_index=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active',db_index=True)
     stripe_subscription_id = models.CharField(max_length=100, blank=True, unique=True)
-    stripe_customer_id = models.CharField(max_length=100, blank=True)  # Copied from org for convenience
+    stripe_customer_id = models.CharField(max_length=100, blank=True) 
+    is_expiring_soon = models.BooleanField(default=False, db_index=True)
     current_usage = models.JSONField(default=dict, help_text="Track usage like {'products': 50, 'boosted': 2}")  # Extensible tracking
     boosted_products_count = models.PositiveIntegerField(default=0)  # Specific for boosting
     auto_renew = models.BooleanField(default=True)
@@ -86,14 +87,36 @@ class OrganizationSubscription(models.Model):
     class Meta:
         unique_together = ['organization', 'plan']
         ordering = ['-start_date']
+        indexes = [
+            models.Index(fields=['status', 'end_date']),
+            models.Index(fields=['is_expiring_soon', 'end_date']),
+        ]
 
     def __str__(self):
         return f"{self.organization.business_name} - {self.plan.name} ({self.status})"
 
     def save(self, *args, **kwargs):
-        if not self.end_date:
-            self.end_date = self.start_date + timezone.timedelta(days=self.plan.get_duration())
-        super().save(*args, **kwargs)
+            """
+            Set is_expiring_soon flag dynamically and schedule the 5-minutes-before-expire task
+            """
+            from billing.tasks import schedule_expire_sms_task, remove_existing_task
+
+            now = timezone.now()
+            if not self.end_date:
+                # set default end_date based on plan duration
+                self.end_date = self.start_date + timezone.timedelta(days=self.plan.get_duration())
+
+            # Check if subscription is active and has end_date
+            if self.status == 'active' and self.end_date > now:
+                self.is_expiring_soon = self.end_date <= (now + timezone.timedelta(minutes=5))
+
+                # Remove previous scheduled task if exists
+                remove_existing_task(subscription_id=self.id)
+
+                # Schedule new 5-minutes-before task
+                schedule_expire_sms_task(subscription=self)
+            
+            super().save(*args, **kwargs)
 
     def is_active(self):
         return self.status == 'active' and (self.end_date is None or self.end_date > timezone.now())

@@ -283,6 +283,8 @@ class SellerStoreDashboardAPIView(APIView):
         trial_ends_at = organization.trial_ends_at
         is_trail = organization.is_trial
         has_active_subscription = organization.has_active_subscription
+        subscription_current_period_start = organization.subscription_current_period_start
+        subscription_current_period_end = organization.subscription_current_period_end
 
 
         # 2. Switch to tenant schema
@@ -328,8 +330,10 @@ class SellerStoreDashboardAPIView(APIView):
                     "totalOrders": total_orders,
                     "ratings": ReviewSerializer(recent_reviews, many=True).data,
                     "trial_ends_at": trial_ends_at,
-                    "is_trail": is_trail,
+                    "is_trial": is_trail,
                     "has_active_subscription": has_active_subscription,
+                    "subscription_current_period_start": subscription_current_period_start,
+                    "subscription_current_period_end": subscription_current_period_end,
                 }
             }
 
