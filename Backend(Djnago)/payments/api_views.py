@@ -1,3 +1,5 @@
+import logging
+
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -11,8 +13,8 @@ from .models import PaymentTransaction
 from billing.models import OrganizationSubscription,SubscriptionPlan
 from .serializers import PaymentTransactionSerializer
 
+logger = logging.getLogger(__name__)
 stripe.api_key = settings.STRIPE_SECRET_KEY
-
 
 
 
@@ -20,43 +22,90 @@ class PurchasePlanView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        gateway = request.data.get("gateway")
-        plan_slug = request.data.get("plan_slug")
-        print("request_id", request.user.id)
+        try:
+            gateway = request.data.get("gateway")
+            plan_slug = request.data.get("plan_slug")
+            plan_type = request.data.get("plan_type")
 
-        plan = SubscriptionPlan.objects.get(slug=plan_slug)
-        
-        if gateway == "stripe":
-            session = stripe.checkout.Session.create(
-                mode="payment",
-                payment_method_types=["card"],
-                line_items=[{
-                    "price_data": {
-                        "currency": plan.currency.lower(),
-                        "unit_amount": int(plan.price * 100),
-                        "product_data": {
-                            "name": plan.name,
-                        },
-                    },
-                    "quantity": 1,
-                }],
-                success_url=f"{settings.FRONTEND_URL}/billing/plans/stripe_success?session_id={{CHECKOUT_SESSION_ID}}",
-                cancel_url=f"{settings.FRONTEND_URL}/billing/plans/stripe_cancel",
-                metadata={
-                    "plan_id": plan.id,
-                    "user_id": request.user.id,
-                    "org_id": request.user.organization.id,
-                }
+            # 🔎 Basic validation
+            if not gateway or not plan_slug or not plan_type:
+                return Response(
+                    {"error": "gateway, plan_slug and plan_type are required"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # if plan_type not in ["organization", "boosting"]:
+            #     return Response(
+            #         {"error": "Invalid plan_type"},
+            #         status=status.HTTP_400_BAD_REQUEST
+            #     )
+
+            # 🔎 Plan existence check
+            plan = get_object_or_404(SubscriptionPlan, slug=plan_slug)
+
+            # 🔎 Organization check
+            if not hasattr(request.user, "organization"):
+                return Response(
+                    {"error": "User does not belong to any organization"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            if gateway == "stripe":
+                return self._handle_stripe_payment(request, plan, plan_type)
+
+            if gateway == "sslcommerz":
+                return self.sslcommerz_payment(plan, request)
+
+            return Response(
+                {"error": "Invalid gateway"},
+                status=status.HTTP_400_BAD_REQUEST
             )
 
-            return Response({
-                "redirect_url": session.url
-            })
+        except stripe.error.StripeError as e:
+            logger.error(f"Stripe error: {str(e)}")
+            return Response(
+                {"error": "Payment provider error. Please try again."},
+                status=status.HTTP_502_BAD_GATEWAY
+            )
 
-        if gateway == "sslcommerz":
-            return self.sslcommerz_payment(plan, request)
+        except Exception as e:
+            logger.exception("Unexpected error in PurchasePlanView")
+            return Response(
+                {"error": "Something went wrong. Please try again later."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
-        return Response({"error": "Invalid gateway"}, status=400)
+    # 🔥 Stripe payment separated for clean architecture
+    def _handle_stripe_payment(self, request, plan, plan_type):
+        session = stripe.checkout.Session.create(
+            mode="payment",
+            payment_method_types=["card"],
+            line_items=[{
+                "price_data": {
+                    "currency": plan.currency.lower(),
+                    "unit_amount": int(plan.price * 100),
+                    "product_data": {
+                        "name": plan.name,
+                    },
+                },
+                "quantity": 1,
+            }],
+            success_url=f"{settings.FRONTEND_URL}/billing/plans/stripe_success"
+                        f"?session_id={{CHECKOUT_SESSION_ID}}"
+                        f"&plan_type={plan_type}",
+            cancel_url=f"{settings.FRONTEND_URL}/billing/plans/stripe_cancel",
+            metadata={
+                "plan_id": plan.id,
+                "plan_type": plan_type,
+                "user_id": request.user.id,
+                "org_id": request.user.organization.id,
+            }
+        )
+
+        return Response(
+            {"redirect_url": session.url},
+            status=status.HTTP_200_OK
+        )
 
 
 

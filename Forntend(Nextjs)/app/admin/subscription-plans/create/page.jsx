@@ -66,6 +66,7 @@ const SubscriptionPlanForm = () => {
               <option value="general">General</option>
               <option value="boosting">Boosting</option>
               <option value="custom">Custom</option>
+              <option value="organization">Organization</option>
             </select>
           </div>
         </div>

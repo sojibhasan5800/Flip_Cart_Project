@@ -12,6 +12,7 @@ export default function StripeSuccessPage() {
     const [loading, setLoading] = useState(true)
 
     const session_id = searchParams.get('session_id')
+    const plan_type = searchParams.get('plan_type')
 
     useEffect(() => {
         if (!session_id) return
@@ -24,9 +25,15 @@ export default function StripeSuccessPage() {
                 //     { useTenant: true }
                 // )
                 toast.success('Payment successful! Your plan is activated.')
-                setTimeout(() => {
-                    router.push('/store/manage-product')
-                }, 2000)
+                    setTimeout(() => {
+                    if (plan_type === 'organization') {
+                        router.push('/store')
+                    } else if (plan_type === 'boost') {
+                        router.push('/store/manage-product')
+                    } else {
+                        router.push('/')
+                    }
+                    }, 2000)
             } catch (err) {
                 toast.error('Payment verified failed. Contact support.')
                 setLoading(false)
@@ -43,7 +50,7 @@ export default function StripeSuccessPage() {
             <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md text-center">
                 <h1 className="text-3xl font-bold text-green-600 mb-4">🎉 Payment Successful!</h1>
                 <p className="text-gray-700 mb-6">Your subscription has been activated.</p>
-                <p className="text-gray-500 text-sm mb-6">Redirecting to Manage Products...</p>
+                <p className="text-gray-500 text-sm mb-6">Redirecting to {plan_type === 'organization' ? 'Dashboard' : plan_type === 'boost' ? 'Manage Products' : 'Home'}...</p>
             </div>
         </div>
     )

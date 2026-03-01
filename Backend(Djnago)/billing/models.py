@@ -19,6 +19,7 @@ class SubscriptionPlan(models.Model):
     ]
     PLAN_TYPES = [
         ('general', 'General Store Plan'),
+        ('organization', 'Organization-wide Plan'),  # For future use if needed
         ('boosting', 'Product Boosting Add-on'),  # For product boosting
         ('custom', 'Custom Plan'),  # For future extensions
     ]
@@ -143,18 +144,19 @@ class ProductBoostSubscription(models.Model):
         ordering = ['-priority_level', '-boost_start_date']
 
     def __str__(self):
-        return f"Boost {self.get_priority_level_display()} for {self.product.product_name}"
+        return f"Boost {self.get_priority_level_display()} for {self.organization_subscription.organization.business_name}"
+        # return f"Boost {self.get_priority_level_display()} for {self.product.product_name}"
 
     def save(self, *args, **kwargs):
         if not self.boost_end_date:
             self.boost_end_date = self.boost_start_date + timezone.timedelta(days=30)  # Default, can override based on plan
         super().save(*args, **kwargs)
         # Sync to Redis for fast feed
-        from .tasks import sync_boosted_product_to_redis
-        sync_boosted_product_to_redis.delay(self.product.id, self.product.organization.schema_name)
-        # Update org sub count
-        self.organization_subscription.boosted_products_count = self.organization_subscription.product_boosts.filter(is_active=True).count()
-        self.organization_subscription.save()
+        # from .tasks import sync_boosted_product_to_redis
+        # sync_boosted_product_to_redis.delay(self.product.id, self.product.organization.schema_name)
+        # # Update org sub count
+        # self.organization_subscription.boosted_products_count = self.organization_subscription.product_boosts.filter(is_active=True).count()
+        # self.organization_subscription.save()
 
 
 class Invoice(models.Model):

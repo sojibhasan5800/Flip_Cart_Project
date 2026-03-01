@@ -7,6 +7,8 @@ from rest_framework.permissions import AllowAny
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 
+from merchant_user.models import Organization
+
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
 
@@ -34,7 +36,11 @@ class StripeWebhookView(APIView):
 
         # ✅ Handle Stripe events
         if event["type"] == "checkout.session.completed":
-            self.handle_checkout_completed(event["data"]["object"])
+            try:
+                self.handle_checkout_completed(event["data"]["object"])
+            except Exception as e:
+                print("Webhook processing failed:", str(e))
+                return HttpResponse("Processing error", status=500)
 
         return HttpResponse(status=200)
 
@@ -48,19 +54,27 @@ class StripeWebhookView(APIView):
 
     def handle_checkout_completed(self, session):
         metadata = session.get("metadata", {})
-        plan_id = metadata.get("plan_id")
-        user_id = metadata.get("user_id")
-        tenant_id = metadata.get("tenant_id")
+        org_id = metadata.get("org_id")
+        org = Organization.objects.get(id=org_id)
+        org_schema = org.schema_name 
 
-        if not plan_id or not user_id:
-            return
 
-        # ✅ Production safe activation (example)
-        # activate_subscription(
-        #     user_id=user_id,
-        #     plan_id=plan_id,
-        #     tenant_id=tenant_id,
-        #     stripe_session_id=session["id"],
-        #     amount=session["amount_total"],
-        #     currency=session["currency"],
-        # )
+        # ✅ Create payment transaction centrally
+        from payments.services import create_payment_transaction
+        print("Creating payment transaction for session:", session['id'])
+        create_payment_transaction(
+            org_schema=org_schema,
+            organization_id=org_id,
+            amount=session['amount_total'] / 100,
+            currency=session['currency'],
+            gateway='stripe',
+            gateway_transaction_id=session['id'],
+            status='success',
+            metadata=metadata,
+            customer_email=session.get('customer_email'),
+            receipt_url=session.get('receipt_url')
+        )
+
+     
+
+  

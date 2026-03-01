@@ -157,6 +157,15 @@ class Organization(TenantMixin):
     def has_delivery_integration(self):
         """Check if organization has delivery integration"""
         return self.delivery_integration in ['internal', 'both']
+    
+    @property
+    def has_active_subscription(self):
+        return (
+            self.subscription_status == 'active'
+            and not self.is_trial
+            and self.current_period_end
+            and self.current_period_end > timezone.now()
+        )
 
 
 class OrganizationDomain(DomainMixin):

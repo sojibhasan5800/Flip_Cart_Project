@@ -7,6 +7,7 @@ import { useEffect, useState ,useCallback} from "react"
 import toast from "react-hot-toast"
 import AxiosInstance from "../../api/AxiosInstance" 
 import DashboardLive from '@/components/store/DashboardLive'
+import SubscriptionBanner from '@/components/billing/SubscriptionBanner'
 
 
 export default function Dashboard() {
@@ -83,7 +84,11 @@ export default function Dashboard() {
       <h1 className="text-2xl">
         Seller <span className="text-slate-800 font-medium">Dashboard</span>
       </h1>
-
+      <SubscriptionBanner
+  trialEndsAt={dashboardData.trial_ends_at}
+  isTrial={dashboardData.is_trial}
+  hasActiveSubscription={dashboardData.has_active_subscription}
+/>
       {/* Live update */}
       {orgId && <DashboardLive orgId={orgId} onUpdate={handleLiveUpdate} />}  // ✅ useCallback applied
 

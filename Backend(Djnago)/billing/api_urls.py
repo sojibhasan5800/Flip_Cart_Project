@@ -10,6 +10,7 @@ from .api_views import (
     AdminProductBoostListAPIView,
     AdminSubscriptionPlanDetailAPIView,
     AdminSubscriptionPlanListCreateAPIView,
+    PublicOrganizationPlanListAPIView
 
     # SubscriptionPlanListAPIView,
     # OrganizationSubscriptionListCreateAPIView,
@@ -21,6 +22,8 @@ app_name = 'billing_api'
 
 urlpatterns = [
 
+
+    # --------------------- Admin endpoints ---------------------
     path("plans/", AdminSubscriptionPlanListCreateAPIView.as_view()),
     path("plans/<int:pk>/", AdminSubscriptionPlanDetailAPIView.as_view()),
 
@@ -33,6 +36,8 @@ urlpatterns = [
     path("invoices/", AdminInvoiceListAPIView.as_view()),
     path("invoices/<int:pk>/", AdminInvoiceDetailAPIView.as_view()),
 
+    # --------------------- Public endpoints ---------------------
+    path("org-plans/", PublicOrganizationPlanListAPIView.as_view()),
     # path('plans/', SubscriptionPlanListAPIView.as_view(), name='plan-list'),
     
     # path('subscriptions/', OrganizationSubscriptionListCreateAPIView.as_view(), name='subscription-list-create'),

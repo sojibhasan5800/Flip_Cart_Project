@@ -280,6 +280,10 @@ class SellerStoreDashboardAPIView(APIView):
             )
 
         organization = merchant_profile.organization
+        trial_ends_at = organization.trial_ends_at
+        is_trail = organization.is_trial
+        has_active_subscription = organization.has_active_subscription
+
 
         # 2. Switch to tenant schema
         with schema_context(organization.schema_name):
@@ -322,7 +326,10 @@ class SellerStoreDashboardAPIView(APIView):
                     "totalProducts": total_products,
                     "totalEarnings": float(earnings),  # decimal → float for JSON
                     "totalOrders": total_orders,
-                    "ratings": ReviewSerializer(recent_reviews, many=True).data
+                    "ratings": ReviewSerializer(recent_reviews, many=True).data,
+                    "trial_ends_at": trial_ends_at,
+                    "is_trail": is_trail,
+                    "has_active_subscription": has_active_subscription,
                 }
             }
 

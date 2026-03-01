@@ -132,8 +132,6 @@ class AdminInvoiceListAPIView(APIView):
         serializer = InvoiceSerializer(invoices, many=True)
         return Response(serializer.data)
 
-
-
 class AdminInvoiceDetailAPIView(APIView):
     permission_classes = [IsAdminUserOnly]
 
@@ -151,7 +149,16 @@ class AdminInvoiceDetailAPIView(APIView):
         serializer = InvoiceSerializer(invoice)
         return Response(serializer.data)
 
+class PublicOrganizationPlanListAPIView(APIView):
+    permission_classes = [IsAuthenticated]
 
+    def get(self, request):
+        plans = SubscriptionPlan.objects.filter(
+            plan_type='organization',
+            is_active=True
+        )
+        serializer = SubscriptionPlanSerializer(plans, many=True)
+        return Response(serializer.data)
 
 
 

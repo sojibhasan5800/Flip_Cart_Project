@@ -21,7 +21,8 @@ export default function PaymentMethodModal({ plan, onClose }) {
                 '/api/payments/plans/purchase-plan/',
                 {
                     plan_slug: plan.slug,
-                    gateway: gateway
+                    gateway: gateway,
+                    plan_type: plan.plan_type
                 },
                 { useTenant: true }
             )
