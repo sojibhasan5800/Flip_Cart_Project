@@ -50,6 +50,7 @@ const handlePlanChange = async (plan) => {
         { plan_id: plan.id },
         { useTenant: true }
       )
+      console.log("Upgrade response:", response)
       toast.success("Upgrade initiated successfully!")
     } else if (planPrice < currentPrice) {
       // Downgrade at period end
@@ -80,7 +81,7 @@ const handleCancel = async () => {
 
   try {
     await AxiosInstance.post(
-      '/api/billing/cancel/',
+      '/api/billing/cancel-subscription/',
       {},
       { useTenant: true }
     )

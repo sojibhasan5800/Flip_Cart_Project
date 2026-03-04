@@ -9,6 +9,7 @@ from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
+from datetime import datetime, timezone 
 
 from billing.models import OrganizationSubscription, SubscriptionPlan
 from merchant_user.models import Organization
@@ -74,6 +75,7 @@ class StripeWebhookView(APIView):
         if not stripe_subscription_id:
             return
         sub = stripe.Subscription.retrieve(stripe_subscription_id)
+        print("Retrieved subscription:", sub)
 
         subscription_item_id = sub["items"]["data"][0]["id"]
         stripe_price_id = sub["items"]["data"][0]["price"]["id"]
@@ -107,6 +109,7 @@ class StripeWebhookView(APIView):
 
     def handle_subscription_updated(self, sub_data):
         stripe_sub_id = sub_data.get("id")
+        print("Handling subscription update for:", stripe_sub_id)
         subscription = OrganizationSubscription.objects.filter(stripe_subscription_id=stripe_sub_id).first()
         if not subscription:
             return
@@ -122,15 +125,18 @@ class StripeWebhookView(APIView):
         # Sync status
         cancel_at_period_end = sub_data.get("cancel_at_period_end", False)
         stripe_status = sub_data.get("status", "active")
-        subscription.status = "cancel_pending" if cancel_at_period_end else stripe_status
+        subscription.status = "cancelled" if cancel_at_period_end else stripe_status
         subscription.auto_renew = not cancel_at_period_end
 
         # Sync period dates
-        subscription.start_date = timezone.datetime.fromtimestamp(
-            sub_data.get("current_period_start", timezone.now().timestamp()), tz=timezone.utc
+        subscription.start_date = datetime.fromtimestamp(
+            sub_data.get("current_period_start", datetime.now().timestamp()),
+            tz=timezone.utc
         )
-        subscription.end_date = timezone.datetime.fromtimestamp(
-            sub_data.get("current_period_end", timezone.now().timestamp()), tz=timezone.utc
+
+        subscription.end_date = datetime.fromtimestamp(
+            sub_data.get("current_period_end", datetime.now().timestamp()),
+            tz=timezone.utc
         )
 
         # Handle scheduled downgrade
@@ -156,7 +162,7 @@ class StripeWebhookView(APIView):
                         print("Stripe downgrade error:", e)
 
         subscription.save()
-        
+
 
     # ================================
     # 🔴 FULL CANCEL

@@ -10,7 +10,7 @@ const SubscriptionPlanForm = () => {
   const [form, setForm] = useState({
     name: '',
     slug: '',
-    level: 'basic',
+    plan_level: 'basic',
     plan_type: 'general',
     price: 0,
     currency: 'USD',
@@ -54,7 +54,7 @@ const SubscriptionPlanForm = () => {
         <div className="flex gap-2">
           <div className="flex-1">
             <label>Level</label>
-            <select name="level" value={form.level} onChange={handleChange} className="w-full border p-2 rounded">
+            <select name="plan_level" value={form.plan_level} onChange={handleChange} className="w-full border p-2 rounded">
               <option value="basic">Basic</option>
               <option value="pro">Pro</option>
               <option value="enterprise">Enterprise</option>

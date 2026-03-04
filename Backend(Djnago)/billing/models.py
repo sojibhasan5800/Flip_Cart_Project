@@ -76,6 +76,7 @@ class OrganizationSubscription(models.Model):
     plan = models.ForeignKey(SubscriptionPlan, on_delete=models.PROTECT, related_name='org_subscriptions')
     start_date = models.DateTimeField(default=timezone.now,db_index=True)
     end_date = models.DateTimeField(null=True, blank=True,db_index=True)
+    cancel_at_period_end = models.BooleanField(default=False)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active',db_index=True)
     stripe_subscription_id = models.CharField(max_length=100, blank=True, unique=True)
     stripe_subscription_item_id = models.CharField(max_length=255, blank=True, null=True) 

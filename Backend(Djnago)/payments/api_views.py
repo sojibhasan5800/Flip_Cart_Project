@@ -85,17 +85,19 @@ class PurchasePlanView(APIView):
     # 🔥 Stripe payment separated for clean architecture
     def _handle_stripe_payment(self, request, plan, plan_type):
         session = stripe.checkout.Session.create(
-            mode="payment",
+            mode="subscription",
             payment_method_types=["card"],
             line_items=[{
-                "price_data": {
-                    "currency": plan.currency.lower(),
-                    "unit_amount": int(plan.price * 100),
-                    "product_data": {
-                        "name": plan.name,
-                    },
-                },
+                "price": plan.stripe_price_id,  # subscription price ID ব্যবহার করতে হবে
                 "quantity": 1,
+                # "price_data": {
+                #     "currency": plan.currency.lower(),
+                #     "unit_amount": int(plan.price * 100),
+                #     "product_data": {
+                #         "name": plan.name,
+                #     },
+                # },
+                # "quantity": 1,
             }],
             success_url=f"{settings.FRONTEND_URL}/billing/plans/stripe_success"
                         f"?session_id={{CHECKOUT_SESSION_ID}}"

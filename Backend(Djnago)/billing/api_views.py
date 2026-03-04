@@ -12,9 +12,12 @@ from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
 from django.conf import settings
 import stripe
+from stripe import StripeError
+
 from django.utils import timezone
 # from store.models import Product
 from django.db.models import Q
+# from stripe import error as stripe_error
 
 from billing.services import create_proration_invoice
 from billing.utils import calculate_proration
@@ -252,15 +255,18 @@ class UpgradeSubscriptionAPIView(APIView):
         if not subscription.stripe_subscription_item_id:
             return Response({"error": "Stripe subscription item missing"}, status=500)
 
-        # Immediate upgrade with proration
-        stripe_sub = stripe.Subscription.modify(
-            subscription.stripe_subscription_id,
-            items=[{
-                "id": subscription.stripe_subscription_item_id,
-                "price": new_plan.stripe_price_id,
-            }],
-            proration_behavior="create_prorations",
-        )
+        try:
+            # Upgrade immediately with proration
+            stripe_sub = stripe.Subscription.modify(
+                subscription.stripe_subscription_id,
+                items=[{
+                    "id": subscription.stripe_subscription_item_id,
+                    "price": new_plan.stripe_price_id,
+                }],
+                proration_behavior="create_prorations",
+            )
+        except StripeError as e:
+            return Response({"error": str(e)}, status=400)
 
         # Calculate proration
         proration = calculate_proration(subscription, new_plan)
@@ -313,6 +319,7 @@ class CancelSubscriptionAPIView(APIView):
             organization=organization,
             status="active"
         ).first()
+        print("Cancel subscription request for:", subscription)
 
         if not subscription:
             return Response({"error": "No active subscription"}, status=400)
@@ -329,13 +336,15 @@ class CancelSubscriptionAPIView(APIView):
                 subscription.stripe_subscription_id,
                 cancel_at_period_end=True
             )
-        except stripe.error.StripeError as e:
+        except StripeError as e:
             return Response({"error": str(e)}, status=400)
 
         # Local DB update
         subscription.cancel_at_period_end = True
-        subscription.status = "cancel_pending"
+        subscription.status = "cancelled"
         subscription.save(update_fields=["cancel_at_period_end", "status"])
+        organization.subscription_status = "cancelled"
+        organization.save(update_fields=["subscription_status"])
 
         return Response({
             "message": "Subscription will cancel at period end",
