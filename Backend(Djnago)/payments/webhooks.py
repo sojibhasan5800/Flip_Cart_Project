@@ -104,40 +104,59 @@ class StripeWebhookView(APIView):
     # ================================
     # 🟡 UPGRADE / CANCEL AT PERIOD END
     # ================================
+
     def handle_subscription_updated(self, sub_data):
-
-        stripe_sub_id = sub_data["id"]
-
-        subscription = OrganizationSubscription.objects.filter(
-            stripe_subscription_id=stripe_sub_id
-        ).first()
-
+        stripe_sub_id = sub_data.get("id")
+        subscription = OrganizationSubscription.objects.filter(stripe_subscription_id=stripe_sub_id).first()
         if not subscription:
             return
 
-        # Update plan (Upgrade/Downgrade)
-        stripe_price_id = sub_data["items"]["data"][0]["price"]["id"]
-        new_plan = SubscriptionPlan.objects.filter(
-            stripe_price_id=stripe_price_id
-        ).first()
+        # Sync plan if changed (upgrade)
+        stripe_items = sub_data.get("items", {}).get("data", [])
+        if stripe_items:
+            stripe_price_id = stripe_items[0].get("price", {}).get("id")
+            new_plan = SubscriptionPlan.objects.filter(stripe_price_id=stripe_price_id).first()
+            if new_plan and new_plan != subscription.plan:
+                subscription.plan = new_plan
 
-        if new_plan:
-            subscription.plan = new_plan
+        # Sync status
+        cancel_at_period_end = sub_data.get("cancel_at_period_end", False)
+        stripe_status = sub_data.get("status", "active")
+        subscription.status = "cancel_pending" if cancel_at_period_end else stripe_status
+        subscription.auto_renew = not cancel_at_period_end
 
-        subscription.status = sub_data["status"]
-        subscription.auto_renew = not sub_data["cancel_at_period_end"]
-
+        # Sync period dates
         subscription.start_date = timezone.datetime.fromtimestamp(
-            sub_data["current_period_start"],
-            tz=timezone.utc
+            sub_data.get("current_period_start", timezone.now().timestamp()), tz=timezone.utc
+        )
+        subscription.end_date = timezone.datetime.fromtimestamp(
+            sub_data.get("current_period_end", timezone.now().timestamp()), tz=timezone.utc
         )
 
-        subscription.end_date = timezone.datetime.fromtimestamp(
-            sub_data["current_period_end"],
-            tz=timezone.utc
-        )
+        # Handle scheduled downgrade
+        if getattr(subscription, "downgrade_at_period_end", False):
+            now = timezone.now()
+            if subscription.end_date <= now:
+                new_plan = SubscriptionPlan.objects.filter(id=subscription.downgrade_plan_id).first()
+                if new_plan:
+                    subscription.plan = new_plan
+                    subscription.downgrade_at_period_end = False
+                    subscription.downgrade_plan_id = None
+                    # Update Stripe subscription at period end
+                    try:
+                        stripe.Subscription.modify(
+                            stripe_sub_id,
+                            items=[{
+                                "id": subscription.stripe_subscription_item_id,
+                                "price": new_plan.stripe_price_id
+                            }],
+                            proration_behavior="none"
+                        )
+                    except stripe.error.StripeError as e:
+                        print("Stripe downgrade error:", e)
 
         subscription.save()
+        
 
     # ================================
     # 🔴 FULL CANCEL

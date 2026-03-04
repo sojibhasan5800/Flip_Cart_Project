@@ -231,49 +231,75 @@ class CurrentSubscriptionAPIView(APIView):
             "plans": plans_data
         })
 
-
 class UpgradeSubscriptionAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
         organization = request.user.organization
         new_plan_id = request.data.get("plan_id")
-
         subscription = OrganizationSubscription.objects.filter(
-            organization=organization,
-            status="active"
+            organization=organization, status="active"
         ).first()
-        print("plan_id",new_plan_id)
+
         if not subscription:
             return Response({"error": "No active subscription"}, status=400)
 
         new_plan = get_object_or_404(SubscriptionPlan, id=new_plan_id)
 
         if not subscription.stripe_subscription_item_id:
-            print("stripe_subscription_item_id",subscription.stripe_subscription_item_id)
             return Response({"error": "Stripe subscription item missing"}, status=500)
-        print("stripe_subscription_item_id",subscription.stripe_subscription_item_id)
+
         # Immediate upgrade with proration
         stripe_sub = stripe.Subscription.modify(
             subscription.stripe_subscription_id,
             items=[{
-                "id": subscription.stripe_subscription_item_id,  # Subscription Item ID
+                "id": subscription.stripe_subscription_item_id,
                 "price": new_plan.stripe_price_id,
             }],
             proration_behavior="create_prorations",
         )
-        print("stripe_sub",stripe_sub)
 
         return Response({
             "message": "Upgrade initiated successfully",
             "stripe_subscription": stripe_sub.id
         })
+    
+class DowngradeAtPeriodEndAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        organization = request.user.organization
+        new_plan_id = request.data.get("plan_id")
+        subscription = OrganizationSubscription.objects.filter(
+            organization=organization, status="active"
+        ).first()
+
+        if not subscription:
+            return Response({"error": "No active subscription"}, status=400)
+
+        new_plan = get_object_or_404(SubscriptionPlan, id=new_plan_id)
+
+        # Already scheduled?
+        if getattr(subscription, "downgrade_at_period_end", None):
+            return Response({"message": "Downgrade already scheduled"}, status=200)
+
+        # Schedule downgrade
+        subscription.downgrade_at_period_end = True
+        subscription.downgrade_plan_id = new_plan.id
+        subscription.save(update_fields=["downgrade_at_period_end", "downgrade_plan_id"])
+
+        return Response({
+            "message": f"Downgrade to {new_plan.name} will apply at period end",
+            "current_access_until": subscription.end_date
+        })
+    
 
 class CancelSubscriptionAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
         organization = request.user.organization
+
         subscription = OrganizationSubscription.objects.filter(
             organization=organization,
             status="active"
@@ -282,8 +308,27 @@ class CancelSubscriptionAPIView(APIView):
         if not subscription:
             return Response({"error": "No active subscription"}, status=400)
 
-        stripe.Subscription.delete(subscription.stripe_subscription_id)
+        if getattr(subscription, "cancel_at_period_end", False):
+            return Response(
+                {"message": "Subscription already scheduled for cancellation"},
+                status=200
+            )
 
-        # Local DB update handled by webhook
-        return Response({"message": "Cancel request sent to Stripe"})
+        # Stripe এ cancel at period end সেট করা
+        try:
+            stripe.Subscription.modify(
+                subscription.stripe_subscription_id,
+                cancel_at_period_end=True
+            )
+        except stripe.error.StripeError as e:
+            return Response({"error": str(e)}, status=400)
 
+        # Local DB update
+        subscription.cancel_at_period_end = True
+        subscription.status = "cancel_pending"
+        subscription.save(update_fields=["cancel_at_period_end", "status"])
+
+        return Response({
+            "message": "Subscription will cancel at period end",
+            "access_until": subscription.end_date
+        })

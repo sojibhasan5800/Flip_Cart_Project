@@ -26,6 +26,7 @@ export default function ManageSubscriptionPage() {
 
       setCurrentSub(data.subscription || null)
       setPlans(data.plans || [])
+      console.log("Fetched subscription data:", data)
 
     } catch (err) {
       toast.error("Failed to load subscription data")
@@ -34,34 +35,61 @@ export default function ManageSubscriptionPage() {
     }
   }
 
-  const handleUpgrade = async (planId) => {
-    console.log("Upgrading to plan ID:", planId)
-    try {
+const handlePlanChange = async (plan) => {
+  if (!currentSub) return
+
+  // Convert string prices to numbers
+  const planPrice = parseFloat(plan.price)
+  const currentPrice = parseFloat(currentSub.price)
+
+  try {
+    if (planPrice > currentPrice) {
+      // Upgrade immediately
       await AxiosInstance.post(
         '/api/billing/upgrade-subscription/',
-        { plan_id: planId },
+        { plan_id: plan.id },
         { useTenant: true }
       )
-      toast.success("Plan change initiated!")
-      fetchAllData()
-    } catch {
-      toast.error("Upgrade failed")
+      toast.success("Upgrade initiated successfully!")
+    } else if (planPrice < currentPrice) {
+      // Downgrade at period end
+      await AxiosInstance.post(
+        '/api/billing/downgrade-at-period-end/',
+        { plan_id: plan.id },
+        { useTenant: true }
+      )
+      toast.success("Downgrade scheduled at period end!")
+    } else {
+      toast("You are already on this plan")
+      return
     }
+
+    fetchAllData()  // Refresh plans & current subscription
+
+  } catch (err) {
+    toast.error("Plan change failed")
+    console.error(err)
+  }
+}
+
+const handleCancel = async () => {
+  if (!currentSub || currentSub.cancel_at_period_end) {
+    toast("Subscription already scheduled for cancellation");
+    return;
   }
 
-  const handleCancel = async () => {
-    try {
-      await AxiosInstance.post(
-        '/api/billing/cancel/',
-        {},
-        { useTenant: true }
-      )
-      toast.success("Cancel request sent")
-      fetchAllData()
-    } catch {
-      toast.error("Cancel failed")
-    }
+  try {
+    await AxiosInstance.post(
+      '/api/billing/cancel/',
+      {},
+      { useTenant: true }
+    )
+    toast.success(`Subscription will cancel at period end (${currentSub.end_date})`)
+    fetchAllData()
+  } catch {
+    toast.error("Cancel failed")
   }
+}
 
   const handleBillingPortal = () => {
     window.location.href = '/api/billing/create-customer-portal/'
@@ -102,6 +130,11 @@ export default function ManageSubscriptionPage() {
               <span className="inline-block mt-2 px-3 py-1 text-sm bg-green-600 text-white rounded-full">
                 Active Plan
               </span>
+                {currentSub.cancel_at_period_end && (
+      <span className="inline-block mt-2 px-3 py-1 text-sm bg-orange-600 text-white rounded-full">
+          Cancellation Scheduled
+        </span>
+      )}
 
               {currentSub.start_date && currentSub.end_date && (
                 <>
@@ -195,11 +228,15 @@ export default function ManageSubscriptionPage() {
                     </button>
                   ) : (
                     <button
-                      onClick={() => handleUpgrade(plan.id)}
-                      className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold transition"
-                    >
-                      Upgrade / Switch
-                    </button>
+                    onClick={() => handlePlanChange(plan)}
+                    className={`w-full py-3 rounded-xl font-semibold transition ${
+                      parseFloat(plan.price) > parseFloat(currentSub?.price || 0)
+                        ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                        : 'bg-yellow-500 hover:bg-yellow-600 text-white'
+                    }`}
+                  >
+                    {parseFloat(plan.price) > parseFloat(currentSub?.price || 0) ? 'Upgrade' : 'Downgrade'}
+                  </button>
                   )}
 
                 </div>
