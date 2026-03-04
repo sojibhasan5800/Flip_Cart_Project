@@ -1,4 +1,6 @@
 # billing/webhooks.py
+from operator import sub
+
 from django.utils import timezone
 import stripe
 from django.conf import settings
@@ -66,11 +68,25 @@ class StripeWebhookView(APIView):
         org_id = metadata.get("org_id")
         org = Organization.objects.get(id=org_id)
         org_schema = org.schema_name 
+        stripe_subscription_id = session.get("subscription")
+        print("stripe_subscription_id",stripe_subscription_id)
+
+        if not stripe_subscription_id:
+            return
+        sub = stripe.Subscription.retrieve(stripe_subscription_id)
+
+        subscription_item_id = sub["items"]["data"][0]["id"]
+        stripe_price_id = sub["items"]["data"][0]["price"]["id"]
+    
+        if subscription_item_id:
+            metadata["stripe_subscription_item_id"] = subscription_item_id
+            metadata["stripe_price_id"] = stripe_price_id
+            metadata["stripe_subscription_id"] = stripe_subscription_id
 
 
         # ✅ Create payment transaction centrally
         from payments.services import create_payment_transaction
-        print("Creating payment transaction for session:", session['id'])
+
         create_payment_transaction(
             org_schema=org_schema,
             organization_id=org_id,

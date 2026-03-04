@@ -32,7 +32,7 @@ const EditSubscriptionPlan = () => {
   useEffect(() => {
     const fetchPlan = async () => {
       try {
-        const res = await axios.get(`/admin/plans/${id}/`)
+        const res = await axios.get(`/api/billing/plans/${id}/`)
         setForm(res.data)
         setFeaturesInput(JSON.stringify(res.data.features, null, 2))
       } catch (err) {
@@ -64,7 +64,7 @@ const EditSubscriptionPlan = () => {
     e.preventDefault()
     if (error) return
     try {
-      await axios.put(`/admin/plans/${id}/`, form)
+      await axios.put(`/api/billing/plans/${id}/`, form)
       router.push('/admin/subscription-plans')
     } catch (err) {
       console.error(err)
@@ -101,6 +101,7 @@ const EditSubscriptionPlan = () => {
               <option value="general">General</option>
               <option value="boosting">Boosting</option>
               <option value="custom">Custom</option>
+              <option value="organization">Organization</option>
             </select>
           </div>
 

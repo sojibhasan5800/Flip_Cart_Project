@@ -53,12 +53,16 @@ def handle_payment_success(trans: PaymentTransaction):
         activate_organization_subscription(
             plan_id=trans.metadata.get('plan_id'),
             org_id=trans.organization_id,
-            session={'id': trans.gateway_transaction_id}
+            metadata = trans.metadata,
+            session={'customer_gateway_id': trans.gateway_transaction_id}
+
+
         )
     elif plan_type == 'boosting':
         activate_boosting_subscription(
             plan_id=trans.metadata.get('plan_id'),
             org_id=trans.organization_id,
+            metadata = trans.metadata,
             session={'id': trans.gateway_transaction_id}
         )
 

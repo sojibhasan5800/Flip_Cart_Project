@@ -8,7 +8,7 @@ from django_tenants.utils import schema_context, get_public_schema_name
 from merchant_user.models import Organization
 from django.core.exceptions import ObjectDoesNotExist
 
-def activate_organization_subscription(plan_id, org_id, session):
+def activate_organization_subscription(plan_id, org_id, session,metadata=None):
     public_schema = get_public_schema_name()
 
     with schema_context(public_schema):
@@ -41,8 +41,10 @@ def activate_organization_subscription(plan_id, org_id, session):
                         "start_date": start_date,
                         "end_date": end_date,
                         "status": "active",
-                        "stripe_subscription_id": session.get("stripe_subscription_id", ""),
-                        "stripe_subscription_item_id": session.get("stripe_subscription_item_id", ""),  # <-- Add this
+                        "stripe_subscription_id": metadata.get("stripe_subscription_id", "") if metadata else "",
+                        "stripe_subscription_item_id": metadata.get("stripe_subscription_item_id", "") if metadata else "",
+                        "stripe_customer_id": session.get("customer_gateway_id", ""),
+                        # "stripe_price_id": stripe_price_id or session.get("stripe_price_id", ""),  # <-- Add this
                         "stripe_customer_id": org.stripe_customer_id or session.get("stripe_customer_id", ""),
                     }
                 )
