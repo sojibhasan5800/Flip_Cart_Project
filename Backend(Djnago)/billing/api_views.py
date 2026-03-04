@@ -15,6 +15,9 @@ import stripe
 from django.utils import timezone
 # from store.models import Product
 from django.db.models import Q
+
+from billing.services import create_proration_invoice
+from billing.utils import calculate_proration
 from .permissions import AdminGetMerchantGetAdminPostOnly,IsAdminUserOnly
 from .models import (
     SubscriptionPlan,
@@ -259,6 +262,12 @@ class UpgradeSubscriptionAPIView(APIView):
             proration_behavior="create_prorations",
         )
 
+        # Calculate proration
+        proration = calculate_proration(subscription, new_plan)
+
+        # Create invoice
+        invoice = create_proration_invoice(subscription, proration)
+
         return Response({
             "message": "Upgrade initiated successfully",
             "stripe_subscription": stripe_sub.id
@@ -332,3 +341,23 @@ class CancelSubscriptionAPIView(APIView):
             "message": "Subscription will cancel at period end",
             "access_until": subscription.end_date
         })
+    
+class SubscriptionProrationAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        organization = request.user.organization
+        new_plan_id = request.data.get("plan_id")
+        subscription = OrganizationSubscription.objects.filter(
+            organization=organization, status="active"
+        ).first()
+
+        if not subscription:
+            return Response({"error": "No active subscription"}, status=400)
+
+        new_plan = get_object_or_404(SubscriptionPlan, id=new_plan_id)
+        proration = calculate_proration(subscription, new_plan)
+
+        return Response(proration)
+
+
