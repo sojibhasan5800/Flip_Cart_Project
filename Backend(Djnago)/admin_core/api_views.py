@@ -12,7 +12,7 @@ from rest_framework.views import APIView
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 from datetime import timedelta
-from django_tenants.utils import get_tenant_model, schema_context
+from django_tenants.utils import get_public_schema_name, get_tenant_model, schema_context
 
 from orders.models import Order
 from merchant_user.models import Organization, MerchantUser
@@ -229,6 +229,7 @@ class AdminStoreApprovalAPIView(PublicSchemaAPIView):
     )
     def put(self, request):
         org_id = request.data.get("storeId")
+        print("Rejecting store with ID:", org_id)  # Debugging log
 
         if not org_id:
             return Response({"error": "storeId is required"}, status=400)
@@ -250,47 +251,69 @@ class AdminStoreApprovalAPIView(PublicSchemaAPIView):
         # TenantModel = get_tenant_model()
         try:
             with transaction.atomic():
+                # 1️⃣ Owner account collect (delete করার আগে)
+                owner_merchant = MerchantUser.objects.filter(
+                    organization=organization,
+                ).select_related("user").first()
 
-                # 1️⃣ Delete merchant users (public schema)
-                merchant_users = MerchantUser.objects.filter(
-                    organization=organization
-                )
+                owner_account_id = owner_merchant.user.id if owner_merchant else None
+
+                # 2️⃣ Delete MerchantUser rows ONLY
                 deleted_users = list(
-                    merchant_users.values_list("user__email", flat=True)
+                    MerchantUser.objects.filter(
+                        organization=organization
+                    ).values_list("user__email", flat=True)
                 )
-                deleted_count = merchant_users.count()
-                merchant_users.delete()
 
-                # 2️⃣ Delete domains
-                print(organization.domains.all())
+                deleted_count = MerchantUser.objects.filter(
+                    organization=organization
+                ).count()
+
+                # MerchantUser.objects.filter(
+                #     organization=organization
+                # ).delete()
+
+                # 3️⃣ Delete domains
                 organization.domains.all().delete()
 
+                # 5️⃣ Delete Organization via ORM (NO RAW SQL)
+                with schema_context(organization.schema_name):
+                    print(f"Deleting organization in schema context: {organization.schema_name}")  # Debug log
+                    organization.delete()
+                    print(f"Organization deleted: {organization.business_name}")  # Debug log
+                # organization.delete()
 
-                # 3️⃣ DROP tenant schema (CRITICAL PART)
-                self.drop_tenant_schema(schema_name)
-                
-                # 4️⃣ Delete organization row (public)
-                # 4. Delete Organization row with RAW SQL (bypass ORM collector)
-                with connection.cursor() as cursor:
-                    cursor.execute("""
-                        DELETE FROM merchant_user_organization 
-                        WHERE id = %s
-                    """, [organization.id])
-                user_id = request.user.id
-                account = get_object_or_404(Account,id=user_id)
-                account.is_tenant_owner = False
-                account.save(update_fields=["is_tenant_owner"])
-                
-                #  Redis decrement
+                # 4️⃣ Drop tenant schema safely
+                # if schema_name and schema_name not in ["public", "public_user"]:
+                #     with connection.cursor() as cursor:
+                #         cursor.execute(
+                #             f'DROP SCHEMA IF EXISTS "{schema_name}" CASCADE;'
+                #         )
+
+
+
+                # 6️⃣ Update owner account flag (if exists)
+                # with schema_context(get_public_schema_name()):
+                #     print("Updating owner account in public schema context")  # Debug log
+                print(f"Owner account ID to update: {owner_account_id}")  # Debug log
+                if owner_account_id:
+                    with schema_context(get_public_schema_name()):  # <-- Important
+                        try:
+                            owner_account = Account.objects.get(id=owner_account_id)
+                            print(f"Setting is_tenant_owner=False for account: {owner_account.email}")
+                            owner_account.is_tenant_owner = False
+                            owner_account.save(update_fields=["is_tenant_owner"])
+                        except Account.DoesNotExist:
+                            print(f"Owner account with ID {owner_account_id} not found in public schema")
+                # 7️⃣ Redis decrement
                 self.org_counter.decrement()
 
-
-            return Response({
-                "message": "Store rejected and tenant schema deleted successfully",
-                "deleted_schema": schema_name,
-                "deleted_merchant_users_count": deleted_count,
-                "deleted_users_emails": deleted_users
-            }, status=200)
+                return Response({
+                    "message": "Store rejected and tenant schema deleted successfully",
+                    "deleted_schema": schema_name,
+                    "deleted_merchant_users_count": deleted_count,
+                    "deleted_users_emails": deleted_users
+                }, status=200)
 
         except Exception as e:
             logger.error(
@@ -301,7 +324,7 @@ class AdminStoreApprovalAPIView(PublicSchemaAPIView):
                 "error": "Store rejection failed",
                 "detail": str(e)
             }, status=500)
-
+        
     @swagger_auto_schema(
         operation_summary="Toggle store verification status",
         request_body=openapi.Schema(

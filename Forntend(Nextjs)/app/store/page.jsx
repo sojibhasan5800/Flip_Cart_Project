@@ -22,8 +22,9 @@ export default function Dashboard() {
         totalEarnings: 0,
         totalOrders: 0,
         ratings: [],
+        subscription: null,
     })
-
+    
 
     const dashboardCardsData = [
         { title: 'Total Products', value: dashboardData.totalProducts, icon: ShoppingBasketIcon },
@@ -63,35 +64,32 @@ export default function Dashboard() {
   }, [])  // ✅ dependency empty array
 
 
-  //   const handleLiveUpdate = (newData) => {
-  //   setDashboardData((prev) => ({
-  //     ...prev,
-  //     ...newData,
-  //     // ratings array merge করতে চাইলে এখানে logic দিতে পারো
-  //     // উদাহরণ: ratings: newData.recentReviews || prev.ratings
-  //   }))
-  //   toast.success("Dashboard updated live!", { duration: 2000 })
-  // }
 
 
     useEffect(() => {
         fetchDashboardData()
     }, [orgId])
 
+    const subscription = dashboardData.subscription || null
     if (loading) return <Loading />
-
     return (
     <div className="text-slate-500 mb-28">
       <h1 className="text-2xl">
         Seller <span className="text-slate-800 font-medium">Dashboard</span>
       </h1>
-      <SubscriptionBanner
-  trialEndsAt={dashboardData.trial_ends_at}
-  isTrial={dashboardData.is_trial}
-  hasActiveSubscription={dashboardData.has_active_subscription}
-/>
+      {/* ✅ Subscription Banner */}
+      {subscription && (
+        <SubscriptionBanner
+          trialEndsAt={subscription.trial_ends_at}
+          isTrial={subscription.is_trial}
+          hasActiveSubscription={subscription.has_active_subscription}
+          subscriptionCurrentPeriodStart={subscription.current_period_start}
+          subscriptionCurrentPeriodEnd={subscription.current_period_end}
+          planName={subscription.plan_name}
+        />
+      )}
       {/* Live update */}
-      {orgId && <DashboardLive orgId={orgId} onUpdate={handleLiveUpdate} />}  // ✅ useCallback applied
+      {orgId && <DashboardLive orgId={orgId} onUpdate={handleLiveUpdate} />}  //  useCallback applied
 
       {/* Cards */}
       <div className="flex flex-wrap gap-5 my-10 mt-4">

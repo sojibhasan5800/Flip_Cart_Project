@@ -42,6 +42,7 @@ def activate_organization_subscription(plan_id, org_id, session):
                         "end_date": end_date,
                         "status": "active",
                         "stripe_subscription_id": session.get("stripe_subscription_id", ""),
+                        "stripe_subscription_item_id": session.get("stripe_subscription_item_id", ""),  # <-- Add this
                         "stripe_customer_id": org.stripe_customer_id or session.get("stripe_customer_id", ""),
                     }
                 )
@@ -50,10 +51,16 @@ def activate_organization_subscription(plan_id, org_id, session):
             org.subscription_current_period_start = start_date
             org.subscription_current_period_end = end_date
             org.subscription_status = 'active'
+            org.subscription_plan_level=plan.plan_level
+            org.is_trial = False
+
             org.save(update_fields=[
                 'subscription_current_period_start',
                 'subscription_current_period_end',
-                'subscription_status'
+                'subscription_status',
+                'subscription_plan_level',
+                'is_trial'
+              
                 ])
             return org_sub
 

@@ -285,6 +285,7 @@ class SellerStoreDashboardAPIView(APIView):
         has_active_subscription = organization.has_active_subscription
         subscription_current_period_start = organization.subscription_current_period_start
         subscription_current_period_end = organization.subscription_current_period_end
+        subscription_plan_level = organization.subscription_plan_level
 
 
         # 2. Switch to tenant schema
@@ -329,13 +330,17 @@ class SellerStoreDashboardAPIView(APIView):
                     "totalEarnings": float(earnings),  # decimal → float for JSON
                     "totalOrders": total_orders,
                     "ratings": ReviewSerializer(recent_reviews, many=True).data,
-                    "trial_ends_at": trial_ends_at,
-                    "is_trial": is_trail,
-                    "has_active_subscription": has_active_subscription,
-                    "subscription_current_period_start": subscription_current_period_start,
-                    "subscription_current_period_end": subscription_current_period_end,
+                    "subscription": {
+                        "is_trial": is_trail,
+                        "trial_ends_at": trial_ends_at,
+                        "has_active_subscription": has_active_subscription,
+                        "current_period_start": subscription_current_period_start,
+                        "current_period_end": subscription_current_period_end,
+                        "plan_name": subscription_plan_level,
+                    }
                 }
             }
+            print("Dashboard data prepared:", data)
 
         return Response(data, status=status.HTTP_200_OK)
 

@@ -1,8 +1,7 @@
 from celery import shared_task
 from django.utils import timezone
 from .models import OrganizationSubscription
-from django_celery_beat.models import PeriodicTask, CrontabSchedule
-import json
+
 
 @shared_task
 def expire_subscription_task(subscription_id):
@@ -11,6 +10,7 @@ def expire_subscription_task(subscription_id):
     """
     try:
         sub = OrganizationSubscription.objects.get(id=subscription_id)
+        org = sub.organization
         now = timezone.now()
         if sub.status != 'active':
             return
@@ -20,6 +20,8 @@ def expire_subscription_task(subscription_id):
             sub.status = 'expired'
             sub.is_expiring_soon = False
             sub.save(update_fields=['status', 'is_expiring_soon'])
+            org.subscription_status = 'expired'
+            org.save(update_fields=['subscription_status'])
             send_expire_sms(sub.organization.id)
         else:
             # If subscription extended, reschedule task
@@ -27,56 +29,12 @@ def expire_subscription_task(subscription_id):
     except OrganizationSubscription.DoesNotExist:
         pass
 
-def schedule_expire_sms_task(subscription):
-    """
-    Schedule a 5-minute-before expire Celery beat task for a specific subscription/schema
-    """
-    task_name = f"expire-sub-{subscription.id}-schema-{subscription.organization.schema_name}"
-
-    # Remove existing task first
-    PeriodicTask.objects.filter(name=task_name).delete()
-
-    expire_time = subscription.end_date - timezone.timedelta(minutes=5)
-
-    schedule, _ = CrontabSchedule.objects.get_or_create(
-        minute=str(expire_time.minute),
-        hour=str(expire_time.hour),
-        day_of_month=str(expire_time.day),
-        month_of_year=str(expire_time.month),
-        timezone='UTC'
-    )
-
-    PeriodicTask.objects.create(
-        crontab=schedule,
-        name=task_name,
-        task='billing.tasks.expire_subscription_task',
-        args=json.dumps([subscription.id]),
-        one_off=True,  # run only once
-    )
-
-def remove_existing_task(subscription_id):
-    """
-    Remove any previously scheduled task for this subscription
-    """
-    PeriodicTask.objects.filter(name__startswith=f"expire-sub-{subscription_id}-").delete()
 
 def send_expire_sms(organization_id):
     """
     Placeholder SMS logic (integrate your SMS provider)
     """
     print(f"SMS: Subscription about to expire for Organization {organization_id}")
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

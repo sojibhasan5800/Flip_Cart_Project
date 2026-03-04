@@ -7,6 +7,7 @@ from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
 from django.conf import settings
 import stripe
+from stripe import StripeError
 import requests  # For bKash API
 from django.utils import timezone
 from .models import PaymentTransaction
@@ -42,6 +43,12 @@ class PurchasePlanView(APIView):
 
             # 🔎 Plan existence check
             plan = get_object_or_404(SubscriptionPlan, slug=plan_slug)
+            org = getattr(request.user, "organization", None)
+            if org is None:
+                return Response(
+                    {"error": "User does not belong to any organization"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
             # 🔎 Organization check
             if not hasattr(request.user, "organization"):
@@ -61,7 +68,7 @@ class PurchasePlanView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        except stripe.error.StripeError as e:
+        except StripeError as e:
             logger.error(f"Stripe error: {str(e)}")
             return Response(
                 {"error": "Payment provider error. Please try again."},

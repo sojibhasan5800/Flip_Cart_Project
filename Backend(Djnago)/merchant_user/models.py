@@ -48,7 +48,7 @@ class Organization(TenantMixin):
     country = models.CharField(max_length=100, blank=True, default='Bangladesh')
     
     # Subscription & Billing (Stripe)
-    subscription_plan = models.CharField(max_length=50, choices=[
+    subscription_plan_level = models.CharField(max_length=50, choices=[
         ('free_trial', 'Free Trial'),
         ('basic', 'Basic'),
         ('standard', 'Standard'),
@@ -163,8 +163,8 @@ class Organization(TenantMixin):
         return (
             self.subscription_status == 'active'
             and not self.is_trial
-            and self.current_period_end
-            and self.current_period_end > timezone.now()
+            and self.subscription_current_period_end
+            and self.subscription_current_period_end > timezone.now()
         )
 
 

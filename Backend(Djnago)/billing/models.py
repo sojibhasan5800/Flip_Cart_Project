@@ -15,6 +15,8 @@ class SubscriptionPlan(models.Model):
     PLAN_LEVELS = [
         ('basic', 'Basic'),
         ('pro', 'Pro'),
+        ('premium', 'Premium'),
+        ('standard', 'Standard'),
         ('enterprise', 'Enterprise'),
     ]
     PLAN_TYPES = [
@@ -26,7 +28,7 @@ class SubscriptionPlan(models.Model):
     
     name = models.CharField(max_length=100, unique=True)  # e.g., 'Basic', 'Pro Boost'
     slug = models.SlugField(max_length=100, unique=True)  # e.g., 'basic', 'pro-boost'
-    level = models.CharField(max_length=50, choices=PLAN_LEVELS, default='basic')
+    plan_level = models.CharField(max_length=50, choices=PLAN_LEVELS, default='basic')
     plan_type = models.CharField(max_length=50, choices=PLAN_TYPES, default='general')
     price = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0.00)])
     currency = models.CharField(max_length=3, default='USD')
@@ -45,10 +47,10 @@ class SubscriptionPlan(models.Model):
     class Meta:
         verbose_name = "Subscription Plan"
         verbose_name_plural = "Subscription Plans"
-        ordering = ['level', 'price']
+        ordering = ['plan_level', 'price']
 
     def __str__(self):
-        return f"{self.name} ({self.level} - {self.plan_type})"
+        return f"{self.name} ({self.plan_level} - {self.plan_type})"
 
     def get_duration(self):
         """Calculate duration based on billing_cycle for future extensibility"""
@@ -76,6 +78,7 @@ class OrganizationSubscription(models.Model):
     end_date = models.DateTimeField(null=True, blank=True,db_index=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active',db_index=True)
     stripe_subscription_id = models.CharField(max_length=100, blank=True, unique=True)
+    stripe_subscription_item_id = models.CharField(max_length=255, blank=True, null=True) 
     stripe_customer_id = models.CharField(max_length=100, blank=True) 
     is_expiring_soon = models.BooleanField(default=False, db_index=True)
     current_usage = models.JSONField(default=dict, help_text="Track usage like {'products': 50, 'boosted': 2}")  # Extensible tracking
@@ -95,27 +98,7 @@ class OrganizationSubscription(models.Model):
     def __str__(self):
         return f"{self.organization.business_name} - {self.plan.name} ({self.status})"
 
-    def save(self, *args, **kwargs):
-            """
-            Set is_expiring_soon flag dynamically and schedule the 5-minutes-before-expire task
-            """
-            from billing.tasks import schedule_expire_sms_task, remove_existing_task
-
-            now = timezone.now()
-            if not self.end_date:
-                # set default end_date based on plan duration
-                self.end_date = self.start_date + timezone.timedelta(days=self.plan.get_duration())
-
-            # Check if subscription is active and has end_date
-            if self.status == 'active' and self.end_date > now:
-                self.is_expiring_soon = self.end_date <= (now + timezone.timedelta(minutes=5))
-
-                # Remove previous scheduled task if exists
-                remove_existing_task(subscription_id=self.id)
-
-                # Schedule new 5-minutes-before task
-                schedule_expire_sms_task(subscription=self)
-            
+    def save(self, *args, **kwargs):        
             super().save(*args, **kwargs)
 
     def is_active(self):
@@ -213,5 +196,5 @@ class Invoice(models.Model):
             self.due_at = self.issued_at + timezone.timedelta(days=14)
         super().save(*args, **kwargs)
         # Generate PDF async
-        from .tasks import generate_invoice_pdf
-        generate_invoice_pdf.delay(self.id)
+        # from .tasks import generate_invoice_pdf
+        # generate_invoice_pdf.delay(self.id)

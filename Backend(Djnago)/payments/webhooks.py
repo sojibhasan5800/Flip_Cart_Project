@@ -1,4 +1,5 @@
 # billing/webhooks.py
+from django.utils import timezone
 import stripe
 from django.conf import settings
 from django.http import HttpResponse
@@ -7,6 +8,7 @@ from rest_framework.permissions import AllowAny
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 
+from billing.models import OrganizationSubscription, SubscriptionPlan
 from merchant_user.models import Organization
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
@@ -41,6 +43,13 @@ class StripeWebhookView(APIView):
             except Exception as e:
                 print("Webhook processing failed:", str(e))
                 return HttpResponse("Processing error", status=500)
+                # ✅ 2. Subscription Updated (Upgrade / Cancel at period end)
+        elif event["type"] == "customer.subscription.updated":
+            self.handle_subscription_updated(event["data"]["object"])
+
+        # ✅ 3. Subscription Fully Cancelled
+        elif event["type"] == "customer.subscription.deleted":
+            self.handle_subscription_deleted(event["data"]["object"])
 
         return HttpResponse(status=200)
 
@@ -76,5 +85,61 @@ class StripeWebhookView(APIView):
         )
 
      
+    # ================================
+    # 🟡 UPGRADE / CANCEL AT PERIOD END
+    # ================================
+    def handle_subscription_updated(self, sub_data):
+
+        stripe_sub_id = sub_data["id"]
+
+        subscription = OrganizationSubscription.objects.filter(
+            stripe_subscription_id=stripe_sub_id
+        ).first()
+
+        if not subscription:
+            return
+
+        # Update plan (Upgrade/Downgrade)
+        stripe_price_id = sub_data["items"]["data"][0]["price"]["id"]
+        new_plan = SubscriptionPlan.objects.filter(
+            stripe_price_id=stripe_price_id
+        ).first()
+
+        if new_plan:
+            subscription.plan = new_plan
+
+        subscription.status = sub_data["status"]
+        subscription.auto_renew = not sub_data["cancel_at_period_end"]
+
+        subscription.start_date = timezone.datetime.fromtimestamp(
+            sub_data["current_period_start"],
+            tz=timezone.utc
+        )
+
+        subscription.end_date = timezone.datetime.fromtimestamp(
+            sub_data["current_period_end"],
+            tz=timezone.utc
+        )
+
+        subscription.save()
+
+    # ================================
+    # 🔴 FULL CANCEL
+    # ================================
+    def handle_subscription_deleted(self, sub_data):
+
+        stripe_sub_id = sub_data["id"]
+
+        subscription = OrganizationSubscription.objects.filter(
+            stripe_subscription_id=stripe_sub_id
+        ).first()
+
+        if not subscription:
+            return
+
+        subscription.status = "cancelled"
+        subscription.end_date = timezone.now()
+        subscription.auto_renew = False
+        subscription.save()
 
   

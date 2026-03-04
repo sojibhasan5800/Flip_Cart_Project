@@ -13,7 +13,8 @@ from django.shortcuts import get_object_or_404
 from django.conf import settings
 import stripe
 from django.utils import timezone
-from store.models import Product
+# from store.models import Product
+from django.db.models import Q
 from .permissions import AdminGetMerchantGetAdminPostOnly,IsAdminUserOnly
 from .models import (
     SubscriptionPlan,
@@ -161,14 +162,128 @@ class PublicOrganizationPlanListAPIView(APIView):
         return Response(serializer.data)
 
 
+class CurrentSubscriptionAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        organization = request.user.organization
+        plan_type = request.query_params.get("plan_type", "organization")
+
+        subscriptions = (
+            OrganizationSubscription.objects
+            .select_related('plan')
+            .filter(
+                organization=organization,
+                status='active',
+                plan__plan_type=plan_type
+            )
+            .filter(
+                Q(end_date__isnull=True) |
+                Q(end_date__gt=timezone.now())
+            )
+        )
+
+        subscription = subscriptions.order_by('-start_date').first()
+
+        subscription_data = None
+
+        if subscription:
+            plan = subscription.plan
+
+            days_remaining = None
+            if subscription.end_date:
+                delta = subscription.end_date - timezone.now()
+                days_remaining = max(delta.days, 0)
+
+            subscription_data = {
+                "id": subscription.id,
+                "plan_id": plan.id,
+                "plan_name": plan.name,
+                "plan_level": plan.plan_level,
+                "plan_type": plan.plan_type,
+                "price": str(plan.price),
+                "currency": plan.currency,
+                "billing_cycle": plan.billing_cycle,
+                "status": subscription.status,
+                "auto_renew": subscription.auto_renew,
+                "start_date": subscription.start_date,
+                "end_date": subscription.end_date,
+                "days_remaining": days_remaining,
+                "is_expiring_soon": subscription.is_expiring_soon,
+                "usage": {
+                    "products_used": subscription.current_usage.get("products", 0),
+                    "products_limit": plan.max_products,
+                    "boosted_used": subscription.boosted_products_count,
+                    "boosted_limit": plan.max_boosted_products,
+                }
+            }
+
+        # 🔥 Available plans (same plan_type)
+        available_plans = SubscriptionPlan.objects.filter(
+            is_active=True,
+            plan_type=plan_type
+        ).order_by("price")
+
+        plans_data = SubscriptionPlanSerializer(available_plans, many=True).data
+
+        return Response({
+            "subscription": subscription_data,
+            "plans": plans_data
+        })
 
 
+class UpgradeSubscriptionAPIView(APIView):
+    permission_classes = [IsAuthenticated]
 
+    def post(self, request):
+        organization = request.user.organization
+        new_plan_id = request.data.get("plan_id")
 
+        subscription = OrganizationSubscription.objects.filter(
+            organization=organization,
+            status="active"
+        ).first()
+        print("plan_id",new_plan_id)
+        if not subscription:
+            return Response({"error": "No active subscription"}, status=400)
 
+        new_plan = get_object_or_404(SubscriptionPlan, id=new_plan_id)
 
+        if not subscription.stripe_subscription_item_id:
+            return Response({"error": "Stripe subscription item missing"}, status=500)
 
+        # Immediate upgrade with proration
+        stripe_sub = stripe.Subscription.modify(
+            subscription.stripe_subscription_id,
+            items=[{
+                "id": subscription.stripe_subscription_item_id,  # Subscription Item ID
+                "price": new_plan.stripe_price_id,
+            }],
+            proration_behavior="create_prorations",
+        )
 
+        return Response({
+            "message": "Upgrade initiated successfully",
+            "stripe_subscription": stripe_sub.id
+        })
+
+class CancelSubscriptionAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        organization = request.user.organization
+        subscription = OrganizationSubscription.objects.filter(
+            organization=organization,
+            status="active"
+        ).first()
+
+        if not subscription:
+            return Response({"error": "No active subscription"}, status=400)
+
+        stripe.Subscription.delete(subscription.stripe_subscription_id)
+
+        # Local DB update handled by webhook
+        return Response({"message": "Cancel request sent to Stripe"})
 
 
 # # ───────────────────────────────────────────────

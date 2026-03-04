@@ -10,7 +10,10 @@ from .api_views import (
     AdminProductBoostListAPIView,
     AdminSubscriptionPlanDetailAPIView,
     AdminSubscriptionPlanListCreateAPIView,
-    PublicOrganizationPlanListAPIView
+    PublicOrganizationPlanListAPIView,
+    CurrentSubscriptionAPIView,
+    UpgradeSubscriptionAPIView,
+    CancelSubscriptionAPIView,
 
     # SubscriptionPlanListAPIView,
     # OrganizationSubscriptionListCreateAPIView,
@@ -38,6 +41,9 @@ urlpatterns = [
 
     # --------------------- Public endpoints ---------------------
     path("org-plans/", PublicOrganizationPlanListAPIView.as_view()),
+    path('current-subscription/', CurrentSubscriptionAPIView.as_view(),name='current-subscription'),
+    path('upgrade-subscription/', UpgradeSubscriptionAPIView.as_view(),name='upgrade-subscription'),
+    path('cancel-subscription/', CancelSubscriptionAPIView.as_view(),name='cancel-subscription'),
     # path('plans/', SubscriptionPlanListAPIView.as_view(), name='plan-list'),
     
     # path('subscriptions/', OrganizationSubscriptionListCreateAPIView.as_view(), name='subscription-list-create'),
