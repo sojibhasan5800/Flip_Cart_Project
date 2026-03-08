@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { format, differenceInDays } from 'date-fns'
 import AxiosInstance from '@/api/AxiosInstance'
 import Loading from '@/components/Loading'
@@ -18,9 +18,48 @@ export default function ManageSubscriptionPage() {
   const [selectedPlan, setSelectedPlan] = useState(null)
   const [planAction, setPlanAction] = useState('') // 'upgrade' or 'downgrade'
 
+  // --- WebSocket modal state ---
+  const [wsPopup, setWsPopup] = useState(false)
+  const [wsData, setWsData] = useState(null)
+  const wsRef = useRef(null)
+
   useEffect(() => {
     fetchAllData()
   }, [])
+
+  // --- WebSocket subscription ---
+  useEffect(() => {
+    if (!currentSub?.organization_id) return
+
+    const orgId = currentSub.organization_id
+    const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws'
+    const wsUrl = `${protocol}://${window.location.host}/ws/subscription/${orgId}/`
+    wsRef.current = new WebSocket(wsUrl)
+
+    wsRef.current.onopen = () => {
+      console.log('WebSocket connected for org', orgId)
+    }
+
+    wsRef.current.onmessage = (event) => {
+      const data = JSON.parse(event.data)
+      console.log('WebSocket received:', data)
+
+      // Update subscription state
+      fetchAllData()
+
+      // Show modal for upgrade/downgrade
+      setWsData(data)
+      setWsPopup(true)
+    }
+
+    wsRef.current.onclose = () => {
+      console.log('WebSocket disconnected')
+    }
+
+    return () => {
+      wsRef.current?.close()
+    }
+  }, [currentSub?.organization_id])
 
   const fetchAllData = async () => {
     try {
@@ -76,9 +115,9 @@ export default function ManageSubscriptionPage() {
         toast.success("Downgrade scheduled at period end!")
       }
 
-      fetchAllData()
       setConfirmPopup(false)
       setSelectedPlan(null)
+      // No fetchAllData here, will be updated via WebSocket
     } catch (err) {
       console.error(err)
       toast.error("Plan change failed")
@@ -88,6 +127,11 @@ export default function ManageSubscriptionPage() {
   const handleCancelPopup = () => {
     setConfirmPopup(false)
     setSelectedPlan(null)
+  }
+
+  const handleCancelWsPopup = () => {
+    setWsPopup(false)
+    setWsData(null)
   }
 
   const handleCancelSubscription = async () => {
@@ -117,7 +161,6 @@ export default function ManageSubscriptionPage() {
 
   return (
     <div className="p-8 max-w-6xl mx-auto">
-
       <h1 className="text-3xl font-semibold mb-8">Manage Subscription</h1>
 
       {/* Current Plan Section */}
@@ -273,6 +316,30 @@ export default function ManageSubscriptionPage() {
                 className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white"
               >
                 Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* === WebSocket Upgrade/Downgrade Modal === */}
+      {wsPopup && wsData && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full">
+            <h3 className="text-xl font-bold mb-4">
+              {wsData.change_type === 'upgrade' ? 'Upgrade Completed' : 'Downgrade Scheduled'}
+            </h3>
+            <p className="mb-2">Current Plan: {wsData.current_plan}</p>
+            <p className="mb-2">Next Plan: {wsData.next_plan}</p>
+            <p className="mb-2">Status: {wsData.status}</p>
+            <p className="mb-2">Effective Date: {wsData.effective_date}</p>
+
+            <div className="mt-4 flex justify-end">
+              <button
+                onClick={handleCancelWsPopup}
+                className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                Close
               </button>
             </div>
           </div>
