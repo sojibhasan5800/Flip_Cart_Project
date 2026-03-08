@@ -13,6 +13,11 @@ export default function ManageSubscriptionPage() {
   const [currentSub, setCurrentSub] = useState(null)
   const [plans, setPlans] = useState([])
 
+  // --- Popup state ---
+  const [confirmPopup, setConfirmPopup] = useState(false)
+  const [selectedPlan, setSelectedPlan] = useState(null)
+  const [planAction, setPlanAction] = useState('') // 'upgrade' or 'downgrade'
+
   useEffect(() => {
     fetchAllData()
   }, [])
@@ -23,11 +28,9 @@ export default function ManageSubscriptionPage() {
         '/api/billing/current-subscription/?plan_type=organization',
         { useTenant: true }
       )
-
       setCurrentSub(data.subscription || null)
       setPlans(data.plans || [])
       console.log("Fetched subscription data:", data)
-
     } catch (err) {
       toast.error("Failed to load subscription data")
     } finally {
@@ -35,62 +38,76 @@ export default function ManageSubscriptionPage() {
     }
   }
 
-const handlePlanChange = async (plan) => {
-  if (!currentSub) return
+  // --- Handle plan click (show popup first) ---
+  const handlePlanClick = (plan) => {
+    if (!currentSub) return
 
-  // Convert string prices to numbers
-  const planPrice = parseFloat(plan.price)
-  const currentPrice = parseFloat(currentSub.price)
+    const planPrice = parseFloat(plan.price)
+    const currentPrice = parseFloat(currentSub.price)
 
-  try {
-    if (planPrice > currentPrice) {
-      // Upgrade immediately
-      await AxiosInstance.post(
-        '/api/billing/upgrade-subscription/',
-        { plan_id: plan.id },
-        { useTenant: true }
-      )
-      console.log("Upgrade response:", response)
-      toast.success("Upgrade initiated successfully!")
-    } else if (planPrice < currentPrice) {
-      // Downgrade at period end
-      await AxiosInstance.post(
-        '/api/billing/downgrade-at-period-end/',
-        { plan_id: plan.id },
-        { useTenant: true }
-      )
-      toast.success("Downgrade scheduled at period end!")
-    } else {
+    if (planPrice === currentPrice) {
       toast("You are already on this plan")
       return
     }
 
-    fetchAllData()  // Refresh plans & current subscription
-
-  } catch (err) {
-    toast.error("Plan change failed")
-    console.error(err)
-  }
-}
-
-const handleCancel = async () => {
-  if (!currentSub || currentSub.cancel_at_period_end) {
-    toast("Subscription already scheduled for cancellation");
-    return;
+    setSelectedPlan(plan)
+    setPlanAction(planPrice > currentPrice ? 'upgrade' : 'downgrade')
+    setConfirmPopup(true)
   }
 
-  try {
-    await AxiosInstance.post(
-      '/api/billing/cancel-subscription/',
-      {},
-      { useTenant: true }
-    )
-    toast.success(`Subscription will cancel at period end (${currentSub.end_date})`)
-    fetchAllData()
-  } catch {
-    toast.error("Cancel failed")
+  // --- Confirm in popup ---
+  const handleConfirmChange = async () => {
+    if (!selectedPlan) return
+
+    try {
+      if (planAction === 'upgrade') {
+        await AxiosInstance.post(
+          '/api/billing/upgrade-subscription/',
+          { plan_id: selectedPlan.id },
+          { useTenant: true }
+        )
+        toast.success("Upgrade initiated successfully!")
+      } else if (planAction === 'downgrade') {
+        await AxiosInstance.post(
+          '/api/billing/downgrade-at-period-end/',
+          { plan_id: selectedPlan.id },
+          { useTenant: true }
+        )
+        toast.success("Downgrade scheduled at period end!")
+      }
+
+      fetchAllData()
+      setConfirmPopup(false)
+      setSelectedPlan(null)
+    } catch (err) {
+      console.error(err)
+      toast.error("Plan change failed")
+    }
   }
-}
+
+  const handleCancelPopup = () => {
+    setConfirmPopup(false)
+    setSelectedPlan(null)
+  }
+
+  const handleCancelSubscription = async () => {
+    if (!currentSub || currentSub.cancel_at_period_end) {
+      toast("Subscription already scheduled for cancellation")
+      return
+    }
+
+    try {
+      await AxiosInstance.post(
+        '/api/billing/cancel-subscription/',
+        {},
+        { useTenant: true }
+      )
+      toast.success(`Subscription will cancel at period end (${currentSub.end_date})`)
+      fetchAllData()
+    } catch {
+      toast.error("Cancel failed")
+    }
+  }
 
   const handleBillingPortal = () => {
     window.location.href = '/api/billing/create-customer-portal/'
@@ -100,12 +117,10 @@ const handleCancel = async () => {
 
   return (
     <div className="p-8 max-w-6xl mx-auto">
-      <h1 className="text-3xl font-semibold mb-8">
-        Manage Subscription
-      </h1>
 
-      {/* ================= CURRENT PLAN SECTION ================= */}
+      <h1 className="text-3xl font-semibold mb-8">Manage Subscription</h1>
 
+      {/* Current Plan Section */}
       {!currentSub ? (
         <div className="p-8 border rounded-2xl bg-red-50 text-center">
           <h2 className="text-2xl text-red-600 font-semibold mb-4">
@@ -120,39 +135,31 @@ const handleCancel = async () => {
         </div>
       ) : (
         <div className="mb-10 border-2 border-green-500 bg-green-50 rounded-2xl p-8 shadow-sm">
-
           <div className="flex justify-between flex-wrap gap-6">
-
             <div>
               <h2 className="text-2xl font-bold text-green-700">
                 {currentSub.plan_name} Plan
               </h2>
+              <h3 className='text-lg font-medium text-gray-600'>{currentSub.plan_level}</h3>
 
               <span className="inline-block mt-2 px-3 py-1 text-sm bg-green-600 text-white rounded-full">
                 Active Plan
               </span>
-                {currentSub.cancel_at_period_end && (
-      <span className="inline-block mt-2 px-3 py-1 text-sm bg-orange-600 text-white rounded-full">
-          Cancellation Scheduled
-        </span>
-      )}
+              {currentSub.cancel_at_period_end && (
+                <span className="inline-block mt-2 px-3 py-1 text-sm bg-orange-600 text-white rounded-full">
+                  Cancellation Scheduled
+                </span>
+              )}
 
               {currentSub.start_date && currentSub.end_date && (
                 <>
-                  <p className="mt-4 text-gray-700">
-                    Billing Period:
-                  </p>
-
+                  <p className="mt-4 text-gray-700">Billing Period:</p>
                   <p className="font-medium text-gray-800">
                     {format(new Date(currentSub.start_date), 'PPP')} —{" "}
                     {format(new Date(currentSub.end_date), 'PPP')}
                   </p>
-
                   <p className="mt-2 font-semibold text-green-700">
-                    {differenceInDays(
-                      new Date(currentSub.end_date),
-                      new Date()
-                    )} days remaining
+                    {differenceInDays(new Date(currentSub.end_date), new Date())} days remaining
                   </p>
                 </>
               )}
@@ -167,30 +174,23 @@ const handleCancel = async () => {
               </button>
 
               <button
-                onClick={handleCancel}
+                onClick={handleCancelSubscription}
                 className="bg-red-600 hover:bg-red-700 text-white px-5 py-2.5 rounded-xl font-medium"
               >
                 Cancel Plan
               </button>
             </div>
-
           </div>
         </div>
       )}
 
-      {/* ================= AVAILABLE PLANS ================= */}
-
+      {/* Available Plans */}
       <div>
-        <h2 className="text-2xl font-semibold mb-6">
-          Available Plans
-        </h2>
+        <h2 className="text-2xl font-semibold mb-6">Available Plans</h2>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {plans.map((plan) => {
-
-            const isCurrent =
-              currentSub && currentSub.plan_id === plan.id
-
+            const isCurrent = currentSub && currentSub.plan_id === plan.id
             return (
               <div
                 key={plan.id}
@@ -200,26 +200,20 @@ const handleCancel = async () => {
                     : 'bg-white hover:shadow-xl'
                 }`}
               >
-
                 {isCurrent && (
                   <div className="absolute top-4 right-4 text-xs bg-green-600 text-white px-3 py-1 rounded-full">
                     Current
                   </div>
                 )}
 
-                <h3 className="text-xl font-semibold">
-                  {plan.name}
-                </h3>
+                <h3 className="text-xl font-semibold">{plan.name}</h3>
 
                 <p className="mt-2 text-3xl font-bold text-gray-800">
                   ${plan.price}
-                  <span className="text-sm font-medium text-gray-500">
-                    /{plan.billing_cycle}
-                  </span>
+                  <span className="text-sm font-medium text-gray-500">/{plan.billing_cycle}</span>
                 </p>
 
                 <div className="mt-6">
-
                   {isCurrent ? (
                     <button
                       disabled
@@ -229,24 +223,61 @@ const handleCancel = async () => {
                     </button>
                   ) : (
                     <button
-                    onClick={() => handlePlanChange(plan)}
-                    className={`w-full py-3 rounded-xl font-semibold transition ${
-                      parseFloat(plan.price) > parseFloat(currentSub?.price || 0)
-                        ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                        : 'bg-yellow-500 hover:bg-yellow-600 text-white'
-                    }`}
-                  >
-                    {parseFloat(plan.price) > parseFloat(currentSub?.price || 0) ? 'Upgrade' : 'Downgrade'}
-                  </button>
+                      onClick={() => handlePlanClick(plan)}
+                      className={`w-full py-3 rounded-xl font-semibold transition ${
+                        parseFloat(plan.price) > parseFloat(currentSub?.price || 0)
+                          ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                          : 'bg-yellow-500 hover:bg-yellow-600 text-white'
+                      }`}
+                    >
+                      {parseFloat(plan.price) > parseFloat(currentSub?.price || 0) ? 'Upgrade' : 'Downgrade'}
+                    </button>
                   )}
-
                 </div>
-
               </div>
             )
           })}
         </div>
       </div>
+
+      {/* === Confirmation Popup === */}
+      {confirmPopup && selectedPlan && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full">
+            <h3 className="text-xl font-bold mb-4">
+              Confirm {planAction === 'upgrade' ? 'Upgrade' : 'Downgrade'}
+            </h3>
+            <p className="mb-2">Current Plan: {currentSub.plan_name}</p>
+            <p className="mb-2">New Plan: {selectedPlan.name}</p>
+            <p className="mb-2">Price: ${selectedPlan.price} / {selectedPlan.billing_cycle}</p>
+            {planAction === 'upgrade' && (
+              <p className="mb-2 text-sm text-gray-600">
+                Your upgrade will be applied immediately with proration if applicable.
+              </p>
+            )}
+            {planAction === 'downgrade' && (
+              <p className="mb-2 text-sm text-gray-600">
+                Your downgrade will take effect at the end of current billing period.
+              </p>
+            )}
+
+            <div className="mt-4 flex justify-end gap-3">
+              <button
+                onClick={handleCancelPopup}
+                className="px-4 py-2 rounded-xl bg-gray-300 hover:bg-gray-400"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmChange}
+                className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   )

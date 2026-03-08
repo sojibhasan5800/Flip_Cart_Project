@@ -1,6 +1,10 @@
 # billing/webhooks.py
 from operator import sub
 
+from asgiref.sync import async_to_sync
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
+from channels.layers import get_channel_layer
 from django.utils import timezone
 from django.db import transaction
 import stripe
@@ -162,7 +166,7 @@ class StripeWebhookView(APIView):
                             subscription.pending_plan = new_plan
                             subscription.change_type = "downgrade"
                             subscription.scheduled_change_at = subscription.end_date
-                            
+
                 subscription.save()
                 organization = Organization.objects.filter(id=org_id).first()
                 if organization:
@@ -178,6 +182,37 @@ class StripeWebhookView(APIView):
                         "subscription_current_period_end",
                         "is_trial"
                     ])
+                
+                if change_type == "downgrade":
+                    data ={
+                        "change_type": "downgrade",
+                        "status": "scheduled",
+                        "current_plan": subscription.plan.name if subscription.plan else "Unknown",
+                        "next_plan": new_plan.name if new_plan else "Unknown",
+                        "effective_date": subscription.end_date.isoformat() if subscription.end_date else "Unknown"
+                        }
+                elif change_type == "upgrade":
+                    data ={
+                        "change_type": "upgrade",
+                        "status": "effective immediately",
+                        "current_plan": subscription.plan.name if subscription.plan else "Unknown",
+                        "next_plan": new_plan.name if new_plan else "Unknown",
+                        "effective_date": subscription.end_date.isoformat() if subscription.end_date else "Unknown"
+                        }
+                # ======================
+                # 🔵 WebSocket push
+                # ======================
+                if org_id:
+                    channel_layer = get_channel_layer()
+                    async_to_sync(channel_layer.group_send)(
+                        f"subscription_{org_id}",
+                        {
+                            "type": "subscription_update",
+                            "data": data
+                        }
+                    )
+                
+
         except Exception as e:
             print("Webhook transaction rolled back:", str(e))
             # print(f"Organization {organization.business_name} subscription status updated to: {subscription.status}, plan level: {subscription.plan.plan_level}, period: {subscription.start_date} to {subscription.end_date}")
