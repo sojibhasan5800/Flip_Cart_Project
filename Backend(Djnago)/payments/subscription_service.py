@@ -16,6 +16,7 @@ def activate_organization_subscription(plan_id, org_id, session,metadata=None):
         plan = SubscriptionPlan.objects.get(id=plan_id)
         org = Organization.objects.get(id=org_id)
         now = timezone.now()
+        print(f"Activating subscription for Org {org_id} with Plan {plan_id} at {now}")
 
         with transaction.atomic():
             # চেক Active subscription
@@ -54,6 +55,7 @@ def activate_organization_subscription(plan_id, org_id, session,metadata=None):
             org.subscription_current_period_end = end_date
             org.subscription_status = 'active'
             org.subscription_plan_level=plan.plan_level
+            # print(f"Organization {org_id} subscription updated: {start_date} to {end_date}, plan level: {plan.plan_level}")
             org.is_trial = False
 
             org.save(update_fields=[

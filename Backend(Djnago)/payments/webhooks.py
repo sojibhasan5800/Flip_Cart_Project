@@ -2,6 +2,7 @@
 from operator import sub
 
 from django.utils import timezone
+from django.db import transaction
 import stripe
 from django.conf import settings
 from django.http import HttpResponse
@@ -9,7 +10,7 @@ from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
-from datetime import datetime, timezone 
+from datetime import datetime, timedelta
 
 from billing.models import OrganizationSubscription, SubscriptionPlan
 from merchant_user.models import Organization
@@ -108,61 +109,79 @@ class StripeWebhookView(APIView):
     # ================================
 
     def handle_subscription_updated(self, sub_data):
-        stripe_sub_id = sub_data.get("id")
-        print("Handling subscription update for:", stripe_sub_id)
-        subscription = OrganizationSubscription.objects.filter(stripe_subscription_id=stripe_sub_id).first()
-        if not subscription:
-            return
+        try:
+            with transaction.atomic():
+                stripe_sub_id = sub_data.get("id")
+                subscription = OrganizationSubscription.objects.filter(
+                    stripe_subscription_id=stripe_sub_id
+                ).first()
+                # print(f"Handling subscription update for Stripe Subscription ID: {stripe_sub_id}, found local subscription: {subscription is not None}")
+                if not subscription:
+                    return
 
-        # Sync plan if changed (upgrade)
-        stripe_items = sub_data.get("items", {}).get("data", [])
-        if stripe_items:
-            stripe_price_id = stripe_items[0].get("price", {}).get("id")
-            new_plan = SubscriptionPlan.objects.filter(stripe_price_id=stripe_price_id).first()
-            if new_plan and new_plan != subscription.plan:
-                subscription.plan = new_plan
+                metadata = sub_data.get("metadata", {})
+                change_type = metadata.get("change_type")
+                new_plan_id = metadata.get("new_plan_id")
+                # print(f"Webhook received for subscription update. Change type: {change_type}, New plan ID: {new_plan_id}")
+                org_id = metadata.get("organization_id")
 
-        # Sync status
-        cancel_at_period_end = sub_data.get("cancel_at_period_end", False)
-        stripe_status = sub_data.get("status", "active")
-        subscription.status = "cancelled" if cancel_at_period_end else stripe_status
-        subscription.auto_renew = not cancel_at_period_end
+                stripe_items = sub_data.get("items", {}).get("data", [])
+                new_plan = None
+                if new_plan_id:
+                    new_plan = SubscriptionPlan.objects.filter(id=new_plan_id).first()
+                    # print(f"Webhook detected change_type: {change_type} for Organization ID: {org_id}, new plan ID: {new_plan_id}")
+                elif stripe_items:
+                    stripe_price_id = stripe_items[0].get("price", {}).get("id")
+                    new_plan = SubscriptionPlan.objects.filter(stripe_price_id=stripe_price_id).first()
 
-        # Sync period dates
-        subscription.start_date = datetime.fromtimestamp(
-            sub_data.get("current_period_start", datetime.now().timestamp()),
-            tz=timezone.utc
-        )
+                # Sync status and period
+                # subscription.start_date = datetime.fromtimestamp(sub_data.get("current_period_start", timezone.now().timestamp()), tz=timezone.utc)
+                # subscription.end_date = datetime.fromtimestamp(sub_data.get("current_period_end", timezone.now().timestamp()), tz=timezone.utc)
+                subscription.start_date = timezone.now()
+                if subscription.plan:        
+                    subscription.end_date = subscription.start_date + timedelta(days=subscription.plan.get_duration())
 
-        subscription.end_date = datetime.fromtimestamp(
-            sub_data.get("current_period_end", datetime.now().timestamp()),
-            tz=timezone.utc
-        )
+                cancel_at_period_end = sub_data.get("cancel_at_period_end", False)
+                subscription.status = "cancelled" if cancel_at_period_end else sub_data.get("status", "active")
+                subscription.auto_renew = not cancel_at_period_end
 
-        # Handle scheduled downgrade
-        if getattr(subscription, "downgrade_at_period_end", False):
-            now = timezone.now()
-            if subscription.end_date <= now:
-                new_plan = SubscriptionPlan.objects.filter(id=subscription.downgrade_plan_id).first()
-                if new_plan:
-                    subscription.plan = new_plan
-                    subscription.downgrade_at_period_end = False
-                    subscription.downgrade_plan_id = None
-                    # Update Stripe subscription at period end
-                    try:
-                        stripe.Subscription.modify(
-                            stripe_sub_id,
-                            items=[{
-                                "id": subscription.stripe_subscription_item_id,
-                                "price": new_plan.stripe_price_id
-                            }],
-                            proration_behavior="none"
-                        )
-                    except stripe.error.StripeError as e:
-                        print("Stripe downgrade error:", e)
-
-        subscription.save()
-
+                # Apply upgrade or scheduled downgrade
+                if new_plan and new_plan != subscription.plan:
+                    if change_type == "upgrade":
+                        # print(f"Webhook detected UPGRADE for {subscription.organization.business_name}")
+                        subscription.plan = new_plan
+                        # subscription.downgrade_at_period_end = False
+                        # subscription.downgrade_plan_id = None
+                    elif change_type == "downgrade":
+                        # print(f"Webhook detected DOWNGRADE for {subscription.organization.business_name}")
+                        # Apply downgrade only if period ended
+                        now = timezone.now()
+                        if subscription.end_date <= now:
+                            subscription.plan = new_plan
+                        else:
+                            subscription.pending_plan = new_plan
+                            subscription.change_type = "downgrade"
+                            subscription.scheduled_change_at = subscription.end_date
+                            
+                subscription.save()
+                organization = Organization.objects.filter(id=org_id).first()
+                if organization:
+                    organization.subscription_plan_level = subscription.plan.plan_level
+                    organization.subscription_status = subscription.status
+                    organization.subscription_current_period_start = subscription.start_date
+                    organization.subscription_current_period_end = subscription.end_date
+                    organization.is_trial = False
+                    organization.save(update_fields=[
+                        "subscription_plan_level",
+                        "subscription_status",
+                        "subscription_current_period_start",
+                        "subscription_current_period_end",
+                        "is_trial"
+                    ])
+        except Exception as e:
+            print("Webhook transaction rolled back:", str(e))
+            # print(f"Organization {organization.business_name} subscription status updated to: {subscription.status}, plan level: {subscription.plan.plan_level}, period: {subscription.start_date} to {subscription.end_date}")
+            # print("Organization subscription status updated to:", subscription.status) 
 
     # ================================
     # 🔴 FULL CANCEL

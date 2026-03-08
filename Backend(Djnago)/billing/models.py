@@ -14,7 +14,7 @@ class SubscriptionPlan(models.Model):
     """
     PLAN_LEVELS = [
         ('basic', 'Basic'),
-        ('pro', 'Pro'),
+        # ('pro', 'Pro'),
         ('premium', 'Premium'),
         ('standard', 'Standard'),
         ('enterprise', 'Enterprise'),
@@ -76,7 +76,6 @@ class OrganizationSubscription(models.Model):
     plan = models.ForeignKey(SubscriptionPlan, on_delete=models.PROTECT, related_name='org_subscriptions')
     start_date = models.DateTimeField(default=timezone.now,db_index=True)
     end_date = models.DateTimeField(null=True, blank=True,db_index=True)
-    cancel_at_period_end = models.BooleanField(default=False)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active',db_index=True)
     stripe_subscription_id = models.CharField(max_length=100, blank=True, unique=True)
     stripe_subscription_item_id = models.CharField(max_length=255, blank=True, null=True) 
@@ -87,9 +86,13 @@ class OrganizationSubscription(models.Model):
     auto_renew = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    cancel_at_period_end = models.BooleanField(default=False)
+    pending_plan = models.ForeignKey(SubscriptionPlan, on_delete=models.SET_NULL, null=True,blank=True,related_name='pending_subscriptions')
+    change_type = models.CharField(max_length=20, choices=[('upgrade', 'Upgrade'), ('downgrade', 'Downgrade')], null=True, blank=True)
+    scheduled_change_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
-        unique_together = ['organization', 'plan']
+        unique_together = ['organization', 'stripe_subscription_id']
         ordering = ['-start_date']
         indexes = [
             models.Index(fields=['status', 'end_date']),
@@ -108,9 +111,10 @@ class OrganizationSubscription(models.Model):
     def can_boost_more(self):
         return self.boosted_products_count < self.plan.max_boosted_products
 
-    def upgrade(self, new_plan):
+    def upgrade_plan(self, new_plan,update_type):
         """Logic for upgrade/downgrade - prorate if needed"""
-        if new_plan.price > self.plan.price:
+        if update_type == 'upgrade':
+            print(f"Upgrading subscription for {self.organization.business_name} from {self.plan.name} to {new_plan.name}")
             # Upgrade: immediate effect, prorate remaining
             self.plan = new_plan
             self.start_date = timezone.now()
@@ -118,14 +122,14 @@ class OrganizationSubscription(models.Model):
             self.status = 'active'
             self.save()
             # Trigger Stripe update via task
-            from .tasks import update_stripe_subscription
-            update_stripe_subscription.delay(self.id)
-        elif new_plan.price < self.plan.price:
+            # from .tasks import update_stripe_subscription
+            # update_stripe_subscription.delay(self.id)
+        elif update_type == 'downgrade':
             # Downgrade: effective at end of current period
             self.status = 'active'  # Keep active till end
             # Schedule downgrade
-            from .tasks import schedule_downgrade
-            schedule_downgrade.delay(self.id, new_plan.id)
+            # from .tasks import schedule_downgrade
+            # schedule_downgrade.delay(self.id, new_plan.id)
 
 class ProductBoostSubscription(models.Model):
     """
@@ -166,14 +170,47 @@ class ProductBoostSubscription(models.Model):
         # self.organization_subscription.save()
 
 
+class SubscriptionHistory(models.Model):
+    subscription = models.ForeignKey(
+        'OrganizationSubscription',
+        on_delete=models.CASCADE,
+        related_name='history'
+    )
+    old_plan = models.ForeignKey(
+        'SubscriptionPlan',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='+'
+    )
+    new_plan = models.ForeignKey(
+        'SubscriptionPlan',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='+'
+    )
+    change_type = models.CharField(max_length=20, choices=[
+        ('upgrade', 'Upgrade'),
+        ('downgrade', 'Downgrade'),
+        ('cancel', 'Cancel'),
+        ('renew', 'Renew'),
+    ])
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.subscription.organization.business_name}: {self.change_type} {self.old_plan} → {self.new_plan}"
+
+
+
 class Invoice(models.Model):
     """
     Invoice generation model. Supports PDF generation via tasks/views.
     Extensible with line items JSON.
     """
     invoice_number = models.CharField(max_length=50, unique=True, default=uuid.uuid4)
-    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name='invoices')
-    subscription = models.ForeignKey(OrganizationSubscription, on_delete=models.SET_NULL, null=True, related_name='invoices')
+    organization = models.ForeignKey(Organization, on_delete=models.SET_NULL, null=True, blank=True, related_name='invoices')
+    subscription = models.ForeignKey(OrganizationSubscription, on_delete=models.SET_NULL, null=True, blank=True, related_name='invoices')
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     currency = models.CharField(max_length=3, default='USD')
     status = models.CharField(max_length=20, choices=[('paid', 'Paid'), ('pending', 'Pending'), ('failed', 'Failed')], default='pending')

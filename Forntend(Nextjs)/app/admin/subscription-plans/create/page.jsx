@@ -56,7 +56,8 @@ const SubscriptionPlanForm = () => {
             <label>Level</label>
             <select name="plan_level" value={form.plan_level} onChange={handleChange} className="w-full border p-2 rounded">
               <option value="basic">Basic</option>
-              <option value="pro">Pro</option>
+              <option value="premium">Premium</option>
+              <option value="standard">Standard</option>
               <option value="enterprise">Enterprise</option>
             </select>
           </div>

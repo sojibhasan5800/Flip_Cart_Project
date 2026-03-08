@@ -4,6 +4,9 @@
 # All logic preserved, just restructured to use APIView / @api_view style
 # This makes it compatible with your existing project style (no routers, explicit URL patterns)
 
+from turtle import update
+
+from elasticsearch import serializer
 from rest_framework.views import APIView
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
@@ -13,6 +16,7 @@ from django.shortcuts import get_object_or_404
 from django.conf import settings
 import stripe
 from stripe import StripeError
+from django.db import transaction
 
 from django.utils import timezone
 # from store.models import Product
@@ -21,6 +25,7 @@ from django.db.models import Q
 
 from billing.services import create_proration_invoice
 from billing.utils import calculate_proration
+from merchant_user.models import Organization
 from .permissions import AdminGetMerchantGetAdminPostOnly,IsAdminUserOnly
 from .models import (
     SubscriptionPlan,
@@ -45,7 +50,7 @@ class AdminSubscriptionPlanListCreateAPIView(APIView):
     def get(self, request):
         plans = SubscriptionPlan.objects.all()
         serializer = SubscriptionPlanSerializer(plans, many=True)
-        print(serializer.data)
+        # print(serializer.data)
         return Response(serializer.data)
 
     def post(self, request):
@@ -66,10 +71,23 @@ class AdminSubscriptionPlanDetailAPIView(APIView):
 
     def put(self, request, pk):
         plan = get_object_or_404(SubscriptionPlan, pk=pk)
+        old_plan_level = plan.plan_level 
         serializer = SubscriptionPlanSerializer(plan, data=request.data, partial=True)
         if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
+                with transaction.atomic():
+                    updated_plan = serializer.save()
+
+                    # যদি plan_level change হয়
+                    new_plan_level = updated_plan.plan_level
+                    # print(f"Plan level changed from {old_plan_level} to {new_plan_level} for Plan ID: {updated_plan.id}")
+                    if old_plan_level != new_plan_level:
+                        Organization.objects.filter(
+                            subscription_plan_level=old_plan_level,
+                            subscription_status='active'
+                        ).update(subscription_plan_level=new_plan_level)
+                
+                return Response(serializer.data)
+
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, pk):
@@ -188,13 +206,21 @@ class CurrentSubscriptionAPIView(APIView):
                 Q(end_date__gt=timezone.now())
             )
         )
+        print("Active subscriptions found:", subscriptions.count())
 
         subscription = subscriptions.order_by('-start_date').first()
 
         subscription_data = None
+        # for x in subscriptions:
+        #     print("Active subscription found:", x.id, "Plan:", x.plan.name, "Ends at:", x.end_date)
+        #     print()
+        # if subscriptions:
+
+        #     print("Current subscription found for organization:", organization.name)
 
         if subscription:
             plan = subscription.plan
+            print(f"Current subscription plan: {plan.name}, level: {plan.plan_level}, ends at: {subscription.end_date}")
 
             days_remaining = None
             if subscription.end_date:
@@ -264,9 +290,17 @@ class UpgradeSubscriptionAPIView(APIView):
                     "price": new_plan.stripe_price_id,
                 }],
                 proration_behavior="create_prorations",
+                    metadata={
+                        "change_type": "upgrade",
+                        "new_plan_id": new_plan.id,
+                        "organization_id": organization.id
+                    }
             )
+            print("Stripe subscription upgraded:")
+            
         except StripeError as e:
             return Response({"error": str(e)}, status=400)
+       
 
         # Calculate proration
         proration = calculate_proration(subscription, new_plan)
@@ -278,7 +312,7 @@ class UpgradeSubscriptionAPIView(APIView):
             "message": "Upgrade initiated successfully",
             "stripe_subscription": stripe_sub.id
         })
-    
+   
 class DowngradeAtPeriodEndAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -298,13 +332,26 @@ class DowngradeAtPeriodEndAPIView(APIView):
         if getattr(subscription, "downgrade_at_period_end", None):
             return Response({"message": "Downgrade already scheduled"}, status=200)
 
-        # Schedule downgrade
+        # Schedule downgrade at period end
         subscription.downgrade_at_period_end = True
         subscription.downgrade_plan_id = new_plan.id
         subscription.save(update_fields=["downgrade_at_period_end", "downgrade_plan_id"])
 
+        # Update Stripe metadata so webhook can detect it
+        try:
+            stripe.Subscription.modify(
+                subscription.stripe_subscription_id,
+                metadata={
+                    "change_type": "downgrade",
+                    "new_plan_id": new_plan.id,
+                    "organization_id": organization.id
+                }
+            )
+        except stripe.error.StripeError as e:
+            print("Stripe metadata update failed:", e)
+
         return Response({
-            "message": f"Downgrade to {new_plan.name} will apply at period end",
+            "message": f"Downgrade to {new_plan.name} scheduled at period end",
             "current_access_until": subscription.end_date
         })
     
@@ -319,7 +366,7 @@ class CancelSubscriptionAPIView(APIView):
             organization=organization,
             status="active"
         ).first()
-        print("Cancel subscription request for:", subscription)
+        # print("Cancel subscription request for:", subscription)
 
         if not subscription:
             return Response({"error": "No active subscription"}, status=400)
@@ -344,7 +391,10 @@ class CancelSubscriptionAPIView(APIView):
         subscription.status = "cancelled"
         subscription.save(update_fields=["cancel_at_period_end", "status"])
         organization.subscription_status = "cancelled"
+        # print("Organization subscription status updated to cancelled for:", organization.name)
         organization.save(update_fields=["subscription_status"])
+        print("Organization subscription status:", organization.subscription_status)
+
 
         return Response({
             "message": "Subscription will cancel at period end",

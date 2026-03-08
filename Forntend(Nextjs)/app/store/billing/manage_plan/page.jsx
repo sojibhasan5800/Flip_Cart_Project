@@ -112,7 +112,7 @@ const handleCancel = async () => {
             No Active Subscription
           </h2>
           <button
-            onClick={() => router.push('/billing/plans')}
+            onClick={() => router.push('/billing/plans/org_subscription')}
             className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-medium"
           >
             Buy Plan

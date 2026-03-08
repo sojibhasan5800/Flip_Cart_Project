@@ -67,7 +67,7 @@ export default function SubscriptionBanner({
         </div>
 
         <button
-          onClick={() => router.push('/billing/plans')}
+          onClick={() => router.push('/billing/plans/org_subscription')}
           className="bg-red-600 hover:bg-red-700 text-white px-6 py-2.5 rounded-lg font-medium"
         >
           Buy Plan

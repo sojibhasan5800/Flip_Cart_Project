@@ -177,7 +177,7 @@ class SellerStatusAPIView(APIView):
                         else "rejected"
                         )
                 })
-                print(possible_stores)
+                # print(possible_stores)
                 return Response({
                     "is_seller": True,
                     "status": "approved",
@@ -286,6 +286,7 @@ class SellerStoreDashboardAPIView(APIView):
         subscription_current_period_start = organization.subscription_current_period_start
         subscription_current_period_end = organization.subscription_current_period_end
         subscription_plan_level = organization.subscription_plan_level
+        # subscription_status = organization.subscription_status
 
 
         # 2. Switch to tenant schema
@@ -340,7 +341,7 @@ class SellerStoreDashboardAPIView(APIView):
                     }
                 }
             }
-            print("Dashboard data prepared:", data)
+            # print("Dashboard data prepared:", data)
 
         return Response(data, status=status.HTTP_200_OK)
 
@@ -490,7 +491,7 @@ class ToggleStockAPIView(APIView):
     def patch(self, request, pk):
         try:
             organization = getattr(request, "organization", None)
-            print("Organization found:", organization)
+            # print("Organization found:", organization)
             if not organization:
                 return Response({"error": "Organization not found"}, status=400)
 

@@ -89,9 +89,10 @@ const EditSubscriptionPlan = () => {
 
           <div>
             <label>Level</label>
-            <select name="level" value={form.level} onChange={handleChange} className="w-full border p-2 rounded">
+            <select name="plan_level" value={form.plan_level} onChange={handleChange} className="w-full border p-2 rounded">
               <option value="basic">Basic</option>
-              <option value="pro">Pro</option>
+              <option value="standard">Standard</option>
+              <option value="premium">Premium</option>
               <option value="enterprise">Enterprise</option>
             </select>
           </div>
