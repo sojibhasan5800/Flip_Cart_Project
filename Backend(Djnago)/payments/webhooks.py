@@ -44,6 +44,7 @@ class StripeWebhookView(APIView):
         except ValueError:
             return HttpResponse("Invalid payload", status=400)
 
+
         # ✅ Handle Stripe events
         if event["type"] == "checkout.session.completed":
             try:
@@ -154,8 +155,6 @@ class StripeWebhookView(APIView):
                     if change_type == "upgrade":
                         # print(f"Webhook detected UPGRADE for {subscription.organization.business_name}")
                         subscription.plan = new_plan
-                        # subscription.downgrade_at_period_end = False
-                        # subscription.downgrade_plan_id = None
                     elif change_type == "downgrade":
                         # print(f"Webhook detected DOWNGRADE for {subscription.organization.business_name}")
                         # Apply downgrade only if period ended
@@ -203,6 +202,7 @@ class StripeWebhookView(APIView):
                 # 🔵 WebSocket push
                 # ======================
                 if org_id:
+                    print(f"[Webhook DEBUG] Sending WS data")
                     channel_layer = get_channel_layer()
                     async_to_sync(channel_layer.group_send)(
                         f"subscription_{org_id}",
@@ -211,6 +211,7 @@ class StripeWebhookView(APIView):
                             "data": data
                         }
                     )
+                    print(f"[Webhook DEBUG] WS data sent: {data}")
                 
 
         except Exception as e:

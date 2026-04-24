@@ -69,6 +69,7 @@ export default function ManageSubscriptionPage() {
       )
       setCurrentSub(data.subscription || null)
       setPlans(data.plans || [])
+      toast.success("Subscription data loaded")
       console.log("Fetched subscription data:", data)
     } catch (err) {
       toast.error("Failed to load subscription data")

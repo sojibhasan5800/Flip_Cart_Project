@@ -23,11 +23,27 @@ const SubscriptionPlanForm = () => {
     features: {},
     is_active: true,
   })
+const generateSlug = (text) => {
+  return text
+    .toLowerCase()
+    .trim()
+    .replace(/[\s\W-]+/g, '-')
+}
 
-  const handleChange = e => {
-    const { name, value } = e.target
-    setForm(prev => ({ ...prev, [name]: value }))
-  }
+const handleChange = e => {
+  const { name, value } = e.target
+
+  setForm(prev => {
+    let updated = { ...prev, [name]: value }
+
+    // 🔥 KEY POINT: name change হলে slug auto generate
+    if (name === 'name') {
+      updated.slug = generateSlug(value)
+    }
+
+    return updated
+  })
+}
 
   const handleSubmit = async e => {
     e.preventDefault()

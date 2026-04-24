@@ -10,11 +10,12 @@ class SubscriptionConsumer(AsyncWebsocketConsumer):
         # Join group
         await self.channel_layer.group_add(self.group_name, self.channel_name)
         await self.accept()
-
+        print(f"[WebSocket Debug] Connected: org {self.org_id}, channel {self.channel_name}")
     async def disconnect(self, close_code):
         await self.channel_layer.group_discard(self.group_name, self.channel_name)
 
     # Receive message from group
     async def subscription_update(self, event):
         data = event['data']
+        print(f"[WebSocket Debug] Sending to org {self.org_id}: {data}")
         await self.send(text_data=json.dumps(data))

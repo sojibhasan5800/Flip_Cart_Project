@@ -26,6 +26,8 @@
 # docker compose up -d --build (update image and run container in background)
 # docker compose up -d  (run container in background)
 
+# Redis on Off - redis-cli shutdown
+# Local webhook stripe testing - stripe listen --forward-to localhost:8000/api/payments/stripe-webhook/
 
 
 
@@ -43,7 +45,7 @@ build/
 
 # Virtual environment
 venv/
-env/
+# env/
 ENV/
 .venv/
 

@@ -43,6 +43,7 @@ export default function Cart() {
     useEffect(() => {
         if (products.length > 0) {
             createCartArray();
+            // const 
         }
     }, [cartItems, products]);
 

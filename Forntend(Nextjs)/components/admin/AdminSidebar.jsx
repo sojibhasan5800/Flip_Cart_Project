@@ -25,6 +25,7 @@ const AdminSidebar = () => {
         links: [
             { name: "Stores", href: "/admin/stores", icon: StoreIcon },
             { name: "Approve Stores", href: "/admin/approve", icon: ShieldCheckIcon },
+            { name: "Coupons", href: "/admin/coupons", icon: TicketPercentIcon },
         ]
     },
     {

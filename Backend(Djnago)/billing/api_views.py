@@ -54,6 +54,7 @@ class AdminSubscriptionPlanListCreateAPIView(APIView):
         return Response(serializer.data)
 
     def post(self, request):
+        print(100)
         serializer = SubscriptionPlanSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
