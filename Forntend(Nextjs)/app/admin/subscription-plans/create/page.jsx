@@ -81,8 +81,8 @@ const handleChange = e => {
             <label>Type</label>
             <select name="plan_type" value={form.plan_type} onChange={handleChange} className="w-full border p-2 rounded">
               <option value="general">General</option>
-              <option value="boosting">Boosting</option>
-              <option value="custom">Custom</option>
+              <option value="product_boost">Product Boost</option>
+              <option value="plus_membership">Plus Membership</option>
               <option value="organization">Organization</option>
             </select>
           </div>
