@@ -186,6 +186,18 @@ class PublicOrganizationPlanListAPIView(APIView):
         serializer = SubscriptionPlanSerializer(plans, many=True)
         return Response(serializer.data)
 
+class PlusMembershipPlanListAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        plans = SubscriptionPlan.objects.filter(
+            plan_type='plus_membership',
+            is_active=True
+        )
+        serializer = SubscriptionPlanSerializer(plans, many=True)
+        return Response(serializer.data)
+    
+
 
 class CurrentSubscriptionAPIView(APIView):
     permission_classes = [IsAuthenticated]
@@ -421,3 +433,5 @@ class SubscriptionProrationAPIView(APIView):
         return Response(proration)
 
 
+ 
+    
