@@ -25,7 +25,7 @@ export default function BillingPlansPage() {
 
     const fetchPlans = async () => {
         try {
-            const res = await AxiosInstance.get('/api/billing/plans/', { useTenant: true })
+            const res = await AxiosInstance.get('/api/billing/product-boosts/', { useTenant: true })
             setPlans(res.data)
         } catch (err) {
             toast.error('Failed to load plans')
@@ -52,7 +52,7 @@ export default function BillingPlansPage() {
             <h1 className="text-3xl font-bold text-center mb-12 text-gray-800">Choose Your Boosting Plan</h1>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
-                {plans.filter(plan => plan.plan_type === 'boosting').map(plan => (
+                {plans.filter(plan => plan.plan_type === 'product_boost').map(plan => (
                     <div 
                         key={plan.id} 
                         className={`bg-white rounded-xl shadow-lg p-6 flex flex-col items-center transform hover:scale-105 transition duration-300 ${
