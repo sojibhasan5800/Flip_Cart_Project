@@ -197,6 +197,42 @@ class PlusMembershipPlanListAPIView(APIView):
         serializer = SubscriptionPlanSerializer(plans, many=True)
         return Response(serializer.data)
     
+    
+class ProductBoostSubscriptionListAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        boosts = SubscriptionPlan.objects.filter(
+            plan_type='product_boost',
+            is_active=True
+        )
+        serializer = SubscriptionPlanSerializer(boosts, many=True)
+        return Response(serializer.data)
+
+    def post(self, request):
+        subscription = OrganizationSubscription.objects.filter(
+            organization=request.user.organization,
+            status="active"
+        ).first()
+
+        if not subscription:
+            return Response({"error": "No active subscription"}, status=400)
+
+        # Check if user has already boosted max products
+        active_boosts_count = ProductBoostSubscription.objects.filter(
+            organization_subscription=subscription,
+            is_active=True
+        ).count()
+
+        if active_boosts_count >= subscription.plan.max_boosted_products:
+            return Response({"error": "Boost limit reached"}, status=400)
+
+        boost = ProductBoostSubscription.objects.create(
+            organization_subscription=subscription,
+            is_active=True
+        )
+        serializer = ProductBoostSubscriptionSerializer(boost)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
 class CurrentSubscriptionAPIView(APIView):

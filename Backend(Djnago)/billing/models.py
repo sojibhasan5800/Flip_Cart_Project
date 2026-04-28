@@ -22,8 +22,8 @@ class SubscriptionPlan(models.Model):
     PLAN_TYPES = [
         ('general', 'General Store Plan'),
         ('organization', 'Organization-wide Plan'),  # For future use if needed
-        ('boosting', 'Product Boosting Add-on'),  # For product boosting
-        ('custom', 'Custom Plan'),  # For future extensions
+        ('product_boost', 'Product Boosting Add-on'),  # For product boosting
+        ('plus_membership', 'plus_membership Plan'),  # For future extensions
     ]
     
     name = models.CharField(max_length=100, unique=True)  # e.g., 'Basic', 'Pro Boost'
