@@ -9,6 +9,10 @@ export default function Orders() {
     const [orders, setOrders] = useState([]);
 
     useEffect(() => {
+        
+        const fetchOrders = async () => {
+            // Simulate an API call to fetch orders
+            // In a real application, you would replace this with an actual API call
         setOrders(orderDummyData)
     }, []);
 

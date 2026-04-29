@@ -4,7 +4,7 @@ import { PackageIcon, Search, ShoppingCart } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-// import { useSelector } from "react-redux";
+// import { Crown, Sparkles } from "lucide-react";
 import { useSelector, useDispatch } from "react-redux";
 // import { logout as logoutAction } from "../../../../store/authSlice";
 
@@ -13,13 +13,44 @@ const Navbar = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const cartCount = useSelector((state) => state.cart.total);
   const dispatch = useDispatch();
+  const [isPlusMember, setIsPlusMember] = useState(null);
+
   // const isLoggedIn = useSelector((state) => state.auth.isLoggedIn);
 
   // Check token in localStorage to see if user is logged in
+
+
   useEffect(() => {
     const token = localStorage.getItem("Token");
     setIsLoggedIn(!!token);
-  }, []);
+    const checkMembership = async () => {
+    const storedStatus = localStorage.getItem("isPlusMember");
+
+    if (storedStatus !== null) {
+      //  Use cached value
+      setIsPlusMember(storedStatus === "true");
+      return;
+    }
+
+    try {
+
+
+      const res = await fetch("/api/check-membership");
+
+      const data = await res.json();
+
+      // assume API returns: { isPlus: true/false }
+      localStorage.setItem("isPlusMember", data.isPlus);
+      setIsPlusMember(data.isPlus);
+
+    } catch (error) {
+      console.error("Membership check failed", error);
+      setIsPlusMember(false);
+    }
+  };
+
+  checkMembership();
+}, []);
 
   const handleLogout = () => {
     localStorage.removeItem("Token");
@@ -47,9 +78,17 @@ const Navbar = () => {
           <Link href="/" className="relative text-4xl font-semibold text-slate-700">
             <span className="text-green-600">go</span>cart
             <span className="text-green-600 text-5xl leading-0">.</span>
-            <p className="absolute text-xs font-semibold -top-1 -right-8 px-3 p-0.5 rounded-full flex items-center gap-2 text-white bg-green-500">
+            {/* <p className="absolute text-xs font-semibold -top-1 -right-8 px-3 p-0.5 rounded-full flex items-center gap-2 text-white bg-green-500">
               plus
-            </p>
+            </p> */}
+
+            {isPlusMember !== null && (
+              <p className={`absolute text-xs font-semibold -top-1 -right-8 px-3 p-0.5 rounded-full flex items-center gap-2 text-white 
+                ${isPlusMember ? "bg-green-500" : "bg-gray-400"}`}>
+                
+                {isPlusMember ? "plus" : "basic"}
+              </p>
+            )}
           </Link>
 
           {/* Desktop Menu */}
