@@ -42,6 +42,7 @@ SHARED_APPS = [
     'public_data',
     'system_management', 
     'billing', 
+    'global_payments',
     # 'core_notifications',
 ]
 

@@ -170,6 +170,7 @@ class ProductBoostSubscription(models.Model):
         # self.organization_subscription.save()
 
 
+
 class SubscriptionHistory(models.Model):
     subscription = models.ForeignKey(
         'OrganizationSubscription',
@@ -200,8 +201,6 @@ class SubscriptionHistory(models.Model):
 
     def __str__(self):
         return f"{self.subscription.organization.business_name}: {self.change_type} {self.old_plan} → {self.new_plan}"
-
-
 
 class Invoice(models.Model):
     """

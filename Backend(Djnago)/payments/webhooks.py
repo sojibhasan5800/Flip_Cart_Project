@@ -30,7 +30,7 @@ class StripeWebhookView(APIView):
         payload = request.body
         sig_header = request.META.get("HTTP_STRIPE_SIGNATURE")
 
-        # 🔥 Select correct webhook secret
+        #  Select correct webhook secret
         webhook_secret = self.get_webhook_secret()
 
         try:
@@ -72,16 +72,21 @@ class StripeWebhookView(APIView):
 
     def handle_checkout_completed(self, session):
         metadata = session.get("metadata", {})
+
+        plan_type = metadata.get("plan_type")
+        user_id = metadata.get("user_id")
         org_id = metadata.get("org_id")
-        org = Organization.objects.get(id=org_id)
-        org_schema = org.schema_name 
+
+        # org_id = metadata.get("org_id")
+        # org = Organization.objects.get(id=org_id)
+        # org_schema = org.schema_name 
         stripe_subscription_id = session.get("subscription")
-        print("stripe_subscription_id",stripe_subscription_id)
+        # print("stripe_subscription_id",stripe_subscription_id)
 
         if not stripe_subscription_id:
             return
         sub = stripe.Subscription.retrieve(stripe_subscription_id)
-        print("Retrieved subscription:", sub)
+        # print("Retrieved subscription:", sub)
 
         subscription_item_id = sub["items"]["data"][0]["id"]
         stripe_price_id = sub["items"]["data"][0]["price"]["id"]
@@ -92,7 +97,30 @@ class StripeWebhookView(APIView):
             metadata["stripe_subscription_id"] = stripe_subscription_id
 
 
-        # ✅ Create payment transaction centrally
+
+        # ============================
+        # 🟢 ORGANIZATION PLAN
+        # ============================
+        if plan_type == "organization":
+            pass
+
+        # ============================
+        # 🔵 CUSTOMER USER PLAN
+        # ============================
+        elif plan_type == "customer":
+            # handle customer user logic
+            pass
+
+        # ============================
+        # 🟡 BOOST PLAN
+        # ============================
+        elif plan_type == "boost":
+            # handle boost logic
+            pass
+
+        # ============================
+        # 💰 PAYMENT TRANSACTION
+        # ============================
         from payments.services import create_payment_transaction
 
         create_payment_transaction(
