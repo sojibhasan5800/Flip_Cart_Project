@@ -169,6 +169,31 @@ class ProductBoostSubscription(models.Model):
         # self.organization_subscription.boosted_products_count = self.organization_subscription.product_boosts.filter(is_active=True).count()
         # self.organization_subscription.save()
 
+class CustomerSubscription(models.Model):
+    STATUS_CHOICES = [
+        ('active', 'Active'),
+        ('cancelled', 'Cancelled'),
+        ('past_due', 'Past Due'),
+    ]
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    plan = models.ForeignKey(SubscriptionPlan, on_delete=models.PROTECT)
+
+    stripe_subscription_id = models.CharField(max_length=100, unique=True)
+    stripe_customer_id = models.CharField(max_length=100, blank=True)
+
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active')
+
+    start_date = models.DateTimeField(default=timezone.now)
+    end_date = models.DateTimeField(null=True, blank=True)
+
+    auto_renew = models.BooleanField(default=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.user} - {self.plan.name}"
+    
 
 
 class SubscriptionHistory(models.Model):

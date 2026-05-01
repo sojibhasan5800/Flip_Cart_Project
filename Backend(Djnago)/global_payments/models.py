@@ -1,46 +1,76 @@
 from django.db import models
-from django.conf import settings
-from django.utils import timezone
+from billing.models import OrganizationSubscription, ProductBoostSubscription, CustomerSubscription,Invoice
+import uuid
 
-class CustomerSubscription(models.Model):
-    STATUS_CHOICES = [
-        ('active', 'Active'),
-        ('cancelled', 'Cancelled'),
-        ('past_due', 'Past Due'),
+
+class SubscriptionPaymentTransaction(models.Model):
+    
+    PAYMENT_TYPE_CHOICES = [
+        ('customer', 'Customer'),
+        ('organization', 'Organization'),
+        ('boost', 'Boost'),
+    ]
+        
+    GATEWAY_CHOICES = [
+        ('stripe', 'Stripe'),
+        ('bkash', 'bKash'),
     ]
 
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    plan = models.ForeignKey('billing.SubscriptionPlan', on_delete=models.PROTECT)
-
-    stripe_subscription_id = models.CharField(max_length=100, unique=True)
-    stripe_customer_id = models.CharField(max_length=100, blank=True)
-
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active')
-
-    start_date = models.DateTimeField(default=timezone.now)
-    end_date = models.DateTimeField(null=True, blank=True)
-
-    auto_renew = models.BooleanField(default=True)
-
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return f"{self.user} - {self.plan.name}"
-
-class PaymentTransaction(models.Model):
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
-
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('success', 'Success'),
+        ('failed', 'Failed'),
+        ('refunded', 'Refunded'),
+    ]
+    
+    # Unique transaction ID
+    transaction_id = models.CharField(max_length=100, unique=True, default=uuid.uuid4)
+    
+    # Ownership_subcription
+    customer_subscription = models.ForeignKey(CustomerSubscription, on_delete=models.SET_NULL, null=True, blank=True)
+    organization_subscription = models.ForeignKey(OrganizationSubscription, on_delete=models.SET_NULL, null=True, blank=True)
+    productboost_subscription = models.ForeignKey(ProductBoostSubscription, on_delete=models.SET_NULL, null=True, blank=True)
+    
+     # Type
+    payment_type = models.CharField(max_length=20, choices=PAYMENT_TYPE_CHOICES)
+    
+    # Financials
     amount = models.DecimalField(max_digits=10, decimal_places=2)
-    currency = models.CharField(max_length=10)
+    currency = models.CharField(max_length=3, default='USD')
 
-    gateway = models.CharField(max_length=20)  # stripe
-    gateway_transaction_id = models.CharField(max_length=255)
 
-    status = models.CharField(max_length=20)  # success, failed
+     # Gateway
+    gateway = models.CharField(max_length=20, choices=GATEWAY_CHOICES)
+    payment_method = models.CharField(max_length=50, blank=True, null=True, help_text="Card, bKash, Rocket etc.")
+    gateway_transaction_id = models.CharField(max_length=100, blank=True, unique=True)  # Stripe charge ID or bKash paymentID
+    
+    #  Status
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+   
+    # Extra info
+    metadata = models.JSONField(default=dict, blank=True, help_text="e.g., {'plan_type': 'organization', 'plan_id': 3, 'boost_product_id': 12}")
+    customer_email = models.EmailField(blank=True, null=True)
+    receipt_url = models.URLField(blank=True, null=True)
+    refunded_at = models.DateTimeField(blank=True, null=True)
+    notes = models.TextField(blank=True, null=True)
 
-    metadata = models.JSONField(default=dict)
-
+    #  Time
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
 
     def __str__(self):
-        return f"{self.user} - {self.amount}"
+        return f"{self.transaction_id} - {self.status}"
+
+    def verify_and_complete(self):
+        if self.status == 'success':
+            # Create invoice
+            Invoice.objects.create(
+                organization=self.organization,
+                subscription=self.subscription,
+                amount=self.amount,
+                status='paid' if self.status == 'success' else 'failed',
+                line_items=[{'description': 'Product Boost' if self.boost else 'Subscription Payment', 'amount': self.amount}]
+            )
