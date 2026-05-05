@@ -10,9 +10,9 @@ import stripe
 from stripe import StripeError
 import requests  # For bKash API
 from django.utils import timezone
-from .models import PaymentTransaction
+from .models import SubscriptionPaymentTransaction
 from billing.models import OrganizationSubscription,SubscriptionPlan
-from .serializers import PaymentTransactionSerializer
+from .serializers import SubscriptionPaymentTransactionSerializer
 
 logger = logging.getLogger(__name__)
 stripe.api_key = settings.STRIPE_SECRET_KEY
@@ -132,7 +132,7 @@ class CreatePaymentIntent(APIView):
         if boost_product_id and (not sub or not sub.can_boost_more()):
             return Response({"error": "No active plan or boost limit reached. Purchase/upgrade plan first."}, status=status.HTTP_400_BAD_REQUEST)
 
-        trans = PaymentTransaction.objects.create(
+        trans = SubscriptionPaymentTransaction.objects.create(
             organization=org,
             subscription=sub,
             amount=amount,
@@ -204,7 +204,7 @@ class PaymentWebhook(APIView):
         if 'stripe' in request.data:
             event = stripe.Event.construct_from(request.data, stripe.api_key)
             if event.type == 'payment_intent.succeeded':
-                trans = PaymentTransaction.objects.get(gateway_transaction_id=event.data.object.id)
+                trans = SubscriptionPaymentTransaction.objects.get(gateway_transaction_id=event.data.object.id)
                 trans.status = 'success'
                 trans.verify_and_complete()
             # Handle other events...
@@ -212,7 +212,7 @@ class PaymentWebhook(APIView):
         # bKash callback (from callbackURL)
         elif 'bkash' in request.data:
             payment_id = request.data.get('paymentID')
-            trans = PaymentTransaction.objects.get(gateway_transaction_id=payment_id)
+            trans = SubscriptionPaymentTransaction.objects.get(gateway_transaction_id=payment_id)
             # Verify with bKash query API
             headers = {'Authorization': f'Bearer {self._get_bkash_token()}', 'x-app-key': settings.BKASH_APP_KEY}
             res = requests.post(f'{settings.BKASH_BASE_URL}/query', json={'paymentID': payment_id}, headers=headers)
@@ -230,7 +230,7 @@ class RefundPayment(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, trans_id):
-        trans = get_object_or_404(PaymentTransaction, id=trans_id, organization=request.user.merchant_profile.first().organization)
+        trans = get_object_or_404(SubscriptionPaymentTransaction, id=trans_id, organization=request.user.merchant_profile.first().organization)
         if trans.status != 'success':
             return Response({"error": "Cannot refund non-successful payment"}, status=status.HTTP_400_BAD_REQUEST)
 

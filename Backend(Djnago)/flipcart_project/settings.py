@@ -55,7 +55,7 @@ TENANT_APPS = [
     'admin_core',
     # 'orders_management',
     # 'transactions',
-    'payments',        # Order payment gateway
+    # 'payments',        # Order payment gateway
     # 'store_notifications',   # Store notifications
     # 'analytics',
 ]
