@@ -5,10 +5,10 @@ import uuid
 
 class SubscriptionPaymentTransaction(models.Model):
     
-    PAYMENT_TYPE_CHOICES = [
-        ('customer', 'Customer'),
+    SUBSCRIPTION_PAYMENT_TYPE_CHOICES = [
         ('organization', 'Organization'),
-        ('boost', 'Boost'),
+        ('product_boost', 'Product Boost'),
+        ('plus_membership', 'Plus Membership'),
     ]
         
     GATEWAY_CHOICES = [
@@ -26,13 +26,13 @@ class SubscriptionPaymentTransaction(models.Model):
     # Unique transaction ID
     transaction_id = models.CharField(max_length=100, unique=True, default=uuid.uuid4)
     
-    # Ownership_subcription
+    # Ownership_subscription
     customer_subscription = models.ForeignKey(CustomerSubscription, on_delete=models.SET_NULL, null=True, blank=True)
     organization_subscription = models.ForeignKey(OrganizationSubscription, on_delete=models.SET_NULL, null=True, blank=True)
     productboost_subscription = models.ForeignKey(ProductBoostSubscription, on_delete=models.SET_NULL, null=True, blank=True)
     
      # Type
-    payment_type = models.CharField(max_length=20, choices=PAYMENT_TYPE_CHOICES)
+    payment_type = models.CharField(max_length=20, choices=SUBSCRIPTION_PAYMENT_TYPE_CHOICES)
     
     # Financials
     amount = models.DecimalField(max_digits=10, decimal_places=2)

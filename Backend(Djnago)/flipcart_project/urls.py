@@ -45,14 +45,7 @@ urlpatterns = [
 
     # # path('home_api_load_products/', views.home, name='home_api_load_products'),
     path('check/', include('store.urls')),
-    # path('carts/', include('carts.urls')),
-    # path('accounts/', include('accounts.urls')),
-    # path('orders/', include('orders.urls')),
-    # path('category/', include('category.urls')),
-    # path('seller_dashboard/', include('seller_dashboard.urls')),
 
-    # # path('swagger<format>/', schema_view.without_ui(cache_timeout=0), name='schema-json'),
-    
     # api path ------------
 
     path('api/accounts/', include('accounts.api_urls', namespace='accounts_api')),
@@ -67,7 +60,8 @@ urlpatterns = [
     path('api/public_data/', include('public_data.api_urls', namespace='public_data_api')),
     path('api/system_management/', include('system_management.api_urls', namespace='system_management_api')),
     path('api/billing/', include('billing.api_urls', namespace='billing_api')),
-    path('api/payments/', include('payments.api_urls', namespace='payments_api')),
+    path('api/global_payments/', include('global_payments.api_urls', namespace='global_payments_api')),
+    # path('api/payments/', include('payments.api_urls', namespace='payments_api')),
 
 
     path('swagger(<format>.json|.yaml)', schema_view.without_ui(cache_timeout=0), name='schema-json'),

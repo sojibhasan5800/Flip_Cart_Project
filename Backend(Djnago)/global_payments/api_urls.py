@@ -2,7 +2,7 @@ from celery import app
 from django.urls import path
 from .api_views import CreatePaymentIntent, PaymentWebhook, RefundPayment, PurchasePlanView
 from .webhooks import StripeWebhookView
-app_name = 'payments_api'
+app_name = 'global_payments_api'
 urlpatterns = [
     path('create-intent/', CreatePaymentIntent.as_view(), name='create-payment-intent'),
     path('webhook/', PaymentWebhook.as_view(), name='payment-webhook'),
