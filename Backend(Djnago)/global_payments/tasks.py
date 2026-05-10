@@ -26,6 +26,36 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+from celery import shared_task
+from django.core.mail import send_mail
+
+from global_payments.models import SubscriptionPaymentTransaction
+
+
+@shared_task
+def send_payment_success_email(transaction_id):
+
+    payment_transaction = SubscriptionPaymentTransaction.objects.get(
+        id=transaction_id
+    )
+
+    send_mail(
+        subject="Payment Successful",
+        message=f"""
+        Your payment was successful.
+
+        Transaction ID:
+        {payment_transaction.transaction_id}
+
+        Amount:
+        {payment_transaction.amount}
+
+        Thank you.
+        """,
+        from_email=None,
+        recipient_list=[payment_transaction.customer_email],
+        fail_silently=False
+    )
 
 @shared_task(
     bind=True,
