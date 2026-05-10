@@ -89,6 +89,33 @@ def websocket_payment_notification(transaction_id):
             }
         }
     )
+    
+
+@shared_task
+def create_payment_analytics(transaction_id):
+
+    payment_transaction = (
+        SubscriptionPaymentTransaction.objects.get(
+            id=transaction_id
+        )
+    )
+
+    logger.info(
+        f"""
+        Analytics Event:
+
+        Transaction:
+        {payment_transaction.transaction_id}
+
+        Amount:
+        {payment_transaction.amount}
+
+        Gateway:
+        {payment_transaction.gateway}
+        """
+    )
+
+
 
 @shared_task(
     bind=True,
