@@ -225,3 +225,23 @@ class Invoice(models.Model):
 
     class Meta:
         ordering = ['-created_at']
+        
+
+# =========================
+# 3. PAYMENT AUDIT LOG MODEL
+# =========================
+
+class PaymentAuditLog(models.Model):
+
+    transaction = models.ForeignKey(
+        SubscriptionPaymentTransaction,
+        on_delete=models.CASCADE
+    )
+
+    event = models.CharField(max_length=255)
+
+    metadata = models.JSONField(default=dict)
+
+    created_at = models.DateTimeField(
+        auto_now_add=True
+    )
