@@ -18,7 +18,9 @@ from datetime import datetime, timedelta
 
 from billing.models import OrganizationSubscription, SubscriptionPlan
 from merchant_user.models import Organization
-from .services import create_payment_transaction
+
+from .services.transaction_service import create_payment_transaction
+from .tasks import process_successful_payment
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
@@ -75,19 +77,18 @@ class StripeWebhookView(APIView):
         metadata = session.get("metadata", {})
 
         plan_type = metadata.get("plan_type")
-        user_id = metadata.get("user_id")
-        org_id = metadata.get("org_id")
-
-        # org_id = metadata.get("org_id")
-        # org = Organization.objects.get(id=org_id)
-        # org_schema = org.schema_name 
+ 
         stripe_subscription_id = session.get("subscription")
-        # print("stripe_subscription_id",stripe_subscription_id)
-
+        
         if not stripe_subscription_id:
             return
+        
+        # ==========================================
+        # Retrieve Stripe Subscription
+        # ==========================================
+        
         sub = stripe.Subscription.retrieve(stripe_subscription_id)
-        # print("Retrieved subscription:", sub)
+        
 
         subscription_item_id = sub["items"]["data"][0]["id"]
         stripe_price_id = sub["items"]["data"][0]["price"]["id"]
@@ -98,52 +99,63 @@ class StripeWebhookView(APIView):
             metadata["stripe_subscription_id"] = stripe_subscription_id
 
 
+        
+        # ==========================================
+        # PAYMENT TYPE
+        # ==========================================
+        
+        payment_for = None
 
-        # ============================
-        # 🟢 ORGANIZATION PLAN
-        # ============================
-        if plan_type == "organization" or plan_type == "product_boost":
-            
-            
-            org_id = metadata.get("org_id")
-            org = Organization.objects.get(id=org_id)
-            org_schema = org.schema_name 
-                
-            transaction_obj = create_payment_transaction(
-            org_schema=org_schema,
-            organization_id=org_id,
-            amount=session['amount_total'] / 100,
-            currency=session['currency'],
-            gateway='stripe',
-            gateway_transaction_id=session['id'],
-            status='success',
-            metadata=metadata,
-            customer_email=session.get('customer_email'),
-            receipt_url=session.get('receipt_url')
-            )
-            
-            pass
+        if plan_type == "organization":
 
-        # ============================
-        # 🔵 CUSTOMER USER PLAN
-        # ============================
-        elif plan_type == "plus_membership":
-            # handle customer user logic
-            pass
+            payment_for = "organization_subscription"
 
-        # ============================
-        # 🟡 BOOST PLAN
-        # ============================
         elif plan_type == "product_boost":
-            # handle boost logic
-            pass
 
-        # ============================
-        # 💰 PAYMENT TRANSACTION
-        # ============================
-       
+            payment_for = "product_boost"
+
+        elif plan_type == "plus_membership":
+
+            payment_for = "customer_subscription"
+
+        else:
+            return
+        
+        # ==========================================
+        # CREATE PAYMENT TRANSACTION
+        # ==========================================
+
+        transaction_obj = create_payment_transaction(
+
+            payment_for=payment_for,
+
+            amount=session['amount_total'] / 100,
+
+            currency=session['currency'].upper(),
+
+            gateway='stripe',
+
+            gateway_transaction_id=session['id'],
+
+            status='success',
+
+            metadata=metadata,
+
+            customer_email=session.get(
+                'customer_email'
+            ),
+        )
+
+        # ==========================================
+        # ASYNC BACKGROUND PROCESSING
+        # ==========================================
+
+        process_successful_payment.delay(
+            transaction_obj.id
+        )
     
-
+    
+        
      
     # ================================
     # 🟡 UPGRADE / CANCEL AT PERIOD END
