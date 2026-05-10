@@ -184,6 +184,7 @@ class SubscriptionPaymentTransaction(models.Model):
         blank=True,
         help_text="Dynamic data based on payment type"
     )
+    is_verified = models.BooleanField(default=False)
     
     paid_at = models.DateTimeField(null=True, blank=True)
     failure_reason = models.TextField(blank=True, null=True)

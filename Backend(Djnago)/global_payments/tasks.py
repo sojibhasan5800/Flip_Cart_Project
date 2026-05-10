@@ -11,18 +11,20 @@ from channels.layers import get_channel_layer
 from .models import (
     PaymentAuditLog,
     SubscriptionPaymentTransaction,
-    Invoice
+
+)
+from global_payments.models import SubscriptionPaymentTransaction
+
+from .services.subscription_service import (
+    activate_organization_subscription,
+    activate_product_boost_subscription,
+    activate_customer_subscription
 )
 
-from billing.models import (
-    OrganizationSubscription,
-    CustomerSubscription,
-    SubscriptionPlan
+from .services.invoice_service import (
+    generate_invoice    
 )
 
-from merchant_user.models import Organization
-
-import uuid
 import logging
 
 logger = logging.getLogger(__name__)
@@ -30,7 +32,6 @@ logger = logging.getLogger(__name__)
 from celery import shared_task
 from django.core.mail import send_mail
 
-from global_payments.models import SubscriptionPaymentTransaction
 
 
 @shared_task
