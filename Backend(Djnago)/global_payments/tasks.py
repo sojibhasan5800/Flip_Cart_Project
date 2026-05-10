@@ -9,6 +9,7 @@ from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 
 from .models import (
+    PaymentAuditLog,
     SubscriptionPaymentTransaction,
     Invoice
 )
@@ -113,6 +114,25 @@ def create_payment_analytics(transaction_id):
         Gateway:
         {payment_transaction.gateway}
         """
+    )
+    
+
+@shared_task
+def create_payment_audit_log(transaction_id):
+
+    payment_transaction = (
+        SubscriptionPaymentTransaction.objects.get(
+            id=transaction_id
+        )
+    )
+
+    PaymentAuditLog.objects.create(
+        transaction=payment_transaction,
+        event="payment_completed",
+        metadata={
+            "amount": str(payment_transaction.amount),
+            "gateway": payment_transaction.gateway
+        }
     )
 
 
