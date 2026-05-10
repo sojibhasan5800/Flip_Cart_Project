@@ -56,6 +56,39 @@ def send_payment_success_email(transaction_id):
         recipient_list=[payment_transaction.customer_email],
         fail_silently=False
     )
+    
+
+@shared_task
+def websocket_payment_notification(transaction_id):
+
+    payment_transaction = (
+        SubscriptionPaymentTransaction.objects.get(
+            id=transaction_id
+        )
+    )
+
+    metadata = payment_transaction.metadata or {}
+
+    org_id = metadata.get("org_id")
+
+    if not org_id:
+        return
+
+    channel_layer = get_channel_layer()
+
+    async_to_sync(channel_layer.group_send)(
+        f"subscription_{org_id}",
+        {
+            "type": "subscription_update",
+            "data": {
+                "status": "success",
+                "message": "Payment successful",
+                "transaction_id": str(
+                    payment_transaction.transaction_id
+                )
+            }
+        }
+    )
 
 @shared_task(
     bind=True,
