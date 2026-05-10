@@ -193,8 +193,6 @@ class CustomerSubscription(models.Model):
 
     def __str__(self):
         return f"{self.user} - {self.plan.name}"
-    
-
 
 class SubscriptionHistory(models.Model):
     subscription = models.ForeignKey(
@@ -226,37 +224,3 @@ class SubscriptionHistory(models.Model):
 
     def __str__(self):
         return f"{self.subscription.organization.business_name}: {self.change_type} {self.old_plan} → {self.new_plan}"
-
-class Invoice(models.Model):
-    """
-    Invoice generation model. Supports PDF generation via tasks/views.
-    Extensible with line items JSON.
-    """
-    invoice_number = models.CharField(max_length=50, unique=True, default=uuid.uuid4)
-    organization = models.ForeignKey(Organization, on_delete=models.SET_NULL, null=True, blank=True, related_name='invoices')
-    subscription = models.ForeignKey(OrganizationSubscription, on_delete=models.SET_NULL, null=True, blank=True, related_name='invoices')
-    amount = models.DecimalField(max_digits=10, decimal_places=2)
-    currency = models.CharField(max_length=3, default='USD')
-    status = models.CharField(max_length=20, choices=[('paid', 'Paid'), ('pending', 'Pending'), ('failed', 'Failed')], default='pending')
-    stripe_invoice_id = models.CharField(max_length=100, blank=True)
-    pdf_url = models.URLField(blank=True, help_text="Generated PDF URL, e.g., via Cloudinary")
-    line_items = models.JSONField(default=list, help_text="List of items, e.g., [{'description': 'Basic Plan', 'amount': 19.99}]")
-    issued_at = models.DateTimeField(default=timezone.now)
-    due_at = models.DateTimeField()
-    paid_at = models.DateTimeField(null=True, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        ordering = ['-issued_at']
-
-    def __str__(self):
-        return f"Invoice {self.invoice_number} for {self.organization.business_name}"
-
-    def save(self, *args, **kwargs):
-        if not self.due_at:
-            self.due_at = self.issued_at + timezone.timedelta(days=14)
-        super().save(*args, **kwargs)
-        # Generate PDF async
-        # from .tasks import generate_invoice_pdf
-        # generate_invoice_pdf.delay(self.id)

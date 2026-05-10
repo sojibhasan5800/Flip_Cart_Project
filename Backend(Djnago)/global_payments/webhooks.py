@@ -18,6 +18,7 @@ from datetime import datetime, timedelta
 
 from billing.models import OrganizationSubscription, SubscriptionPlan
 from merchant_user.models import Organization
+from .services import create_payment_transaction
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
@@ -101,29 +102,14 @@ class StripeWebhookView(APIView):
         # ============================
         # 🟢 ORGANIZATION PLAN
         # ============================
-        if plan_type == "organization":
-            pass
-
-        # ============================
-        # 🔵 CUSTOMER USER PLAN
-        # ============================
-        elif plan_type == "customer":
-            # handle customer user logic
-            pass
-
-        # ============================
-        # 🟡 BOOST PLAN
-        # ============================
-        elif plan_type == "boost":
-            # handle boost logic
-            pass
-
-        # ============================
-        # 💰 PAYMENT TRANSACTION
-        # ============================
-        from payments.services import create_payment_transaction
-
-        create_payment_transaction(
+        if plan_type == "organization" or plan_type == "product_boost":
+            
+            
+            org_id = metadata.get("org_id")
+            org = Organization.objects.get(id=org_id)
+            org_schema = org.schema_name 
+                
+            transaction_obj = create_payment_transaction(
             org_schema=org_schema,
             organization_id=org_id,
             amount=session['amount_total'] / 100,
@@ -134,7 +120,29 @@ class StripeWebhookView(APIView):
             metadata=metadata,
             customer_email=session.get('customer_email'),
             receipt_url=session.get('receipt_url')
-        )
+            )
+            
+            pass
+
+        # ============================
+        # 🔵 CUSTOMER USER PLAN
+        # ============================
+        elif plan_type == "plus_membership":
+            # handle customer user logic
+            pass
+
+        # ============================
+        # 🟡 BOOST PLAN
+        # ============================
+        elif plan_type == "product_boost":
+            # handle boost logic
+            pass
+
+        # ============================
+        # 💰 PAYMENT TRANSACTION
+        # ============================
+       
+    
 
      
     # ================================
