@@ -14,7 +14,7 @@ from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
-from datetime import datetime, timedelta
+from datetime import  timedelta
 
 from billing.models import OrganizationSubscription, SubscriptionPlan
 from merchant_user.models import Organization
@@ -22,6 +22,7 @@ from merchant_user.models import Organization
 from global_payments.services.subscription_service import activate_organization_subscription
 from global_payments.services.transaction_service import create_payment_transaction
 from .tasks import process_successful_payment
+from analytics_engine.tasks.payment_tasks import create_payment_analytics
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
@@ -154,7 +155,9 @@ class StripeWebhookView(APIView):
         process_successful_payment.delay(
             transaction_obj.id
         )
-    
+        create_payment_analytics.delay(
+            transaction_obj.id
+        )
     
         
      
