@@ -246,3 +246,97 @@ class PaymentAuditLog(models.Model):
     created_at = models.DateTimeField(
         auto_now_add=True
     )
+
+
+# =========================
+# 4. PAYMENT ANALYTICS MODEL
+# =========================
+
+class PaymentAnalytics(models.Model):
+
+    PAYMENT_STATUS_CHOICES = [
+        ('success', 'Success'),
+        ('failed', 'Failed'),
+        ('refunded', 'Refunded'),
+    ]
+
+    transaction = models.ForeignKey(
+        'SubscriptionPaymentTransaction',
+        on_delete=models.CASCADE,
+        related_name='analytics'
+    )
+
+    organization = models.ForeignKey(
+        'merchant_user.Organization',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True
+    )
+
+    payment_type = models.CharField(
+        max_length=50
+    )
+
+    gateway = models.CharField(
+        max_length=20
+    )
+
+    status = models.CharField(
+        max_length=20,
+        choices=PAYMENT_STATUS_CHOICES
+    )
+
+    amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2
+    )
+
+    currency = models.CharField(
+        max_length=10,
+        default='BDT'
+    )
+
+    customer_email = models.EmailField(
+        null=True,
+        blank=True
+    )
+
+    country = models.CharField(
+        max_length=50,
+        blank=True,
+        null=True
+    )
+
+    device_type = models.CharField(
+        max_length=50,
+        blank=True,
+        null=True
+    )
+
+    metadata = models.JSONField(
+        default=dict,
+        blank=True
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True
+    )
+
+    class Meta:
+
+        ordering = ['-created_at']
+
+        indexes = [
+            models.Index(fields=['gateway']),
+            models.Index(fields=['payment_type']),
+            models.Index(fields=['status']),
+            models.Index(fields=['created_at']),
+        ]
+
+    def __str__(self):
+
+        return (
+            f"{self.payment_type} - "
+            f"{self.amount} - "
+            f"{self.gateway}"
+        )

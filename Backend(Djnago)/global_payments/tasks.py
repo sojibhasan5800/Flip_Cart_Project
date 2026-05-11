@@ -7,6 +7,7 @@ from django.core.mail import send_mail
 
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
+from rest_framework import settings
 
 from .models import (
     PaymentAuditLog,
@@ -54,7 +55,7 @@ def send_payment_success_email(transaction_id):
 
         Thank you.
         """,
-        from_email=None,
+        from_email=settings.EMAIL_HOST_USER,
         recipient_list=[payment_transaction.customer_email],
         fail_silently=False
     )
