@@ -3,7 +3,8 @@
 from datetime import timezone
 from django.db import transaction
 
-from billing.models import OrganizationSubscription, SubscriptionPlan,ProductBoostSubscription
+from accounts.models import Account
+from billing.models import OrganizationSubscription, SubscriptionPlan,ProductBoostSubscription,CustomerSubscription
 from merchant_user.models import Organization
 
 
@@ -178,3 +179,110 @@ def activate_product_boost_subscription(
     )
 
     return boost_subscription
+
+@transaction.atomic
+def activate_customer_subscription(
+    payment_transaction,
+    metadata
+):
+
+    user_id = metadata.get("user_id")
+
+    plan_id = metadata.get("plan_id")
+
+    stripe_subscription_id = metadata.get(
+        "stripe_subscription_id"
+    )
+
+    stripe_customer_id = metadata.get(
+        "stripe_customer_id"
+    )
+
+    user = Account.objects.select_for_update().get(
+        id=user_id
+    )
+
+    plan = SubscriptionPlan.objects.get(
+        id=plan_id,
+        is_active=True
+    )
+
+    subscription, created = (
+        CustomerSubscription.objects.get_or_create(
+
+            user=user,
+
+            defaults={
+
+                "plan": plan,
+
+                "stripe_subscription_id":
+                stripe_subscription_id,
+
+                "stripe_customer_id":
+                stripe_customer_id,
+
+                "status": "active",
+
+                "start_date":
+                timezone.now(),
+
+                "end_date":
+                timezone.now() +
+                timezone.timedelta(
+                    days=plan.get_duration()
+                ),
+
+                "auto_renew": True
+            }
+        )
+    )
+
+    # =========================
+    # UPDATE EXISTING SUB
+    # =========================
+
+    if not created:
+
+        subscription.plan = plan
+
+        subscription.status = "active"
+
+        subscription.stripe_subscription_id = (
+            stripe_subscription_id
+        )
+
+        subscription.stripe_customer_id = (
+            stripe_customer_id
+        )
+
+        subscription.start_date = (
+            timezone.now()
+        )
+
+        subscription.end_date = (
+            timezone.now() +
+            timezone.timedelta(
+                days=plan.get_duration()
+            )
+        )
+
+        subscription.auto_renew = True
+
+        subscription.save()
+
+    # =========================
+    # LINK PAYMENT TRANSACTION
+    # =========================
+
+    payment_transaction.customer_subscription = (
+        subscription
+    )
+
+    payment_transaction.save(
+        update_fields=[
+            "customer_subscription"
+        ]
+    )
+
+    return subscription
