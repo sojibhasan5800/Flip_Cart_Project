@@ -43,6 +43,7 @@ SHARED_APPS = [
     'system_management', 
     'billing', 
     'global_payments',
+    'analytics_engine',
     # 'core_notifications',
 ]
 
