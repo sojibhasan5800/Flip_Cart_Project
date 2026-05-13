@@ -4,7 +4,7 @@ from channels.routing import ProtocolTypeRouter, URLRouter
 from channels.auth import AuthMiddlewareStack
 import django
 from merchant_user.routing import websocket_urlpatterns as merchant_websocket
-from payments.routing import websocket_urlpatterns as payment_websocket
+from global_payments.routing import websocket_urlpatterns as payment_websocket
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'flipcart_project.run_project.local')
 
