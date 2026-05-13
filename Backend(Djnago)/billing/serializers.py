@@ -5,7 +5,8 @@ from rest_framework import serializers
 import stripe
 
 from merchant_user.models import Organization
-from .models import SubscriptionPlan, OrganizationSubscription, ProductBoostSubscription, Invoice
+from .models import SubscriptionPlan, OrganizationSubscription, ProductBoostSubscription
+from global_payments.models import Invoice
 
 class OrganizationSimpleSerializer(serializers.ModelSerializer):
     class Meta:

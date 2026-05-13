@@ -1,4 +1,4 @@
-from .models import Invoice
+from global_payments.models import Invoice
 from django.utils import timezone
 
 def create_proration_invoice(subscription, proration_data, description=None):

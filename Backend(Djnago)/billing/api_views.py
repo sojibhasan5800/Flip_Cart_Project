@@ -31,8 +31,9 @@ from .models import (
     SubscriptionPlan,
     OrganizationSubscription,
     ProductBoostSubscription,
-    Invoice
+    
 )
+from global_payments.models import Invoice
 from .serializers import (
     SubscriptionPlanSerializer,
     OrganizationSubscriptionSerializer,
