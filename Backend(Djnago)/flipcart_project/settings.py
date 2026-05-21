@@ -44,6 +44,7 @@ SHARED_APPS = [
     'billing', 
     'global_payments',
     'analytics_engine',
+    'orders_management',
     # 'core_notifications',
 ]
 
@@ -54,7 +55,6 @@ TENANT_APPS = [
     'orders',
     # 'seller_dashboard',
     'admin_core',
-    # 'orders_management',
     # 'transactions',
     # 'payments',        # Order payment gateway
     # 'store_notifications',   # Store notifications
