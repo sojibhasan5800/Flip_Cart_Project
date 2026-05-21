@@ -61,6 +61,7 @@ urlpatterns = [
     path('api/system_management/', include('system_management.api_urls', namespace='system_management_api')),
     path('api/billing/', include('billing.api_urls', namespace='billing_api')),
     path('api/global_payments/', include('global_payments.api_urls', namespace='global_payments_api')),
+    path('api/orders_management/', include('orders_management.api_urls', namespace='orders_management_api')),
     # path('api/payments/', include('payments.api_urls', namespace='payments_api')),
 
 
