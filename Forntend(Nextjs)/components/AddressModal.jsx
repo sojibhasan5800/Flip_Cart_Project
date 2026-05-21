@@ -23,11 +23,44 @@ const AddressModal = ({ setShowAddressModal }) => {
         })
     }
 
-    const handleSubmit = async (e) => {
-        e.preventDefault()
+const handleSubmit = async (e) => {
+    e.preventDefault()
+
+    try {
+
+        const response = await AxiosInstance.post(
+            '/addresses/',
+            address
+        )
+
+        toast.success("Address Added Successfully")
+
+        console.log(response.data)
+
+        setAddress({
+            name: '',
+            email: '',
+            street: '',
+            city: '',
+            state: '',
+            zip: '',
+            country: '',
+            phone: ''
+        })
 
         setShowAddressModal(false)
+
+    } catch (error) {
+
+        console.log(error)
+
+        toast.error(
+            error?.response?.data?.detail ||
+            "Failed to Add Address"
+        )
     }
+}
+
 
     return (
         <form onSubmit={e => toast.promise(handleSubmit(e), { loading: 'Adding Address...' })} className="fixed inset-0 z-50 bg-white/60 backdrop-blur h-screen flex items-center justify-center">
