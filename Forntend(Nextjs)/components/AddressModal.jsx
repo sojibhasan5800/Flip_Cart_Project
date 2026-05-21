@@ -29,7 +29,7 @@ const handleSubmit = async (e) => {
     try {
 
         const response = await AxiosInstance.post(
-            '/addresses/',
+            'api/orders_management/shipping-addresses/',
             address
         )
 
