@@ -2,7 +2,8 @@
 import { XIcon } from "lucide-react"
 import { useState } from "react"
 import { toast } from "react-hot-toast"
-
+// import AxiosInstance from "@/api/axiosInstance"
+import AxiosInstance from "../api/axiosInstance"
 const AddressModal = ({ setShowAddressModal }) => {
 
     const [address, setAddress] = useState({
@@ -25,6 +26,7 @@ const AddressModal = ({ setShowAddressModal }) => {
 
 const handleSubmit = async (e) => {
     e.preventDefault()
+    console.log(address)
 
     try {
 

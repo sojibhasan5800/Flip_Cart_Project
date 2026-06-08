@@ -3,7 +3,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 
-from .models import ShippingAddress
+from orders_management.models.address import ShippingAddress
 from .serializers import ShippingAddressSerializer
 
 
