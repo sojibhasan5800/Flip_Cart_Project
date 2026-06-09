@@ -4,11 +4,8 @@
 # All logic preserved, just restructured to use APIView / @api_view style
 # This makes it compatible with your existing project style (no routers, explicit URL patterns)
 
-from turtle import update
 
-from elasticsearch import serializer
 from rest_framework.views import APIView
-from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
@@ -21,7 +18,7 @@ from django.db import transaction
 from django.utils import timezone
 # from store.models import Product
 from django.db.models import Q
-# from stripe import error as stripe_error
+
 
 from billing.services import create_proration_invoice
 from billing.utils import calculate_proration
@@ -31,6 +28,7 @@ from .models import (
     SubscriptionPlan,
     OrganizationSubscription,
     ProductBoostSubscription,
+    CustomerSubscription
     
 )
 from global_payments.models import Invoice
@@ -470,5 +468,17 @@ class SubscriptionProrationAPIView(APIView):
         return Response(proration)
 
 
+class MembershipStatusAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        is_plus_member = CustomerSubscription.objects.filter(
+            user=request.user,
+            status="active"
+        ).exists()
+
+        return Response({
+            "is_plus_member": is_plus_member
+        })
  
     

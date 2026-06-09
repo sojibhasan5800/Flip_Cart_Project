@@ -18,6 +18,7 @@ from .api_views import (
     DowngradeAtPeriodEndAPIView,
     CancelSubscriptionAPIView,
     SubscriptionProrationAPIView,
+    MembershipStatusAPIView,
 
 
 
@@ -55,6 +56,7 @@ urlpatterns = [
     path('downgrade-at-period-end/', DowngradeAtPeriodEndAPIView.as_view(),name='downgrade-at-period-end'),
     path('cancel-subscription/', CancelSubscriptionAPIView.as_view(),name='cancel-subscription'),
     path('subscription-proration/', SubscriptionProrationAPIView.as_view(), name='subscription-proration'),
+    path('membership-status/', MembershipStatusAPIView.as_view(), name='membership-status'),
     # path('plans/', SubscriptionPlanListAPIView.as_view(), name='plan-list'),
     
     # path('subscriptions/', OrganizationSubscriptionListCreateAPIView.as_view(), name='subscription-list-create'),
