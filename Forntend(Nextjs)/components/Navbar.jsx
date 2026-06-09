@@ -1,6 +1,6 @@
 "use client"
 
-import { PackageIcon, Search, ShoppingCart } from "lucide-react";
+import {  User, Package, LogOut, PackageIcon, Search, ShoppingCart,CreditCard,MapPin } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
@@ -8,12 +8,14 @@ import { useState, useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
 // import { logout as logoutAction } from "../../../../store/authSlice";
 
+
 const Navbar = () => {
   const router = useRouter();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const cartCount = useSelector((state) => state.cart.total);
   const dispatch = useDispatch();
   const [isPlusMember, setIsPlusMember] = useState(null);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
 
   // const isLoggedIn = useSelector((state) => state.auth.isLoggedIn);
 
@@ -118,14 +120,88 @@ const Navbar = () => {
             </Link>
 
             {/* Login / Logout Button */}
-            {isLoggedIn ? (
-              <button
-                onClick={handleLogout}
-                className="px-8 py-2 bg-red-500 hover:bg-red-600 transition text-white rounded-full"
-              >
-                Logout
-              </button>
-            ) : (
+        {isLoggedIn ? (
+<div className="relative">
+  <button
+    onClick={() => setShowProfileMenu(!showProfileMenu)}
+    className="w-10 h-10 rounded-full bg-indigo-600 text-white flex items-center justify-center font-semibold"
+  >
+    S
+  </button>
+
+  {showProfileMenu && (
+    <div className="absolute right-0 mt-3 w-72 bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden z-50">
+
+      {/* User Info */}
+      <div className="p-4 border-b">
+        <h3 className="font-semibold text-slate-800">
+          Sojib Ahmed
+        </h3>
+        <p className="text-sm text-slate-500">
+          sojib@gmail.com
+        </p>
+      </div>
+
+      {/* Menu */}
+      <div className="py-2">
+
+        <Link
+          href="/account"
+          className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50"
+        >
+          <User size={18} />
+          <span>Manage Account</span>
+        </Link>
+
+        <Link
+          href="/billing"
+          className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50"
+        >
+          <CreditCard size={18} />
+          <span>Billing & Payments</span>
+        </Link>
+
+        <Link
+          href="/orders"
+          className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50"
+        >
+          <Package size={18} />
+          <span>My Orders</span>
+        </Link>
+
+        <Link
+          href="/cart"
+          className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50"
+        >
+          <ShoppingCart size={18} />
+          <span>Cart</span>
+        </Link>
+
+        <Link
+          href="/addresses"
+          className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50"
+        >
+          <MapPin size={18} />
+          <span>Addresses</span>
+        </Link>
+
+      </div>
+
+      {/* Logout */}
+      <div className="border-t">
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center gap-3 px-4 py-3 text-red-500 hover:bg-red-50"
+        >
+          <LogOut size={18} />
+          Logout
+        </button>
+      </div>
+
+    </div>
+  )}
+</div>
+): (
               <Link href="/auth/login">
                 <button className="px-8 py-2 bg-indigo-500 hover:bg-indigo-600 transition text-white rounded-full">
                   Login
