@@ -8,13 +8,13 @@ export default function Orders() {
 
     const [orders, setOrders] = useState([]);
 
-    useEffect(() => {
-        
-        const fetchOrders = async () => {
-            // Simulate an API call to fetch orders
-            // In a real application, you would replace this with an actual API call
-        setOrders(orderDummyData)
-    }, []);
+useEffect(() => {
+    const fetchOrders = async () => {
+        setOrders(orderDummyData);
+    };
+
+    fetchOrders();
+}, []);
 
     return (
         <div className="min-h-[70vh] mx-6">

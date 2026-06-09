@@ -2,8 +2,7 @@
 import { XIcon } from "lucide-react"
 import { useState } from "react"
 import { toast } from "react-hot-toast"
-// import AxiosInstance from "@/api/axiosInstance"
-import AxiosInstance from "../api/axiosInstance"
+import AxiosInstance from "@/api/AxiosInstance"
 const AddressModal = ({ setShowAddressModal }) => {
 
     const [address, setAddress] = useState({
