@@ -1,5 +1,6 @@
 import { PlusIcon, SquarePenIcon, XIcon } from 'lucide-react';
-import React, { useState } from 'react'
+import { useEffect, useState } from "react";
+import AxiosInstance from "@/api/AxiosInstance";
 import AddressModal from './AddressModal';
 import { useSelector } from 'react-redux';
 import toast from 'react-hot-toast';
@@ -11,7 +12,10 @@ const OrderSummary = ({ totalPrice, items }) => {
 
     const router = useRouter();
 
-    const addressList = useSelector(state => state.address.list);
+    const [addressList, setAddressList] = useState([]);
+    const [loading, setLoading] = useState(false);
+
+    // const addressList = useSelector(state => state.address.list);
 
     const [paymentMethod, setPaymentMethod] = useState('COD');
     const [selectedAddress, setSelectedAddress] = useState(null);
@@ -29,6 +33,30 @@ const OrderSummary = ({ totalPrice, items }) => {
 
         router.push('/orders')
     }
+
+    useEffect(() => {
+    fetchAddresses();
+}, []);
+
+const fetchAddresses = async () => {
+    try {
+        setLoading(true);
+
+        const response = await AxiosInstance.get(
+            "api/orders_management/shipping-addresses/"
+        );
+
+        console.log(response.data);
+
+        setAddressList(response.data);
+
+    } catch (error) {
+        console.log(error);
+        toast.error("Failed to load addresses");
+    } finally {
+        setLoading(false);
+    }
+};
 
     return (
         <div className='w-full max-w-lg lg:max-w-[340px] bg-slate-50/30 border border-slate-200 text-slate-500 text-sm rounded-xl p-7'>
