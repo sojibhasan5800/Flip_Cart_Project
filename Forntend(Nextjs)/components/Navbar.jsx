@@ -154,7 +154,7 @@ const Navbar = () => {
         </Link>
 
         <Link
-          href="/billing"
+          href="/billing/customer_billing/"
           className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50"
         >
           <CreditCard size={18} />

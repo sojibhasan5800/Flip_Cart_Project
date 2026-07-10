@@ -1,88 +1,370 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <style>
+        @page {
+            size: A4 portrait;
+            margin: 0;
+        }
+       
+        body {
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            color: #2d3748;
+            margin: 0;
+            padding: 0;
+            background-color: #ffffff;
+            width: 210mm;
+            height: 297mm;
+            position: relative;
+        }
 
 
-{% extends 'base.html' %}
-{% load static %}
-{% block content %}
-
-<!-- ========================= SECTION MAIN ========================= -->
-<section class="section-intro padding-y-sm">
-<div class="container">
-
-<div class="intro-banner-wrap">
-	<img src="{% static 'images/banners/cover-1.jpg' %}" class="img-fluid rounded"  style="height: 390px; object-fit: cover; width: 100%;">
-</div>
-
-</div> <!-- container //  -->
-</section>
-<!-- ========================= SECTION MAIN END// ========================= -->
-
-<!-- ========================= SECTION  ========================= -->
-<section class="section-name padding-y-sm">
-<div class="container">
-
-<header class="section-heading">
-	<a href="{% url 'store' %}" class="btn btn-outline-primary float-right">See all</a>
-	<h3 class="section-title">Popular products</h3>
-</header><!-- sect-heading -->
+        /* The 90 Degree Rotation Wrapper to position a landscape table perfectly on portrait print */
+        .rotated-page-container {
+            width: 297mm;
+            height: 210mm;
+            position: absolute;
+            top: 0;
+            left: 210mm;
+            transform: rotate(90deg);
+            transform-origin: top left;
+            padding: 12mm 10mm;
+            box-sizing: border-box;
+        }
 
 
-<div class="row">
-	{% for product in products %}
-	<div class="col-md-3">
-		<div class="card card-product-grid">
-			<a href="{{ product.get_url }}" class="img-wrap"> <img src="{{ product.images.url }}"> </a>
-			<figcaption class="info-wrap">
-				<a href="{{ product.get_url }}" class="title">{{ product.product_name }}</a>
-				<div class="price mt-1">$ {{ product.price }}</div> <!-- price-wrap.// -->
-				<div class="rating-star">
-					<span>
-						<i class="fa fa-star{% if product.averageReview < 0.5 %}-o{% elif product.averageReview >= 0.5 and product.averageReview < 1 %}-half-o {% endif %}" aria-hidden="true"></i>
-						<i class="fa fa-star{% if product.averageReview < 1.5 %}-o{% elif product.averageReview >= 1.5 and product.averageReview < 2 %}-half-o {% endif %}" aria-hidden="true"></i>
-						<i class="fa fa-star{% if product.averageReview < 2.5 %}-o{% elif product.averageReview >= 2.5 and product.averageReview < 3 %}-half-o {% endif %}" aria-hidden="true"></i>
-						<i class="fa fa-star{% if product.averageReview < 3.5 %}-o{% elif product.averageReview >= 3.5 and product.averageReview < 4 %}-half-o {% endif %}" aria-hidden="true"></i>
-						<i class="fa fa-star{% if product.averageReview < 4.5 %}-o{% elif product.averageReview >= 4.5 and product.averageReview < 5 %}-half-o {% endif %}" aria-hidden="true"></i>
-						</span>
-				</div>
-			</figcaption>
-		</div>
-	</div> <!-- col.// -->
-	{% endfor %}
+        .header-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 12px;
+            border-bottom: 3px solid #1a365d;
+            padding-bottom: 6px;
+        }
 
 
-	<!----------------- Api Products ------------------------------>
-
-		{% for product in api_products %}
-	<div class="col-md-3">
-		<div class="card card-product-grid">
-			<a href="{{ product.get_url }}" class="img-wrap"> <img src="{{ product.thumbnail }}"> </a>
-			<figcaption class="info-wrap">
-				<a href="{{ product.get_url }}" class="title">{{ product.title }}</a>
-				<div class="price mt-1">$ {{ product.price }}</div> <!-- price-wrap.// -->
-				<div class="rating-star">
-					<span>
-						<i class="fa fa-star{% if product.rating < 0.5 %}-o{% elif product.rating >= 0.5 and product.rating < 1 %}-half-o {% endif %}" aria-hidden="true"></i>
-						<i class="fa fa-star{% if product.rating < 1.5 %}-o{% elif product.rating >= 1.5 and product.rating < 2 %}-half-o {% endif %}" aria-hidden="true"></i>
-						<i class="fa fa-star{% if product.rating < 2.5 %}-o{% elif product.rating >= 2.5 and product.rating < 3 %}-half-o {% endif %}" aria-hidden="true"></i>
-						<i class="fa fa-star{% if product.rating < 3.5 %}-o{% elif product.rating >= 3.5 and product.rating < 4 %}-half-o {% endif %}" aria-hidden="true"></i>
-						<i class="fa fa-star{% if product.rating < 4.5 %}-o{% elif product.rating >= 4.5 and product.rating < 5 %}-half-o {% endif %}" aria-hidden="true"></i>
-						</span>
-				</div>
-			</figcaption>
-		</div>
-	</div> <!-- col.// -->
-	{% endfor %}
-
-</div> <!-- row.// -->
-
-</div><!-- container // -->
-</section>
-<!-- ========================= SECTION  END// ========================= -->
+        .company-title {
+            font-size: 24pt;
+            font-weight: 800;
+            color: #1a365d;
+            margin: 0;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
 
 
+        .report-subtitle {
+            font-size: 11pt;
+            font-weight: 600;
+            color: #4a5568;
+            margin: 2px 0 0 0;
+            text-transform: uppercase;
+        }
 
 
+        .meta-box {
+            width: 100%;
+            margin-bottom: 15px;
+            background-color: #f7fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 4px;
+            padding: 10px 14px;
+        }
 
 
+        .meta-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 9pt;
+        }
 
 
-{% endblock %}
+        .meta-label {
+            color: #4a5568;
+            font-weight: 600;
+            width: 12%;
+        }
+
+
+        .meta-value {
+            color: #1a365d;
+            font-weight: 700;
+            width: 38%;
+        }
+
+
+        .ledger-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 7.5pt;
+        }
+
+
+        .ledger-table th {
+            background-color: #1a365d;
+            color: #ffffff;
+            font-weight: 700;
+            text-align: center;
+            padding: 8px 3px;
+            border: 1px solid #2b6cb0;
+            text-transform: uppercase;
+            font-size: 6.8pt;
+            vertical-align: middle;
+        }
+
+
+        .ledger-table td {
+            padding: 7px 4px;
+            border: 1px solid #cbd5e0;
+            text-align: right;
+            vertical-align: middle;
+        }
+
+
+        .ledger-table td.center { text-align: center; }
+        .ledger-table td.left { text-align: left; font-weight: 600; color: #1a365d; }
+
+
+        .ledger-table tr:nth-child(even) {
+            background-color: #f8fafc;
+        }
+
+
+        .ledger-table tr.total-row {
+            background-color: #edf2f7 !important;
+            font-weight: 700;
+            border-top: 2.5px solid #1a365d;
+            border-bottom: 2.5px solid #1a365d;
+        }
+
+
+        .ledger-table tr.total-row td {
+            color: #1a365d;
+            font-size: 8pt;
+        }
+
+
+        .status-badge {
+            background-color: #c6f6d5;
+            color: #22543d;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 700;
+            font-size: 6.5pt;
+            text-transform: uppercase;
+        }
+
+
+        .footer-signatures {
+            margin-top: 40px;
+            width: 100%;
+        }
+
+
+        .sig-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+
+        .sig-table td {
+            width: 33.33%;
+            text-align: center;
+            padding-top: 35px;
+            font-size: 9pt;
+            font-weight: 600;
+            color: #4a5568;
+        }
+
+
+        .sig-line {
+            border-top: 1px dashed #a0aec0;
+            width: 65%;
+            margin: 0 auto 6px auto;
+        }
+    </style>
+</head>
+<body>
+
+
+    <div class="rotated-page-container">
+        <table class="header-table">
+            <tr>
+                <td>
+                    <div class="company-title">Aom Enterprise</div>
+                    <div class="report-subtitle">Investment & Shareholder Ledger Report — Official Statement</div>
+                </td>
+            </tr>
+        </table>
+
+
+        <div class="meta-box">
+            <table class="meta-table">
+                <tr>
+                    <td class="meta-label">Statement Date:</td>
+                    <td class="meta-value">2026-10-06</td>
+                    <td class="meta-label">Currency/Unit:</td>
+                    <td class="meta-value">BDT (৳)</td>
+                </tr>
+                <tr>
+                    <td class="meta-label">Data Status:</td>
+                    <td class="meta-value" style="color: #2f855a;">Official Release / Verified</td>
+                    <td class="meta-label">Accounting Method:</td>
+                    <td class="meta-value">Accrual Basis Ledger</td>
+                </tr>
+            </table>
+        </div>
+
+
+        <table class="ledger-table">
+            <thead>
+                <tr>
+                    <th rowspan="2">Date</th>
+                    <th rowspan="2">Investor Name</th>
+                    <th colspan="3">Investment Breakdown</th>
+                    <th colspan="2">Profit (35%)</th>
+                    <th rowspan="2">Other<br>Exp.</th>
+                    <th rowspan="2">Net<br>Profit</th>
+                    <th colspan="3">Bond Fund (5%)</th>
+                    <th rowspan="2">Cash<br>Withdrawal</th>
+                    <th rowspan="2">New<br>Investment</th>
+                    <th rowspan="2">Closing Balance</th>
+                    <th rowspan="2">Status</th>
+                </tr>
+                <tr>
+                    <th>Monthly</th>
+                    <th>Previous</th>
+                    <th>Total</th>
+                    <th>Current</th>
+                    <th>Total Profit</th>
+                    <th>Current</th>
+                    <th>Previous</th>
+                    <th>Total Bond</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="center">2026-10-06</td>
+                    <td class="left">Masnun</td>
+                    <td class="monthly-investment">1,200,000</td>
+                    <td class="previous-investment">28,000,000</td>
+                    <td class="total-investment">40,00,000</td>
+
+
+                    <td class="current-profit">14,00,000</td>
+                    <td class="total-profit">54,00,000</td>
+
+
+                    <td class="other-expense">0</td>
+                    <td class="net-profit">52,00,000</td>
+
+
+                    <td class="current-bond">2,00,000</td>
+                    <td class="previous-bond">0</td>
+                    <td class="total-bond">2,00,000</td>
+
+
+                    <td class="cash-withdrawal">0</td>
+                    <td class="new-investment">0</td>
+                    <td class="closing-balance" style="font-weight:700;">5,200,000</td>
+                    <td class="center"><span class="status-badge">Active</span></td>
+                </tr>
+                <tr>
+                    <td class="center">2026-10-06</td>
+                    <td class="left">Maherab</td>
+                    <td class="monthly-investment">0</td>
+                    <td class="previous-investment">815,000</td>
+                    <td class="total-investment">815,000</td>
+                    <td class="current-profit">285,250</td>
+                    <td class="total-profit">1,100,250</td>
+                    <td class="other-expense">0</td>
+                    <td class="net-profit">1,020,250</td>
+                    <td class="current-bond">80,000</td>
+                    <td class="previous-bond">0</td>
+                    <td class="total-bond">80,000</td>
+                    <td class="cash-withdrawal">200,000</td>
+                    <td class="new-investment">0</td>
+                    <td class="closing-balance" style="font-weight: 700;">820,250</td>
+                    <td class="center"><span class="status-badge">Active</span></td>
+                </tr>
+                <tr>
+                    <td class="center">2026-10-06</td>
+                    <td class="left">Sajib</td>
+                    <td class="monthly-investment">1,200,000</td>
+                    <td class="previous-investment">560,000</td>
+                    <td class="total-investment">1,760,000</td>
+                    <td class="current-profit">616,000</td>
+                    <td class="total-profit">2,376,000</td>
+                    <td class="other-expense">0</td>
+                    <td class="net-profit">2,216,000</td>
+                    <td class="current-bond">1,60,000</td>
+                    <td class="previous-bond">0</td>
+                    <td class="total-bond">1,60,000</td>
+                    <td class="cash-withdrawal">16,000</td>
+                    <td class="new-investment">500,000</td>
+                    <td class="closing-balance" style="font-weight: 700;">2,700,000</td>
+                    <td class="center"><span class="status-badge">Active</span></td>
+                </tr>
+                <tr>
+                    <td class="center">2026-10-06</td>
+                    <td class="left">Rasel</td>
+                    <td class="monthly-investment">0</td>
+                    <td class="previous-investment">272,000</td>
+                    <td class="total-investment">272,000</td>
+                    <td class="current-profit">95,200</td>
+                    <td class="total-profit">367,200</td>
+                    <td class="other-expense">0</td>
+                    <td class="net-profit">307,000</td>
+                    <td class="current-bond">60,000</td>
+                    <td class="previous-bond">0</td>
+                    <td class="total-bond">60,000</td>
+                    <td class="cash-withdrawal">0</td>
+                    <td class="new-investment">150,000</td>
+                    <td class="closing-balance" style="font-weight: 700;">457,000</td>
+                    <td class="center"><span class="status-badge">Active</span></td>
+                </tr>
+             <tr class="total-row">
+                    <td colspan="2" class="center">TOTAL SUMMARY</td>
+                    <td class="monthly-investment">2,400,000</td>
+                    <td class="previous-investment">4,447,000</td>
+                    <td class="total-investment">6,847,000</td>
+                    <td class="current-profit">2,396,450</td>
+                    <td class="total-profit">9,243,450</td>
+                    <td class="other-expense">0</td>
+                    <td class="net-profit">8,743,250</td>
+                    <td class="current-bond">500,000</td>
+                    <td class="previous-bond">0</td>
+                    <td class="total-bond">500,000</td>
+                    <td class="cash-withdrawal">216,000</td>
+                    <td class="new-investment">650,000</td>
+                    <td class="closing-balance">9,177,250</td>
+                    <td></td>
+                </tr>
+            </tbody>
+        </table>
+
+
+        <div class="footer-signatures">
+            <table class="sig-table">
+                <tr>
+                    <td>
+                        <div class="sig-line"></div>
+                        Prepared By: Masnoon
+                    </td>
+                    <td>
+                        <div class="sig-line"></div>
+                        Verified By Corporate Management
+                    </td>
+                    <td>
+                        <div class="sig-line"></div>
+                        Authorized Director Signature
+                    </td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+
+</body>
+</html>
+

@@ -5,7 +5,7 @@ from rest_framework import serializers
 import stripe
 
 from merchant_user.models import Organization
-from .models import SubscriptionPlan, OrganizationSubscription, ProductBoostSubscription
+from .models import SubscriptionPlan, OrganizationSubscription, ProductBoostSubscription,CustomerSubscription
 from global_payments.models import Invoice
 
 class OrganizationSimpleSerializer(serializers.ModelSerializer):
@@ -70,6 +70,24 @@ class ProductBoostSubscriptionSerializer(serializers.ModelSerializer):
         fields = '__all__'
         read_only_fields = ['boost_start_date', 'boost_end_date', 'is_active', 'created_at', 'updated_at']
 
+
+class CustomerSubscriptionSerializer(serializers.ModelSerializer):
+    plan_name = serializers.CharField(source="plan.name")
+    plan_level = serializers.CharField(source="plan.plan_level")
+
+    class Meta:
+        model = CustomerSubscription
+        fields = [
+            "id",
+            "plan_name",
+            "plan_level",
+            "status",
+            "start_date",
+            "end_date",
+            "auto_renew",
+        ]
+        
+        
 class InvoiceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Invoice

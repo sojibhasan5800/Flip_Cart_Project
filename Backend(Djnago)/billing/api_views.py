@@ -238,8 +238,22 @@ class CurrentSubscriptionAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        organization = request.user.organization
-        plan_type = request.query_params.get("plan_type", "organization")
+        
+        subscription_type = request.query_params.get(
+        "type",
+        "organization"
+        )
+        
+        # ====================================
+        # ORGANIZATION SUBSCRIPTION
+        # ====================================
+        if subscription_type == "organization":
+            organization = request.user.organization
+            if not organization:
+                return Response({
+                    "subscription": None
+                })
+            
 
         subscriptions = (
             OrganizationSubscription.objects
