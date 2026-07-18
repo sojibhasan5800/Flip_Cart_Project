@@ -1,5 +1,5 @@
 
-# webhook_local = stripe listen --forward-to localhost:8000/api/payments/stripe-webhook/
+# webhook_local = stripe listen --forward-to localhost:8000/api/global_payments/stripe-webhook/
 
 # Database create in pgadmin 
 

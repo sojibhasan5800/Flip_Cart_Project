@@ -233,97 +233,151 @@ class ProductBoostSubscriptionListAPIView(APIView):
         serializer = ProductBoostSubscriptionSerializer(boost)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-
 class CurrentSubscriptionAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        
-        subscription_type = request.query_params.get(
-        "type",
-        "organization"
+
+        plan_type = request.query_params.get(
+            "type",
+            "organization"
         )
-        
-        # ====================================
-        # ORGANIZATION SUBSCRIPTION
-        # ====================================
-        if subscription_type == "organization":
-            organization = request.user.organization
-            if not organization:
-                return Response({
-                    "subscription": None
-                })
-            
 
-        subscriptions = (
-            OrganizationSubscription.objects
-            .select_related('plan')
-            .filter(
-                organization=organization,
-                status='active',
-                plan__plan_type=plan_type
-            )
-            .filter(
-                Q(end_date__isnull=True) |
-                Q(end_date__gt=timezone.now())
-            )
-        )
-        print("Active subscriptions found:", subscriptions.count())
-
-        subscription = subscriptions.order_by('-start_date').first()
-
-        subscription_data = None
-        # for x in subscriptions:
-        #     print("Active subscription found:", x.id, "Plan:", x.plan.name, "Ends at:", x.end_date)
-        #     print()
-        # if subscriptions:
-
-        #     print("Current subscription found for organization:", organization.name)
-
-        if subscription:
-            plan = subscription.plan
-            print(f"Current subscription plan: {plan.name}, level: {plan.plan_level}, ends at: {subscription.end_date}")
-
-            days_remaining = None
-            if subscription.end_date:
-                delta = subscription.end_date - timezone.now()
-                days_remaining = max(delta.days, 0)
-
-            subscription_data = {
-                "id": subscription.id,
-                "plan_id": plan.id,
-                "plan_name": plan.name,
-                "plan_level": plan.plan_level,
-                "plan_type": plan.plan_type,
-                "price": str(plan.price),
-                "currency": plan.currency,
-                "billing_cycle": plan.billing_cycle,
-                "status": subscription.status,
-                "auto_renew": subscription.auto_renew,
-                "start_date": subscription.start_date,
-                "end_date": subscription.end_date,
-                "days_remaining": days_remaining,
-                "is_expiring_soon": subscription.is_expiring_soon,
-                "usage": {
-                    "products_used": subscription.current_usage.get("products", 0),
-                    "products_limit": plan.max_products,
-                    "boosted_used": subscription.boosted_products_count,
-                    "boosted_limit": plan.max_boosted_products,
-                }
-            }
-
-        # 🔥 Available plans (same plan_type)
         available_plans = SubscriptionPlan.objects.filter(
             is_active=True,
             plan_type=plan_type
         ).order_by("price")
 
-        plans_data = SubscriptionPlanSerializer(available_plans, many=True).data
+        available_plans_data = SubscriptionPlanSerializer(
+            available_plans,
+            many=True
+        ).data
+
+        subscription = None
+        usage = {}
+
+        # ======================================================
+        # Organization Subscription
+        # ======================================================
+        if plan_type == "organization":
+
+            organization = getattr(request.user, "organization", None)
+
+            if organization:
+
+                subscription = (
+                    OrganizationSubscription.objects
+                    .select_related("plan")
+                    .filter(
+                        organization=organization,
+                        status="active",
+                        plan__plan_type=plan_type
+                    )
+                    .filter(
+                        Q(end_date__isnull=True) |
+                        Q(end_date__gt=timezone.now())
+                    )
+                    .order_by("-start_date")
+                    .first()
+                )
+
+                if subscription:
+                    usage = {
+                        "products_used": subscription.current_usage.get(
+                            "products", 0
+                        ),
+                        "products_limit": subscription.plan.max_products,
+                        "boosted_used": subscription.boosted_products_count,
+                        "boosted_limit": subscription.plan.max_boosted_products,
+                    }
+
+        # ======================================================
+        # Customer Plus Membership
+        # ======================================================
+        elif plan_type == "plus_membership":
+
+            subscription = (
+                CustomerSubscription.objects
+                .select_related("plan")
+                .filter(
+                    user=request.user,
+                    status="active",
+                    plan__plan_type=plan_type
+                )
+                .filter(
+                    Q(end_date__isnull=True) |
+                    Q(end_date__gt=timezone.now())
+                )
+                .order_by("-start_date")
+                .first()
+            )
+
+            usage = {}
+
+        else:
+            return Response(
+                {
+                    "detail": "Invalid subscription type."
+                },
+                status=400
+            )
+
+        # ======================================================
+        # No Subscription
+        # ======================================================
+        if subscription is None:
+            return Response({
+                "has_subscription": False,
+                "subscription": None,
+                "plan": None,
+                "available_plans": available_plans_data
+            })
+
+        # ======================================================
+        # Days Remaining
+        # ======================================================
+        days_remaining = None
+
+        if subscription.end_date:
+            days_remaining = max(
+                (subscription.end_date - timezone.now()).days,
+                0
+            )
+
+        # ======================================================
+        # Subscription Data
+        # ======================================================
+        subscription_data = {
+            "id": subscription.id,
+            "status": subscription.status,
+            "auto_renew": subscription.auto_renew,
+            "start_date": subscription.start_date,
+            "end_date": subscription.end_date,
+            "days_remaining": days_remaining,
+            "usage": usage,
+        }
+
+        # OrganizationSubscription only
+        if hasattr(subscription, "is_expiring_soon"):
+            subscription_data["is_expiring_soon"] = (
+                subscription.is_expiring_soon
+            )
+
+        # ======================================================
+        # Plan Data
+        # ======================================================
+        plan_data = SubscriptionPlanSerializer(
+            subscription.plan
+        ).data
 
         return Response({
+            "has_subscription": True,
             "subscription": subscription_data,
-            "plans": plans_data
+            "plan": plan_data,
+            "available_plans": available_plans_data
         })
+ 
+        
 
 class UpgradeSubscriptionAPIView(APIView):
     permission_classes = [IsAuthenticated]

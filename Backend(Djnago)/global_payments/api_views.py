@@ -9,10 +9,9 @@ from django.conf import settings
 import stripe
 from stripe import StripeError
 import requests  # For bKash API
-from django.utils import timezone
 from .models import SubscriptionPaymentTransaction
 from billing.models import OrganizationSubscription,SubscriptionPlan
-from .serializers import SubscriptionPaymentTransactionSerializer
+
 
 logger = logging.getLogger(__name__)
 stripe.api_key = settings.STRIPE_SECRET_KEY
@@ -21,8 +20,10 @@ stripe.api_key = settings.STRIPE_SECRET_KEY
 
 class PurchasePlanView(APIView):
     permission_classes = [IsAuthenticated]
+    
 
     def post(self, request):
+    
         try:
             gateway = request.data.get("gateway")
             plan_slug = request.data.get("plan_slug")
@@ -41,7 +42,7 @@ class PurchasePlanView(APIView):
             #         status=status.HTTP_400_BAD_REQUEST
             #     )
 
-            # 🔎 Plan existence check
+            #  Plan existence check
             plan = get_object_or_404(SubscriptionPlan, slug=plan_slug)
             org = getattr(request.user, "organization", None)
             if org is None:
@@ -108,12 +109,12 @@ class PurchasePlanView(APIView):
             cancel_url=f"{settings.FRONTEND_URL}/billing/plans/stripe_cancel",
             metadata=metadata
         )
+        print(f"[PurchasePlanView DEBUG] Created Stripe session: {session.id} for plan: {plan.slug}, user: {request.user.id}, org: {metadata.get('org_id')}")
 
         return Response(
             {"redirect_url": session.url},
             status=status.HTTP_200_OK
         )
-
 
 
 class CreatePaymentIntent(APIView):

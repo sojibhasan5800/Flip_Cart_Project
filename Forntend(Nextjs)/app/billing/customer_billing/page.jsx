@@ -25,10 +25,11 @@ export default function BillingPage() {
     const fetchSubscription = async () => {
         try {
             const res = await AxiosInstance.get(
-                "api/billing/current-subscription/"
+                "api/billing/current-subscription/?type=plus_membership"
             )
 
             setSubscriptionData(res.data)
+            console.log("res.data", res.data)
 
         } catch (error) {
             console.error(error)

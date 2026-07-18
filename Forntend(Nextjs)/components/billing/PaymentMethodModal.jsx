@@ -18,7 +18,7 @@ export default function PaymentMethodModal({ plan, onClose }) {
         setLoading(true)
         try {
             const res = await AxiosInstance.post(
-                '/api/payments/plans/purchase-plan/',
+                '/api/global_payments/plans/purchase-plan/',
                 {
                     plan_slug: plan.slug,
                     gateway: gateway,
