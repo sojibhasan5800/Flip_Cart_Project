@@ -1,11 +1,11 @@
 
 
 from datetime import timezone
-from django.db import transaction
 
 from accounts.models import Account
 from billing.models import OrganizationSubscription, SubscriptionPlan,ProductBoostSubscription,CustomerSubscription
 from merchant_user.models import Organization
+
 
 
 def activate_organization_subscription(
@@ -57,7 +57,7 @@ def activate_organization_subscription(
     
     
 
-@transaction.atomic
+
 def activate_product_boost_subscription(
     payment_transaction,
     metadata
@@ -180,7 +180,7 @@ def activate_product_boost_subscription(
 
     return boost_subscription
 
-@transaction.atomic
+
 def activate_customer_subscription(
     payment_transaction,
     metadata

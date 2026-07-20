@@ -19,7 +19,7 @@ from datetime import  timedelta
 from billing.models import OrganizationSubscription, SubscriptionPlan
 from merchant_user.models import Organization
 
-from global_payments.services.subscription_service import activate_organization_subscription
+from global_payments.services.subscription_service import activate_organization_subscription,activate_product_boost_subscription,activate_customer_subscription,activate_plus_membership_subscription
 from global_payments.services.transaction_service import create_payment_transaction
 from .tasks import process_successful_payment
 from analytics_engine.tasks.payment_tasks import create_payment_analytics
@@ -131,38 +131,73 @@ class StripeWebhookView(APIView):
         # ==========================================
         # CREATE PAYMENT TRANSACTION
         # ==========================================
+        with transaction.atomic():
 
-        transaction_obj = create_payment_transaction(
+            transaction_obj = create_payment_transaction(
 
-            payment_for=payment_for,
+                payment_for=payment_for,
 
-            amount=session['amount_total'] / 100,
+                amount=session['amount_total'] / 100,
 
-            currency=session['currency'].upper(),
+                currency=session['currency'].upper(),
 
-            gateway='stripe',
+                gateway='stripe',
 
-            gateway_transaction_id=session['id'],
+                gateway_transaction_id=session['id'],
 
-            status='success',
+                status='success',
 
-            metadata=metadata,
+                metadata=metadata,
 
-            customer_email=session.get(
-                'customer_email'
-            ),
-        )
+                customer_email=session.get(
+                    'customer_email'
+                ),
+            )
+        
+        # ==========================================
+        # CREATE USER WAYS SUBSCRIPTION OBJECT
+        # ==========================================
+        
+            if plan_type == "organization":
+
+                activate_organization_subscription(
+                    transaction_obj,
+                    metadata
+                )
+
+            elif plan_type == "product_boost":
+
+                activate_product_boost_subscription(
+                    transaction_obj,
+                    metadata
+                )
+
+            elif plan_type == "plus_membership":
+
+                activate_plus_membership_subscription(
+                    transaction_obj,
+                    metadata
+                )
+
+            else:
+                return
+        
+        
 
         # ==========================================
         # ASYNC BACKGROUND PROCESSING
         # ==========================================
+            transaction.on_commit(
+                lambda: process_successful_payment.delay(
+                    transaction_obj.id
+                )
+            )
 
-        process_successful_payment.delay(
-            transaction_obj.id
-        )
-        create_payment_analytics.delay(
-            transaction_obj.id
-        )
+            transaction.on_commit(
+                lambda: create_payment_analytics.delay(
+                    transaction_obj.id
+                )
+            )
     
         
      

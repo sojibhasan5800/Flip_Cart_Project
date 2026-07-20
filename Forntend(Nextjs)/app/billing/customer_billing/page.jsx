@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 import AxiosInstance from "@/api/AxiosInstance"
 import {
     Crown,
@@ -15,6 +16,7 @@ import {
 
 export default function BillingPage() {
 
+    const router = useRouter()
     const [loading, setLoading] = useState(true)
     const [subscriptionData, setSubscriptionData] = useState(null)
 
@@ -78,6 +80,7 @@ export default function BillingPage() {
                     </p>
 
                     <button
+                        onClick={() => router.push("/pricing")}
                         className="mt-6 px-5 py-2 rounded-lg bg-green-600 text-white"
                     >
                         View Plans
