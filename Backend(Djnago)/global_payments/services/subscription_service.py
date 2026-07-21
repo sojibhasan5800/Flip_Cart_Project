@@ -1,6 +1,8 @@
 
 
-from datetime import timezone
+from django.utils import timezone
+from datetime import timedelta
+from importlib.metadata import metadata
 
 from accounts.models import Account
 from billing.models import OrganizationSubscription, SubscriptionPlan,ProductBoostSubscription,CustomerSubscription
@@ -15,39 +17,66 @@ def activate_organization_subscription(
 
     org_id = metadata.get("org_id")
     plan_id = metadata.get("plan_id")
+    stripe_subscription_id = metadata.get(
+    "stripe_subscription_id"
+    )
 
-    organization = Organization.objects.get(id=org_id)
+    stripe_customer_id = metadata.get(
+        "stripe_customer_id"
+    )
+
+    stripe_subscription_item_id = metadata.get(
+        "stripe_subscription_item_id"
+    )
+
+    organization = Organization.objects.select_for_update().get(id=org_id)
 
     plan = SubscriptionPlan.objects.get(
         id=plan_id,
         is_active=True
     )
+    
+    old_subscription = (
+    OrganizationSubscription.objects
+    .filter(
+        organization=organization,
+        status="active"
+    )
+    .first()
+    )
+    
+    if old_subscription:
 
-    subscription, created = (
-        OrganizationSubscription.objects.get_or_create(
-            organization=organization,
-            defaults={
-                "plan": plan,
-                "status": "active",
-                "start_date": timezone.now(),
-                "end_date": timezone.now() + timezone.timedelta(
-                    days=plan.get_duration()
-                )
-            }
+        old_subscription.status = "expired"
+
+        old_subscription.save(
+            update_fields=["status"]
+        )
+        
+    subscription = (
+    OrganizationSubscription.objects.create(
+
+        organization=organization,
+
+        plan=plan,
+
+        status="active",
+
+        start_date=timezone.now(),
+
+        end_date=timezone.now() +
+        timedelta(days=plan.get_duration()),
+
+        stripe_subscription_id=
+        stripe_subscription_id,
+
+        stripe_customer_id=
+        stripe_customer_id,
+
+        stripe_subscription_item_id=
+        stripe_subscription_item_id,
         )
     )
-
-    if not created:
-
-        subscription.plan = plan
-        subscription.status = "active"
-        subscription.start_date = timezone.now()
-        subscription.end_date = (
-            timezone.now() +
-            timezone.timedelta(days=plan.get_duration())
-        )
-
-        subscription.save()
 
     payment_transaction.organization_subscription = subscription
 
@@ -138,7 +167,7 @@ def activate_product_boost_subscription(
 
             boost_end_date=
             timezone.now() +
-            timezone.timedelta(
+            timedelta(
                 days=plan.get_duration()
             ),
 
@@ -262,7 +291,7 @@ def activate_customer_subscription(
 
         subscription.end_date = (
             timezone.now() +
-            timezone.timedelta(
+            timedelta(
                 days=plan.get_duration()
             )
         )

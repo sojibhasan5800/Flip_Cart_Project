@@ -19,7 +19,7 @@ from datetime import  timedelta
 from billing.models import OrganizationSubscription, SubscriptionPlan
 from merchant_user.models import Organization
 
-from global_payments.services.subscription_service import activate_organization_subscription,activate_product_boost_subscription,activate_customer_subscription,activate_plus_membership_subscription
+from global_payments.services.subscription_service import activate_organization_subscription,activate_product_boost_subscription,activate_customer_subscription
 from global_payments.services.transaction_service import create_payment_transaction
 from .tasks import process_successful_payment
 from analytics_engine.tasks.payment_tasks import create_payment_analytics
@@ -30,8 +30,10 @@ stripe.api_key = settings.STRIPE_SECRET_KEY
 @method_decorator(csrf_exempt, name="dispatch")
 class StripeWebhookView(APIView):
     permission_classes = [AllowAny]
+    
 
     def post(self, request, *args, **kwargs):
+        
         payload = request.body
         sig_header = request.META.get("HTTP_STRIPE_SIGNATURE")
 
@@ -174,7 +176,7 @@ class StripeWebhookView(APIView):
 
             elif plan_type == "plus_membership":
 
-                activate_plus_membership_subscription(
+                activate_customer_subscription(
                     transaction_obj,
                     metadata
                 )

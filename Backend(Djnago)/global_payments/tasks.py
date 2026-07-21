@@ -14,7 +14,6 @@ from .models import (
     SubscriptionPaymentTransaction,
 
 )
-from global_payments.models import SubscriptionPaymentTransaction
 
 from .services.subscription_service import (
     activate_organization_subscription,

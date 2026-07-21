@@ -35,14 +35,7 @@ class PurchasePlanView(APIView):
                     {"error": "gateway, plan_slug and plan_type are required"},
                     status=status.HTTP_400_BAD_REQUEST
                 )
-
-            # if plan_type not in ["organization", "boosting"]:
-            #     return Response(
-            #         {"error": "Invalid plan_type"},
-            #         status=status.HTTP_400_BAD_REQUEST
-            #     )
-
-            #  Plan existence check
+                
             plan = get_object_or_404(SubscriptionPlan, slug=plan_slug)
             org = getattr(request.user, "organization", None)
             if org is None:
@@ -91,11 +84,26 @@ class PurchasePlanView(APIView):
             "user_id": str(request.user.id),
         }
 
-        if plan_type in ["organization", "product_boost"]:
-            # if not hasattr(request.user, "organization") or not request.user.organization:
-            #     raise ValueError("Organization required for this plan")
-            metadata["org_id"] = str(request.user.organization.id)
+        if plan_type == "organization":
 
+            metadata["org_id"] = str(
+                request.user.organization.id
+            )
+
+        elif plan_type == "product_boost":
+
+            metadata["org_id"] = str(
+                request.user.organization.id
+            )
+
+            metadata["product_id"] = str(
+                request.data.get("product_id")
+            )
+
+            metadata["priority_level"] = str(
+                request.data.get("priority_level", 1)
+            )
+            
         session = stripe.checkout.Session.create(
             mode="subscription",
             payment_method_types=["card"],
@@ -109,7 +117,6 @@ class PurchasePlanView(APIView):
             cancel_url=f"{settings.FRONTEND_URL}/billing/plans/stripe_cancel",
             metadata=metadata
         )
-        print(f"[PurchasePlanView DEBUG] Created Stripe session: {session.id} for plan: {plan.slug}, user: {request.user.id}, org: {metadata.get('org_id')}")
 
         return Response(
             {"redirect_url": session.url},

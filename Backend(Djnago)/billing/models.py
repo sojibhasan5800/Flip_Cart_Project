@@ -111,26 +111,7 @@ class OrganizationSubscription(models.Model):
     def can_boost_more(self):
         return self.boosted_products_count < self.plan.max_boosted_products
 
-    def upgrade_plan(self, new_plan,update_type):
-        """Logic for upgrade/downgrade - prorate if needed"""
-        if update_type == 'upgrade':
-            print(f"Upgrading subscription for {self.organization.business_name} from {self.plan.name} to {new_plan.name}")
-            # Upgrade: immediate effect, prorate remaining
-            self.plan = new_plan
-            self.start_date = timezone.now()
-            self.end_date = self.start_date + timezone.timedelta(days=new_plan.get_duration())
-            self.status = 'active'
-            self.save()
-            # Trigger Stripe update via task
-            # from .tasks import update_stripe_subscription
-            # update_stripe_subscription.delay(self.id)
-        elif update_type == 'downgrade':
-            # Downgrade: effective at end of current period
-            self.status = 'active'  # Keep active till end
-            # Schedule downgrade
-            # from .tasks import schedule_downgrade
-            # schedule_downgrade.delay(self.id, new_plan.id)
-
+   
 class ProductBoostSubscription(models.Model):
     """
     Per-product boosting, linked to org subscription. Extensible for different boost levels.
