@@ -36,6 +36,7 @@ from .serializers import (
     SubscriptionPlanSerializer,
     OrganizationSubscriptionSerializer,
     ProductBoostSubscriptionSerializer,
+    PlusMembershipPlanSerializer,
     InvoiceSerializer
 )
 
@@ -193,7 +194,9 @@ class PlusMembershipPlanListAPIView(APIView):
             plan_type='plus_membership',
             is_active=True
         )
-        serializer = SubscriptionPlanSerializer(plans, many=True)
+        print("Plus Membership Plans:", plans)
+        serializer = PlusMembershipPlanSerializer(plans, many=True)
+        print("Serialized Plus Membership Plans:", serializer.data)
         return Response(serializer.data)
     
     

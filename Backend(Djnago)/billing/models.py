@@ -3,8 +3,6 @@ from django.db import models
 from django.utils import timezone
 from django.conf import settings
 from merchant_user.models import Organization
-# from store.models import Product
-import uuid
 from django.core.validators import MinValueValidator
 
 class SubscriptionPlan(models.Model):
@@ -25,6 +23,15 @@ class SubscriptionPlan(models.Model):
         ('product_boost', 'Product Boosting Add-on'),  # For product boosting
         ('plus_membership', 'plus_membership Plan'),  # For future extensions
     ]
+    BILLING_CYCLE = [
+        ("7_days", "7 Days"),
+        ("15_days", "15 Days"),
+        ("monthly", "Monthly"),
+        ("quarterly", "Quarterly (3 Months)"),
+        ("half_yearly", "Half Yearly (6 Months)"),
+        ("yearly", "Yearly"),
+    ]
+
     
     name = models.CharField(max_length=100, unique=True)  # e.g., 'Basic', 'Pro Boost'
     slug = models.SlugField(max_length=100, unique=True)  # e.g., 'basic', 'pro-boost'
@@ -32,7 +39,7 @@ class SubscriptionPlan(models.Model):
     plan_type = models.CharField(max_length=50, choices=PLAN_TYPES, default='general')
     price = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0.00)])
     currency = models.CharField(max_length=3, default='USD')
-    billing_cycle = models.CharField(max_length=20, choices=[('monthly', 'Monthly'), ('yearly', 'Yearly')], default='monthly')
+    billing_cycle = models.CharField(max_length=20, choices=BILLING_CYCLE, default='monthly')
     duration_days = models.PositiveIntegerField(default=30)  # Flexible for different cycles
     max_users = models.PositiveIntegerField(default=1, help_text="Max users per organization")
     max_products = models.PositiveIntegerField(default=100, help_text="Max products in store")
@@ -43,6 +50,85 @@ class SubscriptionPlan(models.Model):
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    
+    
+    # --------------------------
+    # Shipping Benefits
+    # --------------------------
+    free_shipping = models.BooleanField(default=False)
+
+    free_shipping_min_order = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        validators=[MinValueValidator(0)]
+    )
+
+    max_free_shipping_orders = models.PositiveIntegerField(
+        default=999999,
+        help_text="Maximum free shipping orders during this subscription"
+    )
+
+    shipping_discount_percent = models.PositiveSmallIntegerField(
+        default=0,
+        help_text="0-100%"
+    )
+
+    # --------------------------
+    # Order Benefits
+    # --------------------------
+    priority_order_processing = models.BooleanField(default=False)
+
+    priority_customer_support = models.BooleanField(default=False)
+
+    early_access_sale = models.BooleanField(default=False)
+
+    exclusive_deals = models.BooleanField(default=False)
+
+    cashback_percent = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=0
+    )
+
+    reward_points_multiplier = models.DecimalField(
+        max_digits=4,
+        decimal_places=2,
+        default=1.00
+    )
+
+    # --------------------------
+    # Profit Protection
+    # --------------------------
+    monthly_order_limit = models.PositiveIntegerField(
+        default=0,
+        help_text="0 = Unlimited"
+    )
+
+    monthly_spending_limit = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0,
+        help_text="0 = Unlimited"
+    )
+
+    # --------------------------
+    # Priority
+    # --------------------------
+    display_order = models.PositiveIntegerField(
+        default=0
+    )
+
+    recommended = models.BooleanField(default=False)
+
+    badge = models.CharField(
+        max_length=50,
+        blank=True
+    )
+
+ 
+    
+    
 
     class Meta:
         verbose_name = "Subscription Plan"

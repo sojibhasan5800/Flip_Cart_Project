@@ -20,16 +20,60 @@ class SubscriptionPlanSerializer(serializers.ModelSerializer):
         read_only_fields = ['created_at', 'updated_at']
 
     def create(self, validated_data):
-        interval_map = {
-            "monthly": "month",
-            "yearly": "year",
-            "weekly": "week",
-            "daily": "day",
-        }
+        # interval_map = {
+        #     "monthly": "month",
+        #     "yearly": "year",
+        #     "weekly": "week",
+        #     "daily": "day",
+        # }
         billing_cycle = validated_data.get("billing_cycle", "monthly")
-        stripe_interval = interval_map.get(billing_cycle)
-        if not stripe_interval:
-            raise serializers.ValidationError({"billing_cycle": "Invalid billing cycle"})
+        
+        if billing_cycle == "7_days":
+            recurring = {
+                "interval": "day",
+                "interval_count": 7,
+            }
+
+        elif billing_cycle == "15_days":
+            recurring = {
+                "interval": "day",
+                "interval_count": 15,
+            }
+
+        elif billing_cycle == "monthly":
+            recurring = {
+                "interval": "month",
+                "interval_count": 1,
+            }
+
+        elif billing_cycle == "quarterly":
+            recurring = {
+                "interval": "month",
+                "interval_count": 3,
+            }
+
+        elif billing_cycle == "half_yearly":
+            recurring = {
+                "interval": "month",
+                "interval_count": 6,
+            }
+
+        elif billing_cycle == "yearly":
+            recurring = {
+                "interval": "year",
+                "interval_count": 1,
+            }
+
+        else:
+            raise serializers.ValidationError(
+                {
+                    "billing_cycle": "Invalid billing cycle"
+                }
+            )
+            
+        # stripe_interval = interval_map.get(billing_cycle)
+        # if not stripe_interval:
+        #     raise serializers.ValidationError({"billing_cycle": "Invalid billing cycle"})
 
         # Stripe Product তৈরি
         product = stripe.Product.create(
@@ -42,7 +86,7 @@ class SubscriptionPlanSerializer(serializers.ModelSerializer):
         price = stripe.Price.create(
             unit_amount=unit_amount,
             currency=validated_data['currency'].lower(),
-            recurring={'interval': stripe_interval},  # ✅ map করা value ব্যবহার
+            recurring=recurring,  # ✅ map করা value ব্যবহার
             product=product.id
         )
 
@@ -70,23 +114,22 @@ class ProductBoostSubscriptionSerializer(serializers.ModelSerializer):
         fields = '__all__'
         read_only_fields = ['boost_start_date', 'boost_end_date', 'is_active', 'created_at', 'updated_at']
 
-
-class CustomerSubscriptionSerializer(serializers.ModelSerializer):
-    plan_name = serializers.CharField(source="plan.name")
-    plan_level = serializers.CharField(source="plan.plan_level")
+class PlusMembershipPlanSerializer(serializers.ModelSerializer):
+    plan_name = serializers.CharField(source="name", read_only=True)
 
     class Meta:
-        model = CustomerSubscription
+        model = SubscriptionPlan
         fields = [
             "id",
             "plan_name",
+            "slug",
             "plan_level",
-            "status",
-            "start_date",
-            "end_date",
-            "auto_renew",
-        ]
-        
+            "price",
+            "currency",
+            "billing_cycle",
+            "duration_days",
+            "features",
+        ]  
         
 class InvoiceSerializer(serializers.ModelSerializer):
     class Meta:

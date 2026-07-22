@@ -61,37 +61,49 @@ export default function PricingPage() {
         <div className='mx-auto max-w-[700px] my-28'>
             <h1 className="text-3xl font-bold text-center mb-12 text-gray-800">Choose Your Plus_Membership Plan</h1>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
-                {plans.filter(plan => plan.plan_type === 'plus_membership').map(plan => (
-                    <div 
-                        key={plan.id} 
-                        className={`bg-white rounded-xl shadow-lg p-6 flex flex-col items-center transform hover:scale-105 transition duration-300 ${
-                            plan.level === 'enterprise' ? 'border-4 border-indigo-500' : ''
-                        }`}
-                    >
-                        <h2 className="text-2xl font-semibold mb-4 text-gray-800">{plan.name}</h2>
-                        <p className="text-4xl font-bold mb-2 text-indigo-600">${plan.price}</p>
-                        <p className="text-sm text-gray-500 mb-6">{plan.billing_cycle}</p>
+           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+    {plans.map((plan) => (
+        <div
+            key={plan.id}
+            className={`bg-white rounded-xl shadow-lg p-6 flex flex-col items-center transition duration-300 hover:scale-105 ${
+                plan.plan_level === "enterprise"
+                    ? "border-4 border-indigo-500"
+                    : ""
+            }`}
+        >
+            <h2 className="text-2xl font-semibold mb-3 text-gray-800">
+                {plan.plan_name}
+            </h2>
 
-                        <ul className="text-left mb-8 space-y-2">
-                            <li className="flex items-center gap-2"><span className="text-green-500">✓</span> Max Boosted Products: {plan.max_boosted_products}</li>
-                            <li className="flex items-center gap-2"><span className="text-green-500">✓</span> Storage: {plan.storage_gb} GB</li>
-                            <li className="flex items-center gap-2"><span className="text-green-500">✓</span> Max Users: {plan.max_users}</li>
-                            {/* Features from JSON */}
-                            {Object.entries(plan.features).map(([key, value]) => value && (
-                                <li key={key} className="flex items-center gap-2"><span className="text-green-500">✓</span> {key.replace('_', ' ').toUpperCase()}</li>
-                            ))}
-                        </ul>
+            <p className="text-4xl font-bold text-indigo-600">
+                ${plan.price}
+            </p>
 
-                        <button 
-                            onClick={() => handlePurchaseClick(plan)}
-                            className="w-full py-3 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition"
-                        >
-                            Purchase Now
-                        </button>
-                    </div>
-                ))}
-            </div>
+            <p className="text-sm text-gray-500 mb-6 capitalize">
+                {plan.billing_cycle}
+            </p>
+
+            <ul className="w-full mb-6 space-y-2 text-sm text-gray-700">
+                <li>Duration : {plan.duration_days} Days</li>
+
+                {Object.entries(plan.features || {}).map(([key, value]) =>
+                    value ? (
+                        <li key={key}>
+                            ✓ {key.replace(/_/g, " ")}
+                        </li>
+                    ) : null
+                )}
+            </ul>
+
+            <button
+                onClick={() => handlePurchaseClick(plan)}
+                className="w-full rounded-lg bg-indigo-600 py-3 text-white hover:bg-indigo-700"
+            >
+                Purchase Now
+            </button>
+        </div>
+    ))}
+</div>
 
                 {/* ✅ NEW PAYMENT METHOD SELECTION MODAL */}
             {showPaymentModal && selectedPlan && (
