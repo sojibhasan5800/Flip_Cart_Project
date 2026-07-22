@@ -55,19 +55,16 @@ class StripeWebhookView(APIView):
         # ✅ Handle Stripe events
         if event["type"] == "checkout.session.completed":
             try:
-                print(f"[Webhook DEBUG] Checkout session completed event received: {event['data']['object']}")
                 self.handle_checkout_completed(event["data"]["object"])
             except Exception as e:
                 print("Webhook processing failed:", str(e))
                 return HttpResponse("Processing error", status=500)
                 # ✅ 2. Subscription Updated (Upgrade / Cancel at period end)
         elif event["type"] == "customer.subscription.updated":
-            print(f"[Webhook DEBUG] Subscription updated event received: {event['data']['object']}")
             self.handle_subscription_updated(event["data"]["object"])
 
         # ✅ 3. Subscription Fully Cancelled
         elif event["type"] == "customer.subscription.deleted":
-            print(f"[Webhook DEBUG] Subscription deleted event received: {event['data']['object']}")
             self.handle_subscription_deleted(event["data"]["object"])
 
         return HttpResponse(status=200)
@@ -111,7 +108,6 @@ class StripeWebhookView(APIView):
             metadata["stripe_subscription_id"] = stripe_subscription_id
             metadata["stripe_customer_id"] = stripe_customer_id
             metadata["customer_email"] = customer_email
-            print(f"[Webhook DEBUG] Retrieved subscription item ID: {subscription_item_id}, price ID: {stripe_price_id}, subscription ID: {stripe_subscription_id}")
 
 
         

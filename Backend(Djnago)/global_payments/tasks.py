@@ -7,8 +7,7 @@ from django.core.mail import send_mail
 
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
-from rest_framework import settings
-
+from django.conf import settings
 from .models import (
     PaymentAuditLog,
     SubscriptionPaymentTransaction,
@@ -221,12 +220,12 @@ def process_successful_payment(self, transaction_id):
             # ==================================================
 
             payment_transaction.is_verified = True
-            payment_transaction.webhook_received_at = timezone.now()
+            # payment_transaction.webhook_received_at = timezone.now()
 
             payment_transaction.save(
                 update_fields=[
                     "is_verified",
-                    "webhook_received_at"
+                    # "webhook_received_at"
                 ]
             )
 

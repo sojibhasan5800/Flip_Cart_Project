@@ -304,13 +304,13 @@ def activate_customer_subscription(
     # LINK PAYMENT TRANSACTION
     # =========================
 
-    payment_transaction.customer_subscription = (
+    payment_transaction.plus_membership_subscription = (
         subscription
     )
 
     payment_transaction.save(
         update_fields=[
-            "customer_subscription"
+            "plus_membership_subscription"
         ]
     )
 
