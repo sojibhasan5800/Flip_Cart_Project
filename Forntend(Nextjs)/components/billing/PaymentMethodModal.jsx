@@ -14,6 +14,13 @@ export default function PaymentMethodModal({ plan, onClose }) {
             toast.error('Please select a payment method')
             return
         }
+           console.log("Selected Plan:", plan)
+
+    console.log("Payment Payload:", {
+        plan_slug: plan.slug,
+        gateway: gateway,
+        plan_type: plan.plan_type
+    })
 
         setLoading(true)
         try {

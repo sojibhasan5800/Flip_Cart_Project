@@ -122,6 +122,7 @@ class PlusMembershipPlanSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "plan_name",
+            "plan_type",
             "slug",
             "plan_level",
             "price",

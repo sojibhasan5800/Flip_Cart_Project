@@ -37,6 +37,7 @@ export default function PricingPage() {
         try {
             const res = await AxiosInstance.get('/api/billing/plus-membership/')
             setPlans(res.data)
+            console.log('Plans fetched:', res.data)
         } catch (err) {
             toast.error('Failed to load plans')
         } finally {

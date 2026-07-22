@@ -28,6 +28,7 @@ class PurchasePlanView(APIView):
             gateway = request.data.get("gateway")
             plan_slug = request.data.get("plan_slug")
             plan_type = request.data.get("plan_type")
+            print(f"Received purchase request: gateway={gateway}, plan_slug={plan_slug}, plan_type={plan_type}")
 
             # 🔎 Basic validation
             if not gateway or not plan_slug or not plan_type:
