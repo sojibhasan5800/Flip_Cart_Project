@@ -84,16 +84,134 @@ export default function PricingPage() {
             </p>
 
             <ul className="w-full mb-6 space-y-2 text-sm text-gray-700">
-                <li>Duration : {plan.duration_days} Days</li>
 
-                {Object.entries(plan.features || {}).map(([key, value]) =>
-                    value ? (
-                        <li key={key}>
-                            ✓ {key.replace(/_/g, " ")}
-                        </li>
-                    ) : null
-                )}
-            </ul>
+    <li>
+        ✅ Duration :
+        <strong> {plan.duration_days} Days</strong>
+    </li>
+
+    <li>
+        💳 Billing :
+        <strong> {plan.billing_cycle}</strong>
+    </li>
+
+    <li>
+        🚚 Free Shipping :
+        <strong>
+            {plan.free_shipping ? " Yes" : " No"}
+        </strong>
+    </li>
+
+    {plan.free_shipping && (
+        <>
+            <li>
+                📦 Minimum Order :
+                <strong> ${plan.free_shipping_min_order}</strong>
+            </li>
+
+            <li>
+                🚛 Free Shipping Limit :
+                <strong>
+                    {" "}
+                    {plan.max_free_shipping_orders === 999999
+                        ? "Unlimited"
+                        : plan.max_free_shipping_orders}
+                </strong>
+            </li>
+        </>
+    )}
+
+    {plan.shipping_discount_percent > 0 && (
+        <li>
+            🎁 Shipping Discount :
+            <strong>
+                {" "}
+                {plan.shipping_discount_percent}%
+            </strong>
+        </li>
+    )}
+
+    {plan.cashback_percent > 0 && (
+        <li>
+            💰 Cashback :
+            <strong>
+                {" "}
+                {plan.cashback_percent}%
+            </strong>
+        </li>
+    )}
+
+    {Number(plan.reward_points_multiplier) > 1 && (
+        <li>
+            ⭐ Reward Points :
+            <strong>
+                {" "}
+                x{plan.reward_points_multiplier}
+            </strong>
+        </li>
+    )}
+
+    {plan.priority_order_processing && (
+        <li>⚡ Priority Order Processing</li>
+    )}
+
+    {plan.priority_customer_support && (
+        <li>🎧 Priority Customer Support</li>
+    )}
+
+    {plan.early_access_sale && (
+        <li>🛍 Early Sale Access</li>
+    )}
+
+    {plan.exclusive_deals && (
+        <li>🔥 Exclusive Deals</li>
+    )}
+
+    {plan.monthly_order_limit > 0 && (
+        <li>
+            📦 Monthly Order Limit :
+            <strong>
+                {" "}
+                {plan.monthly_order_limit}
+            </strong>
+        </li>
+    )}
+
+    {Number(plan.monthly_spending_limit) > 0 && (
+        <li>
+            💵 Monthly Spending :
+            <strong>
+                {" "}
+                ${plan.monthly_spending_limit}
+            </strong>
+        </li>
+    )}
+
+    {plan.badge && (
+        <li>
+            🏷 Badge :
+            <strong> {plan.badge}</strong>
+        </li>
+    )}
+
+    {plan.recommended && (
+        <li className="font-semibold text-green-600">
+            ⭐ Recommended Plan
+        </li>
+    )}
+
+    {Object.entries(plan.features || {}).map(([key, value]) =>
+        value ? (
+            <li key={key}>
+                ✔ {key.replaceAll("_", " ")}
+            </li>
+        ) : null
+    )}
+
+</ul>
+
+
+
 
             <button
                 onClick={() => handlePurchaseClick(plan)}

@@ -128,6 +128,27 @@ class PlusMembershipPlanSerializer(serializers.ModelSerializer):
             "currency",
             "billing_cycle",
             "duration_days",
+            
+             "free_shipping",
+            "free_shipping_min_order",
+            "max_free_shipping_orders",
+            "shipping_discount_percent",
+
+            "priority_order_processing",
+            "priority_customer_support",
+            "early_access_sale",
+            "exclusive_deals",
+
+            "cashback_percent",
+            "reward_points_multiplier",
+
+            "monthly_order_limit",
+            "monthly_spending_limit",
+
+            "recommended",
+            "badge",
+
+
             "features",
         ]  
         
