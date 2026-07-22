@@ -82,8 +82,7 @@ class StripeWebhookView(APIView):
 
     def handle_checkout_completed(self, session):
         metadata = session.get("metadata", {})
-        print(f"[Webhook DEBUG] Checkout session completed with metadata: {metadata}")
-
+        
         plan_type = metadata.get("plan_type")
  
         stripe_subscription_id = session.get("subscription")
@@ -100,11 +99,18 @@ class StripeWebhookView(APIView):
 
         subscription_item_id = sub["items"]["data"][0]["id"]
         stripe_price_id = sub["items"]["data"][0]["price"]["id"]
+        stripe_customer_id = sub["customer"]
+        customer_email = (
+            session.get("customer_email")
+            or session.get("customer_details", {}).get("email")
+        )
     
         if subscription_item_id:
             metadata["stripe_subscription_item_id"] = subscription_item_id
             metadata["stripe_price_id"] = stripe_price_id
             metadata["stripe_subscription_id"] = stripe_subscription_id
+            metadata["stripe_customer_id"] = stripe_customer_id
+            metadata["customer_email"] = customer_email
             print(f"[Webhook DEBUG] Retrieved subscription item ID: {subscription_item_id}, price ID: {stripe_price_id}, subscription ID: {stripe_subscription_id}")
 
 
@@ -195,11 +201,11 @@ class StripeWebhookView(APIView):
                 )
             )
 
-            transaction.on_commit(
-                lambda: create_payment_analytics.delay(
-                    transaction_obj.id
-                )
-            )
+            # transaction.on_commit(
+            #     lambda: create_payment_analytics.delay(
+            #         transaction_obj.id
+            #     )
+            # )
     
         
      

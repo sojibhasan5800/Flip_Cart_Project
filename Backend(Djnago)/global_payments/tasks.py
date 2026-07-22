@@ -177,38 +177,6 @@ def process_successful_payment(self, transaction_id):
 
             plan_type = metadata.get("plan_type")
 
-            # ==================================================
-            # ORGANIZATION SUBSCRIPTION ACTIVATION
-            # ==================================================
-
-            if plan_type == "organization":
-
-                activate_organization_subscription(
-                    payment_transaction=payment_transaction,
-                    metadata=metadata
-                )
-
-            # ==================================================
-            # PRODUCT BOOST ACTIVATION
-            # ==================================================
-
-            elif plan_type == "product_boost":
-
-                activate_product_boost_subscription(
-                    payment_transaction=payment_transaction,
-                    metadata=metadata
-                )
-
-            # ==================================================
-            # CUSTOMER SUBSCRIPTION
-            # ==================================================
-
-            elif plan_type == "plus_membership":
-
-                activate_customer_subscription(
-                    payment_transaction=payment_transaction,
-                    metadata=metadata
-                )
 
             # ==================================================
             # GENERATE INVOICE
@@ -228,25 +196,25 @@ def process_successful_payment(self, transaction_id):
             # WEBSOCKET NOTIFY
             # ==================================================
 
-            websocket_payment_notification.delay(
-                transaction_id=payment_transaction.id
-            )
+            # websocket_payment_notification.delay(
+            #     transaction_id=payment_transaction.id
+            # )
 
             # ==================================================
             # ANALYTICS
             # ==================================================
 
-            create_payment_analytics.delay(
-                transaction_id=payment_transaction.id
-            )
+            # create_payment_analytics.delay(
+            #     transaction_id=payment_transaction.id
+            # )
 
             # ==================================================
             # AUDIT LOG
             # ==================================================
 
-            create_payment_audit_log.delay(
-                transaction_id=payment_transaction.id
-            )
+            # create_payment_audit_log.delay(
+            #     transaction_id=payment_transaction.id
+            # )
 
             # ==================================================
             # MARK VERIFIED
