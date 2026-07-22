@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 // import { Crown, Sparkles } from "lucide-react";
 import { useSelector, useDispatch } from "react-redux";
+import AxiosInstance from "@/api/AxiosInstance";
 // import { logout as logoutAction } from "../../../../store/authSlice";
 
 
@@ -21,38 +22,82 @@ const Navbar = () => {
 
   // Check token in localStorage to see if user is logged in
 
+useEffect(() => {
 
-  useEffect(() => {
     const token = localStorage.getItem("Token");
     setIsLoggedIn(!!token);
+
+
     const checkMembership = async () => {
-    const storedStatus = localStorage.getItem("isPlusMember");
 
-    if (storedStatus !== null) {
-      //  Use cached value
-      setIsPlusMember(storedStatus === "true");
-      return;
+        // First check localStorage
+        const cachedMembership = localStorage.getItem("isPlusMember");
+    
+
+        if (cachedMembership === "true") {
+        
+
+            setIsPlusMember(
+                cachedMembership === "true"
+            );
+
+            return;
+        }
+
+
+        try {
+
+            const res = await AxiosInstance.get(
+                "/api/billing/membership-status/"
+            );
+
+
+            /*
+              Example API response:
+              {
+                 "is_plus_member": true
+              }
+            */
+
+
+            const status = res.data.is_plus_member;
+
+            localStorage.setItem(
+                "isPlusMember",
+                String(status)
+            );
+
+
+            setIsPlusMember(status);
+            console.log("statisss" , status)
+
+        } catch(error){
+
+            console.log(
+                "Membership check error:",
+                error
+            );
+
+
+            localStorage.setItem(
+                "isPlusMember",
+                "false"
+            );
+
+
+            setIsPlusMember(false);
+        }
+    };
+
+
+    if(token){
+        checkMembership();
     }
 
-    try {
 
-
-      const res = await fetch("/api/check-membership");
-
-      const data = await res.json();
-
-      // assume API returns: { isPlus: true/false }
-      localStorage.setItem("isPlusMember", data.isPlus);
-      setIsPlusMember(data.isPlus);
-
-    } catch (error) {
-      console.error("Membership check failed", error);
-      setIsPlusMember(false);
-    }
-  };
-
-  checkMembership();
 }, []);
+
+
 
   const handleLogout = () => {
     localStorage.removeItem("Token");
