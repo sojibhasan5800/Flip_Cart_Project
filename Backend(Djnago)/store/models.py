@@ -23,7 +23,7 @@ class Product(models.Model):
     images          = models.URLField(max_length=1000, blank=True, null=True, help_text="ImageKit hosted product image URL")
     stock           = models.IntegerField(default=1)
     is_available    = models.BooleanField(default=True)
-    category        = models.ForeignKey("category.Category", on_delete=models.CASCADE)
+    category        = models.ForeignKey("category.Category", on_delete=models.PROTECT)
     is_boosted      = models.BooleanField(default=False)
     store_url       = models.URLField(max_length=1000, blank=False, null=False,editable=False,help_text="URL to the product page on the merchant's website")
     # Tenant isolation

@@ -141,7 +141,7 @@ export default function StoreAddProduct() {
             };
             console.log(payload);
             const { data } = await AxiosInstance.post(
-                "/api/merchant_user/merchant-products/",
+                "/api/store/products/",
                 payload,{ useTenant: true }
             );
 

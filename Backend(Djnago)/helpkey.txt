@@ -1,3 +1,6 @@
+ r='py manage.py runserver'
+ m='py manage.py makemigrations'
+ mm='py manage.py migrate'
  b='celery -A flipcart_project beat -l info'
  w='celery -A flipcart_project worker --pool=solo -l info'
  s='python manage.py shell'

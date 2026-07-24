@@ -41,7 +41,7 @@ class ProductAPIView(APIView):
             queryset = (
                 Product.objects
                 .filter(
-                    organization=organization,
+                    # organization=organization,
                     is_available=True,
                 )
                 .select_related("category")
@@ -75,26 +75,38 @@ class ProductAPIView(APIView):
 
             serializer = ProductListSerializer(page, many=True)
             return_data = paginator.get_paginated_response(serializer.data)
-            print("return_data", return_data.data)
-
+        
             return return_data
 
     
-    def post(self, request):
-        organization = getattr(request, "organization", None)
-        if not organization:
-            raise ValidationError("organization_id is required")
-        
+def post(self, request):
+    organization_id = request.data.get("organization_id")
+
+    if not organization_id:
+        raise ValidationError("organization_id is required")
+
+    try:
+        organization = Organization.objects.get(id=organization_id)
+    except Organization.DoesNotExist:
+        raise ValidationError("Invalid organization_id")
+
+    with schema_context(organization.schema_name):
         with transaction.atomic():
+
             serializer = ProductCreateSerializer(
                 data=request.data,
-                context={"organization": organization}
+                context={
+                    "organization": organization,
+                },
             )
-            serializer.is_valid(raise_exception=True)
-            product = serializer.save()
 
-        return Response({
-            "message": "Product added successfully",
-            "data": serializer.data
-        }, status=201)
-    
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+
+        return Response(
+            {
+                "message": "Product added successfully",
+                "data": serializer.data,
+            },
+            status=status.HTTP_201_CREATED,
+        )
