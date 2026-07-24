@@ -8,28 +8,24 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
-from drf_yasg.utils import swagger_auto_schema
 from django.db.models import Q
-from rest_framework.exceptions import ValidationError, PermissionDenied
+from rest_framework.exceptions import ValidationError
 from redis.exceptions import ConnectionError as RedisConnectionError
 from django_redis.exceptions import ConnectionInterrupted
 
 from merchant_user.models import Organization, MerchantUser
-from store.serializers import ProductCreateSerializer,ProductListSerializer
+from store.serializers import ProductCreateSerializer
 from .serializers import OrganizationCreateSerializer,BasicStoreInfoSerializer,ReviewSerializer
 from rest_framework.permissions import IsAuthenticated
-from .permissions import IsSuperAdmin,IsMerchantUser
 from django_tenants.utils import schema_context
-from django.db import connection, transaction
-from django.db.models import Sum, Count
-from datetime import timedelta
+from django.db import  transaction
+from django.db.models import Sum
 from elasticsearch_dsl import Search
 
 from django_redis import get_redis_connection
 from store.models import Product,ReviewRating
 from orders.models import Order, OrderProduct
-from store.models import Product, ProductGallery
-from store.serializers import ProductSerializer  
+from store.models import Product
 import logging
 
 logger = logging.getLogger(__name__)
@@ -469,24 +465,7 @@ class MerchantProductAPIView(APIView):
             "source": source,          # frontend debug-এর জন্য
         }, status=200)
 
-    def post(self, request):
-        organization = getattr(request, "organization", None)
-        if not organization:
-            raise ValidationError("organization_id is required")
-        
-        with transaction.atomic():
-            serializer = ProductCreateSerializer(
-                data=request.data,
-                context={"organization": organization}
-            )
-            serializer.is_valid(raise_exception=True)
-            product = serializer.save()
-
-        return Response({
-            "message": "Product added successfully",
-            "data": serializer.data
-        }, status=201)
-    
+   
 class ToggleStockAPIView(APIView):
     def patch(self, request, pk):
         try:

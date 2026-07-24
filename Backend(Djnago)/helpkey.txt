@@ -4,7 +4,13 @@
  wop='celery -A flipcart_project worker -Q periodic -l info --pool=solo'
  dp='daphne -p 8001 flipcart_project.asgi:application'
  c='clear'
- redis-on='"C:/Program Files/Redis/redis-server.exe"'
+ redis_on='"C:/Program Files/Redis/redis-server.exe"'
  redis-cli='"C:/Program Files/Redis/redis-cli.exe"'
- redis-off='taskkill //F //IM redis-server.exe'
+ redis_off='redis-cli shutdown'
  stripe-start='stripe listen --forward-to localhost:8000/api/global_payments/stripe-webhook/'
+
+ nano ~/.bashrc
+ Ctrl + O
+ Enter
+ Ctrl + X
+source ~/.bashrc

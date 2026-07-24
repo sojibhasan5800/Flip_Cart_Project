@@ -1,12 +1,13 @@
 'use client'
 
-import { useEffect, useState } from "react"
+import { useEffect, useState,useRef } from "react"
 import { toast } from "react-hot-toast"
 import Image from "next/image"
 import Loading from "@/components/Loading"
 import useUser from '../../../hooks/useUser'
 import AxiosInstance from '../../../api/AxiosInstance'
 import { loadStripe } from '@stripe/stripe-js'
+
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js'
 
 // Stripe publishable key
@@ -16,29 +17,34 @@ export default function StoreManageProducts() {
     const currency = process.env.NEXT_PUBLIC_CURRENCY_SYMBOL || '৳'
     const [loading, setLoading] = useState(true)
     const [products, setProducts] = useState([])
+    const [loadingMore, setLoadingMore] = useState(false)
     const [pendingToggle, setPendingToggle] = useState(null)
     const [pendingBoost, setPendingBoost] = useState(null)
     const [subscriptionInfo, setSubscriptionInfo] = useState(null)
     const [showPaymentModal, setShowPaymentModal] = useState(false)
     const [selectedProduct, setSelectedProduct] = useState(null)
     const { user } = useUser()
+    const [cursor, setCursor] = useState(null)
+    const loadMoreRef = useRef(null)
 
     // Fetch products + active boosting subscription info
     const fetchProductsAndSubscription = async () => {
         try {
             // 1. Products
+            console.log("Fetching products and subscription info...",localStorage.getItem("ACTIVE_ORG_ID"))
             const prodRes = await AxiosInstance.get(
-                "/api/merchant_user/merchant-products/",
+                "/api/store/products/",
                 {
                     useTenant: true,
                     params: { organization_id: localStorage.getItem("ACTIVE_ORG_ID") }
                 }
             )
-            setProducts(
-                prodRes.data.data.sort(
-                    (a, b) => new Date(b.created_date) - new Date(a.created_date)
-                )
-            )
+            setProducts(prodRes.data.results)
+
+            const nextCursor = prodRes.data.next
+            ? new URL(prodRes.data.next).searchParams.get("cursor")
+            : null;
+            setCursor(nextCursor);
 
             // 2. Active subscriptions (বুস্টিং প্ল্যান খুঁজব)
             const subRes = await AxiosInstance.get("/api/billing/subscriptions/", { useTenant: true })
@@ -66,11 +72,89 @@ export default function StoreManageProducts() {
         }
     }
 
-    useEffect(() => {
+const fetchMoreProducts = async () => {
+
+    if (!cursor || loadingMore) return
+
+    try {
+
+        setLoadingMore(true)
+
+        const res = await AxiosInstance.get(
+                "/api/store/products/",
+                {
+                    useTenant: true,
+                    params: {
+                        organization_id: localStorage.getItem("ACTIVE_ORG_ID"),
+                        cursor,
+                    },
+                }
+            );
+
+        setProducts(prev => [
+            ...prev,
+            ...res.data.results
+        ])
+
+        const nextCursor = res.data.next
+            ? new URL(res.data.next).searchParams.get("cursor")
+            : null;
+        setCursor(nextCursor);
+
+    } catch (error) {
+
+        console.error(error)
+
+    } finally {
+
+        setLoadingMore(false)
+
+    }
+
+}
+
+
+useEffect(() => {
         if (user) {
             fetchProductsAndSubscription()
         }
+
     }, [user])
+
+
+// Infinite Scroll
+useEffect(() => {
+
+    const observer = new IntersectionObserver(
+        (entries) => {
+
+            if (
+                entries[0].isIntersecting &&
+                cursor &&
+                !loadingMore
+            ) {
+                fetchMoreProducts();
+            }
+
+        },
+        {
+            threshold: 0.5,
+        }
+    );
+
+    const currentRef = loadMoreRef.current;
+
+    if (currentRef) {
+        observer.observe(currentRef);
+    }
+
+    return () => {
+        if (currentRef) {
+            observer.unobserve(currentRef);
+        }
+    };
+
+}, [cursor, loadingMore]); 
 
     const toggleStock = async (productId) => {
         // ... আপনার আগের লজিক একই রাখুন (এখানে পরিবর্তন নেই) ...
@@ -150,6 +234,7 @@ export default function StoreManageProducts() {
                 </div>
             )}
 
+            <div className="overflow-auto">
             <table className="w-full max-w-5xl text-left ring ring-slate-200 rounded overflow-hidden text-sm">
                 <thead className="bg-slate-50 text-gray-700 uppercase tracking-wider">
                     <tr>
@@ -253,6 +338,15 @@ export default function StoreManageProducts() {
                     })}
                 </tbody>
             </table>
+            <div
+                ref={loadMoreRef}
+                className="h-10 flex items-center justify-center"
+            >
+
+                {loadingMore && (
+                    <p>Loading...</p>
+                )}
+            </div>
 
             {showPaymentModal && selectedProduct && (
                 <PaymentModal
@@ -262,6 +356,7 @@ export default function StoreManageProducts() {
                     onSuccess={handlePaymentSuccess}
                 />
             )}
+        </div>
         </>
     )
 }
